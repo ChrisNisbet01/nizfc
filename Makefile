@@ -62,13 +62,16 @@ endif
 
 CFLAGS = $(COMMON_CFLAGS) \
 			$(OPTIMISE_FLAGS) \
+			-DUSE_STDPERIPH_DRIVER \
+			-D'__TARGET__="$(TARGET)"' \
 			$(addprefix -I,$(INCLUDE_DIRS)) \
 			$(CPU_FLAGS) \
 			$(CPU_DEFINES) \
 			$(FPU_FLAGS) \
 			$(FPU_DEFINES) \
 			$(addprefix -D,$(PLATFORM_FLAGS)) \
-			$(addprefix -D,$(USER_OPTIONS))
+			$(addprefix -D,$(USER_OPTIONS)) \
+			-MMD
 
 COMMON_LDFLAGS = -g \
                  -Wall \
@@ -111,6 +114,9 @@ OBJS := $(patsubst %.S,%.o,$(OBJS))
 # prepend obj directory to object list
 OBJS := $(OBJS:%=$(OBJ_DIR)/%)
 
+TARGET_DEPENDENCIES = $(patsubst %.o,%.d,$(OBJS))
+
+
 all: $(TARGET_HEX)
 
 flash: all
@@ -146,4 +152,6 @@ clean:
 	rm -rf $(OBJS)
 	rm -rf $(TARGET_ELF)
 	rm -rf $(TARGET_HEX)
+
+-include $(TARGET_DEPENDENCIES)
 
