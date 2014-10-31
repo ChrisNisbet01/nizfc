@@ -1,1 +1,13 @@
 /nizfc.WK3
+/nizfc.PR
+/nizfc.PRI
+/nizfc.PS
+/nizfc.IMB
+*.IMD
+*.IAB
+*.IAD
+*.SearchResults
+/bin/
+/obj/
+*.PFI
+*.PO
