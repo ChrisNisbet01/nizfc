@@ -40,10 +40,12 @@ INCLUDE_DIRS = $(SRC_DIR)/cmsis_boot/startup \
 				$(SRC_DIR)/cmsis_boot \
 				$(SRC_DIR)/cmsis_lib/include \
 				$(SRC_DIR)/cmsis \
+				$(SRC_DIR)/drivers \
 				$(COOS_DIR) \
 				$(COOS_DIR)/portable \
 				$(COOS_DIR)/kernel \
-				$(SRC_DIR)/STM32F3_Discovery
+				$(SRC_DIR)/STM32F3_Discovery \
+				$(SRC_DIR)/stm32f30x
 
 ifeq ($(TARGET),STM32F3_Discovery)
 CPU_FLAGS = -mcpu=cortex-m4 -mthumb
@@ -55,9 +57,11 @@ FPU_DEFINES = -D__FPU_USED
 PLATFORM_FLAGS =
 
 PLATFORM_DIR = $(SRC_DIR)/STM32F3_Discovery
-PLATFORM_SRC = $(PLATFORM_DIR)/*.c
+PLATFORM_SRC = $(PLATFORM_DIR)/*.c \
+               $(SRC_DIR)/stm32f30x/*.c
 LINK_SCRIPT = $(ROOT)/arm-gcc-link-stm32f3-nizfc.ld
 CO_FLASH_PROCESSOR_TYPE = STM32F303VC
+
 endif
 
 CFLAGS = $(COMMON_CFLAGS) \
@@ -91,7 +95,8 @@ LDFLAGS = $(CPU_FLAGS) \
 
 
 # now specify source files
-COMMON_SRC = $(SRC_DIR)/flightcontroller/*.c
+COMMON_SRC = $(SRC_DIR)/flightcontroller/*.c \
+             $(SRC_DIR)/drivers/*.c \
 COOS_SRC = $(COOS_DIR)/kernel/*.c \
            $(COOS_DIR)/portable/*.c \
            $(COOS_DIR)/portable/gcc/*.c \
@@ -131,17 +136,17 @@ $(TARGET_ELF): $(OBJS)
 
 $(OBJ_DIR)/%.o : %.c
 	@echo $<
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 $(OBJ_DIR)/%.o: %.s
 	@echo $<
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	@$(CC) -c -o $@ $< $(CFLAGS)
 
 $(OBJ_DIR)/%.o: %.S
 	@echo $<
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	@$(CC) -c -o $@ $< $(CFLAGS)
 
 
