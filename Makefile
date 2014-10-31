@@ -105,6 +105,7 @@ SRC_FILES = $(COMMON_SRC) \
 
 COBJS = $(patsubst %.c,%.o,$(wildcard $(SRC_FILES)))
 OBJS = $(patsubst %.S,%.o,$(COBJS))
+OBJS := $(OBJS:%=$(OBJ_DIR)/%)
 
 all: $(TARGET_HEX)
 
@@ -118,18 +119,19 @@ $(TARGET_ELF): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^
 	$(SIZE) $(TARGET_ELF)
 
-%.o : %.c
-	@echo $(OBJS)
+$(OBJ_DIR)/%.o : %.c
 	@echo $<
+	mkdir -p $(dir $@)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-%.o: %.s
+$(OBJ_DIR)/%.o: %.s
 	@echo $<
+	mkdir -p $(dir $@)
 	@$(CC) -c -o $@ $< $(CFLAGS)
 
-%.o: %.S
-	@echo $(SRC_FILES)
-	@echo $(OBJS)
+$(OBJ_DIR)/%.o: %.S
+	@echo $<
+	mkdir -p $(dir $@)
 	@$(CC) -c -o $@ $< $(CFLAGS)
 
 
