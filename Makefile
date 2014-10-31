@@ -57,6 +57,7 @@ PLATFORM_FLAGS =
 PLATFORM_DIR = $(SRC_DIR)/STM32F3_Discovery
 PLATFORM_SRC = $(PLATFORM_DIR)/*.c
 LINK_SCRIPT = $(ROOT)/arm-gcc-link-stm32f3-nizfc.ld
+CO_FLASH_PROCESSOR_TYPE = STM32F303VC
 endif
 
 CFLAGS = $(COMMON_CFLAGS) \
@@ -103,14 +104,17 @@ SRC_FILES = $(COMMON_SRC) \
             $(COOS_SRC) \
             $(CMSIS_LIB_SRC)
 
-COBJS = $(patsubst %.c,%.o,$(wildcard $(SRC_FILES)))
-OBJS = $(patsubst %.S,%.o,$(COBJS))
+# add .c files to object list
+OBJS = $(patsubst %.c,%.o,$(wildcard $(SRC_FILES)))
+# add .S files to object list
+OBJS := $(patsubst %.S,%.o,$(OBJS))
+# prepend obj directory to object list
 OBJS := $(OBJS:%=$(OBJ_DIR)/%)
 
 all: $(TARGET_HEX)
 
 flash: all
-	$(CO_FLASH) program STM32F303VC $(TARGET_ELF) --adapter-name=ST-Link
+	$(CO_FLASH) program $(CO_FLASH_PROCESSOR_TYPE) $(TARGET_ELF) --adapter-name=ST-Link
 
 $(TARGET_HEX): $(TARGET_ELF)
 	$(OBJCOPY) -O ihex --set-start 0x8000000 $< $@
