@@ -98,6 +98,7 @@ LDFLAGS = $(CPU_FLAGS) \
 # now specify source files
 COMMON_SRC = $(SRC_DIR)/flightcontroller/*.c \
              $(SRC_DIR)/drivers/*.c \
+             $(SRC_DIR)/stdio/*.c
 COOS_SRC = $(COOS_DIR)/kernel/*.c \
            $(COOS_DIR)/portable/*.c \
            $(COOS_DIR)/portable/gcc/*.c \
@@ -136,9 +137,8 @@ $(TARGET_ELF): $(OBJS)
 	$(SIZE) $(TARGET_ELF)
 
 $(OBJ_DIR)/%.o : %.c
-	@echo $<
 	@mkdir -p $(dir $@)
-	$(CC) -c -o $@ $< $(CFLAGS)
+	@$(CC) -c -o $@ $< $(CFLAGS)
 
 $(OBJ_DIR)/%.o: %.s
 	@echo $<

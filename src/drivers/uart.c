@@ -4,6 +4,7 @@
 #include <stm32f30x_usart.h>
 #include <usart_stm32f30x.h>
 #include <stm32f3_discovery.h>
+#include <coos.h>
 #include "uart_interface.h"
 #include "uart.h"
 
@@ -203,12 +204,44 @@ void uartWriteChar(void *pv, uint8_t ch)
 {
 	uart_ctx_st *pctx = pv;
 
-    STM_EVAL_LEDToggle(LED10);
-
     pctx->txBuffer[pctx->txBufferHead] = ch;
     pctx->txBufferHead = (pctx->txBufferHead + 1) % pctx->txBufferSize;
 
     USART_ITConfig(pctx->port->usart, USART_IT_TXE, ENABLE);
 }
 
+int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait)
+{
+	uart_ctx_st *pctx = pv;
+	int millisecs_counter = 0;
+	int result;
+	int timed_out = 0;
+
+	/* wait until the TX buffer can accept at least one more character */
+	while (((pctx->txBufferHead + 1) % pctx->txBufferSize) == pctx->txBufferTail)
+	{
+		if (millisecs_counter >= max_millisecs_to_wait)
+		{
+			timed_out = 1;
+			break;
+		}
+		millisecs_counter++;
+		CoTimeDelay( 0, 0, 0, 1 );
+	}
+	if ( timed_out == 0 )
+	{
+	    pctx->txBuffer[pctx->txBufferHead] = ch;
+	    pctx->txBufferHead = (pctx->txBufferHead + 1) % pctx->txBufferSize;
+
+	    USART_ITConfig(pctx->port->usart, USART_IT_TXE, ENABLE);
+	    result = 0;
+	}
+	else
+	{
+		result = -1;
+		// TODO: increment a statistic?
+	}
+
+	return result;
+}
 

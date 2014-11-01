@@ -1,40 +1,40 @@
 /**
  *******************************************************************************
  * @file       prot.c
- * @version    V1.1.6    
+ * @version    V1.1.6
  * @date       2014.05.23
- * @brief      Compiler adapter for CooCox CoOS kernel.	
+ * @brief      Compiler adapter for CooCox CoOS kernel.
  *******************************************************************************
  * @copy
  *
- *  Redistribution and use in source and binary forms, with or without 
- *  modification, are permitted provided that the following conditions 
- *  are met: 
- *  
- *      * Redistributions of source code must retain the above copyright 
- *  notice, this list of conditions and the following disclaimer. 
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
  *      * Redistributions in binary form must reproduce the above copyright
  *  notice, this list of conditions and the following disclaimer in the
- *  documentation and/or other materials provided with the distribution. 
- *      * Neither the name of the <ORGANIZATION> nor the names of its 
- *  contributors may be used to endorse or promote products derived 
- *  from this software without specific prior written permission. 
- *  
+ *  documentation and/or other materials provided with the distribution.
+ *      * Neither the name of the <ORGANIZATION> nor the names of its
+ *  contributors may be used to endorse or promote products derived
+ *  from this software without specific prior written permission.
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  *  THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * <h2><center>&copy; COPYRIGHT 2014 CooCox </center></h2>
  *******************************************************************************
- */ 
+ */
 
 /*---------------------------- Include ---------------------------------------*/
 #include "coocox.h"
@@ -42,7 +42,7 @@
 
 //******************************************************************************
 //                              EQUATES
-//******************************************************************************	
+//******************************************************************************
 U32 NVIC_INT_CTRL  = 0xE000ED04;            // Interrupt control state register
 U32 NVIC_PENDSVSET = 0x10000000;            // Value to trigger PendSV exception
 U32 INT_EXIT       = 0xFFFFFFFC;
@@ -51,10 +51,10 @@ U32 INT_EXIT       = 0xFFFFFFFC;
 //                         PUBLIC FUNCTIONS
 //******************************************************************************
 extern U8     Inc8(volatile U8 *data) ;
-extern U8     Dec8(volatile U8 *data) ; 
+extern U8     Dec8(volatile U8 *data) ;
 extern void   IRQ_ENABLE_RESTORE(void);
 extern void   IRQ_DISABLE_SAVE(void);
-extern void   SetEnvironment(OS_STK *pstk) __attribute__ ((naked)); 	
+extern void   SetEnvironment(OS_STK *pstk) __attribute__ ((naked));
 extern void   SwitchContext(void)          __attribute__ ((naked));
 extern void   PendSV_Handler(void)         __attribute__ ((naked));
 
@@ -62,20 +62,20 @@ extern void   PendSV_Handler(void)         __attribute__ ((naked));
 /**
  ******************************************************************************
  * @brief      Plus a byte integers and Saved into memory cell
- * @param[in]  data    byte integers.	 
- * @param[out] None  
- * @retval     Returns Original value.		 
+ * @param[in]  data    byte integers.
+ * @param[out] None
+ * @retval     Returns Original value.
  *
  * @par Description
- * @details    This function is called to Plus a byte integers 
+ * @details    This function is called to Plus a byte integers
  *             and Saved into memory cell.
  ******************************************************************************
  */
 U8 Inc8 (volatile U8 *data)
 {
   register U8  result = 0;
-  
-  __asm volatile 
+
+  __asm volatile
   (
       " PUSH    {R1}     \n"
       " CPSID   I        \n"
@@ -90,26 +90,26 @@ U8 Inc8 (volatile U8 *data)
       :"r"(data)
   );
   return (result);
-  
+
 }
- 
+
 
 /**
  ******************************************************************************
  * @brief      Decrease a byte integers and Saved into memory cell
- * @param[in]  data    byte integers.	 
- * @param[out] None  
- * @retval     Returns Original value.		 
+ * @param[in]  data    byte integers.
+ * @param[out] None
+ * @retval     Returns Original value.
  *
  * @par Description
- * @details    This function is called to Decrease a byte integers 
+ * @details    This function is called to Decrease a byte integers
  *             and Saved into memory cell.
  ******************************************************************************
  */
 U8 Dec8 (volatile U8 *data)
 {
   register U8  result = 0;
-  __asm volatile 
+  __asm volatile
   (
       " PUSH    {R1}     \n"
       " CPSID   I        \n"
@@ -121,47 +121,47 @@ U8 Dec8 (volatile U8 *data)
       " POP     {R1}     \n"
       :"=r"(result)
       :"r"(data)
-  ); 
-  return (result); 
+  );
+  return (result);
 }
 
 /**
  ******************************************************************************
  * @brief      ENABLE Interrupt
- * @param[in]  None	 
- * @param[out] None  
- * @retval     None		 
+ * @param[in]  None
+ * @param[out] None
+ * @retval     None
  *
  * @par Description
  * @details    This function is called to ENABLE Interrupt.
  ******************************************************************************
  */
 void IRQ_ENABLE_RESTORE(void)
-{ 
-  __asm volatile 
+{
+  __asm volatile
   (
       " CPSIE   I        \n"
-  );	
+  );
   return;
 }
 
 /**
  ******************************************************************************
  * @brief      Close Interrupt
- * @param[in]  None	 
- * @param[out] None  
- * @retval     None		 
+ * @param[in]  None
+ * @param[out] None
+ * @retval     None
  *
  * @par Description
  * @details    This function is called to close Interrupt.
  ******************************************************************************
  */
 void IRQ_DISABLE_SAVE(void)
-{  
-  __asm volatile 
+{
+  __asm volatile
   (
       " CPSID   I        \n"
-  );	
+  );
   return;
 }
 
@@ -169,9 +169,9 @@ void IRQ_DISABLE_SAVE(void)
 /**
  ******************************************************************************
  * @brief      Set environment	for Coocox OS running
- * @param[in]  pstk    stack pointer	 
- * @param[out] None  
- * @retval     None.		 
+ * @param[in]  pstk    stack pointer
+ * @param[out] None
+ * @retval     None.
  *
  * @par Description
  * @details    This function is called to Set environment
@@ -180,6 +180,7 @@ void IRQ_DISABLE_SAVE(void)
  */
 void SetEnvironment (OS_STK *pstk)
 {
+	(void)pstk;
     __asm volatile
     (
 #if CFG_CHIP_TYPE == 3
@@ -190,19 +191,19 @@ void SetEnvironment (OS_STK *pstk)
        " MSR    PSP,R0 \n"
        " BX      LR               \n"
     );
-  
+
 }
 
 
 /**
  ******************************************************************************
  * @brief      Do ready work to Switch Context for task change
- * @param[in]  None	 
- * @param[out] None  
- * @retval     None.		 
+ * @param[in]  None
+ * @param[out] None
+ * @retval     None.
  *
  * @par Description
- * @details    This function is called to Do ready work to 
+ * @details    This function is called to Do ready work to
  *              Switch Context for task change
  ******************************************************************************
  */
@@ -215,9 +216,9 @@ void SwitchContext(void)
 	  " LDR     R2,=NVIC_PENDSVSET \n"
 	  " LDR     R1,[R2]            \n"
       " STR     R1, [R3]           \n"
-      " BX      LR               \n"   
+      " BX      LR               \n"
   );
- 
+
 }
 
 
@@ -225,9 +226,9 @@ void SwitchContext(void)
 /**
  ******************************************************************************
  * @brief      Switch Context for task change
- * @param[in]  None	 
- * @param[out] None  
- * @retval     None.		 
+ * @param[in]  None
+ * @param[out] None
+ * @retval     None.
  *
  * @par Description
  * @details    This function is called to Switch Context for task change.
@@ -244,12 +245,12 @@ void PendSV_Handler(void)
     " LDR     R2,[R2]          \n"   // R2 == next tcb
 
     " CMP     R1,R2            \n"
-    " BEQ     exitPendSV       \n"          
+    " BEQ     exitPendSV       \n"
     " MRS     R0, PSP          \n"    // Get PSP point (can not use PUSH,in ISR,SP is MSP )
-  
+
     " SUB     R0,R0,#32        \n"
     " STR     R0,[R1]          \n"    // Save orig PSP
-								                      // Store r4-r11,r0 -= regCnt * 4,r0 is new stack 
+								                      // Store r4-r11,r0 -= regCnt * 4,r0 is new stack
                                       // top point (addr h->l r11,r10,...,r5,r4)
     " STMIA   R0!,{R4-R7}      \n"    // Save old context (R4-R7)
     " MOV     R4,R8            \n"
@@ -258,10 +259,10 @@ void PendSV_Handler(void)
     " MOV     R7,R11           \n"
     " STMIA   R0!,{R4-R7}      \n"    // Save old context (R8-R11)
 
-    " popStk:                  \n" 
+    " popStk:                  \n"
     " STR     R2, [R3]         \n"    // TCBRunning  = TCBNext;
     " LDR     R0, [R2]         \n"    // Get SP of task that be switch into.
-	
+
     " ADD     R0,R0,#16        \n"
     " LDMIA   R0!,{R4-R7}      \n"    // Restore new Context (R8-R11)
     " MOV     R8,R4            \n"
@@ -291,23 +292,23 @@ void PendSV_Handler(void)
 ////////debug block /////////////////////////
   __asm volatile
  (
-    " LDR    R3,=TCBRunning \n" 
+    " LDR    R3,=TCBRunning \n"
     " LDR    R1,[R3]        \n"    // R1 == running tcb
     " LDR    R2,=TCBNext    \n"
     " LDR    R2,[R2]        \n"    // R2 == next tcb
-    
+
     " CMP    R1,R2          \n"
-    " BEQ    exitPendSV     \n"              
-    
+    " BEQ    exitPendSV     \n"
+
     " MRS    R0, PSP        \n"    // Get PSP point (can not use PUSH,in ISR,SP is MSP )
-    " STMDB  R0!,{R4-R11}   \n"    // Store r4-r11,r0 -= regCnt * 4,r0 is new stack 
+    " STMDB  R0!,{R4-R11}   \n"    // Store r4-r11,r0 -= regCnt * 4,r0 is new stack
                                    // top point (addr h->l r11,r10,...,r5,r4)
 #if CFG_CHIP_TYPE == 3
     " VSTMDB R0!, {S16-S31}   \n" // store remaining FPU registers
 #endif // CFG_FPU_ENABLE
 
     " STR    R0,[R1]        \n"    // Save orig PSP
-     
+
     " STR    R2, [R3]       \n"    // TCBRunning  = TCBNext;
     " LDR    R0, [R2]       \n"    // Get SP of task that be switch into.
 

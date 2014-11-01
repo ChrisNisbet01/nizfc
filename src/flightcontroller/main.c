@@ -1,11 +1,12 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <stm32f30x_wwdg.h>
 #include <coos.h>
 #include <stm32f3_discovery.h>
 #include <uart.h>
 #include <utils.h>
 
-#define MAIN_TASK_STACK_SIZE 0x100
+#define MAIN_TASK_STACK_SIZE 0x200
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE] = {0};
 void *debug_uart;
 
@@ -38,7 +39,7 @@ void main_task( void *pv )
 				ch = uartReadChar( debug_uart );
 				uartWriteChar( debug_uart, ch );
 			}
-			uartWriteChar( debug_uart, 'a' );
+			printf( "hello" );
 		}
 
 	}
