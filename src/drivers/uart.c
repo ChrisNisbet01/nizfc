@@ -177,6 +177,7 @@ int uartRxReady(void *pv)
 {
 	uart_ctx_st *pctx = pv;
 
+	/* XXX assumes that buffer length is a power a two */
     return (pctx->rxBufferHead - pctx->rxBufferTail) & (pctx->rxBufferSize - 1);
 }
 
@@ -213,7 +214,7 @@ void uartWriteChar(void *pv, uint8_t ch)
 int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait)
 {
 	uart_ctx_st *pctx = pv;
-	int millisecs_counter = 0;
+	uint_fast16_t millisecs_counter = 0;
 	int result;
 	int timed_out = 0;
 

@@ -8,10 +8,10 @@
 
 #include "usart_stm32f30x.h"
 
-typedef enum USART_IDX {
+typedef enum usart_idx_t {
 	USART2_IDX,
 	MAX_USARTS
-} USART_IDX;
+} usart_idx_t;
 
 
 typedef struct usart_port_config_st
@@ -29,8 +29,8 @@ typedef struct usart_port_config_st
 	GPIO_TypeDef		*gpioPort;	/* Assumes same port for both pins */
 
 	void 				(*RCC_APBPeriphClockCmd)(uint32_t RCC_APBPeriph, FunctionalState NewState);
-	unsigned int		RCC_APBPeriph;
-	unsigned int		RCC_AHBPeriph;
+	uint_fast32_t		RCC_APBPeriph;
+	uint_fast32_t		RCC_AHBPeriph;
 	uint_fast16_t		irq;
 
 }usart_port_config_st;
@@ -54,7 +54,7 @@ static const usart_port_config_st usart_configs[] =
 		}
 };
 #define NB_UART_PORTS	(sizeof(usart_configs)/sizeof(usart_configs[0]))
-#define USART_IDX(ptr)	((ptr)-usart_configs)
+#define GET_USART_IDX(ptr)	((ptr)-usart_configs)
 
 static usart_cb_st usartCallbackInfo[NB_UART_PORTS];
 
@@ -80,7 +80,7 @@ void const * stm32f30x_usart_init(usart_init_st *cfg)
 	if ( (uart_config=usartConfigLookup(cfg->usart)) == NULL )
 		goto done;
 
-	usartCallbackInfo[USART_IDX(uart_config)] = cfg->callback;
+	usartCallbackInfo[GET_USART_IDX(uart_config)] = cfg->callback;
 
 	/* enable appropriate clocks */
 	RCC_AHBPeriphClockCmd(uart_config->RCC_AHBPeriph, ENABLE);

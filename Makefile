@@ -94,7 +94,6 @@ LDFLAGS = $(CPU_FLAGS) \
           -Wl,-Map=$(TARGET_MAP) \
           -T$(LINK_SCRIPT)
 
-
 # now specify source files
 COMMON_SRC = $(SRC_DIR)/flightcontroller/*.c \
              $(SRC_DIR)/drivers/*.c \
@@ -133,7 +132,7 @@ $(TARGET_HEX): $(TARGET_ELF)
 	$(OBJCOPY) -O ihex --set-start 0x8000000 $< $@
 
 $(TARGET_ELF): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) -o $@ $^ $(LDFLAGS)
 	$(SIZE) $(TARGET_ELF)
 
 $(OBJ_DIR)/%.o : %.c
