@@ -12,14 +12,21 @@ void *debug_uart;
 void main_task( void *pv )
 {
 	UNUSED(pv);
-	debug_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx );
 
 	STM_EVAL_LEDInit(LED3);
 	STM_EVAL_LEDInit(LED4);
+	STM_EVAL_LEDInit(LED5);
+	STM_EVAL_LEDInit(LED6);
+	STM_EVAL_LEDInit(LED7);
+	STM_EVAL_LEDInit(LED8);
+	STM_EVAL_LEDInit(LED9);
+	STM_EVAL_LEDInit(LED10);
+
+	debug_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx );
 
 	while (1)
 	{
-		CoTimeDelay(0, 0, 0, 250);
+		CoTimeDelay(0, 0, 0, 500);
         STM_EVAL_LEDToggle(LED3);
 
 		if ( debug_uart != NULL )
@@ -30,7 +37,6 @@ void main_task( void *pv )
 
 				ch = uartReadChar( debug_uart );
 				uartWriteChar( debug_uart, ch );
-		        STM_EVAL_LEDToggle(LED4);
 			}
 			uartWriteChar( debug_uart, 'a' );
 		}

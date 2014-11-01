@@ -4,6 +4,8 @@
 #include <stm32f30x_usart.h>
 #include <stm32f30x_gpio.h>
 #include <stm32f30x_rcc.h>
+#include <stm32f30x_misc.h>
+
 #include "usart_stm32f30x.h"
 
 typedef enum USART_IDX {
@@ -28,6 +30,8 @@ typedef struct usart_port_config_st
 
 	void 				(*RCC_APBPeriphClockCmd)(uint32_t RCC_APBPeriph, FunctionalState NewState);
 	unsigned int		RCC_APBPeriph;
+	unsigned int		RCC_AHBPeriph;
+	uint_fast16_t		irq;
 
 }usart_port_config_st;
 
@@ -45,12 +49,14 @@ static const usart_port_config_st usart_configs[] =
 			.gpioPort = GPIOD,
 			.RCC_APBPeriphClockCmd = RCC_APB1PeriphClockCmd,
 			.RCC_APBPeriph = RCC_APB1Periph_USART2,
-
+			.RCC_AHBPeriph = RCC_AHBPeriph_GPIOD,
+			.irq = USART2_IRQn
 		}
 };
+#define NB_UART_PORTS	(sizeof(usart_configs)/sizeof(usart_configs[0]))
 #define USART_IDX(ptr)	((ptr)-usart_configs)
 
-static usart_cb_st usartCallbackInfo[MAX_USARTS];
+static usart_cb_st usartCallbackInfo[NB_UART_PORTS];
 
 static usart_port_config_st const * usartConfigLookup( USART_TypeDef *usart )
 {
@@ -69,7 +75,6 @@ static usart_port_config_st const * usartConfigLookup( USART_TypeDef *usart )
 
 void const * stm32f30x_usart_init(usart_init_st *cfg)
 {
-    GPIO_InitTypeDef  GPIO_InitStructure;
 	usart_port_config_st const * uart_config;
 
 	if ( (uart_config=usartConfigLookup(cfg->usart)) == NULL )
@@ -77,7 +82,12 @@ void const * stm32f30x_usart_init(usart_init_st *cfg)
 
 	usartCallbackInfo[USART_IDX(uart_config)] = cfg->callback;
 
-	uart_config->RCC_APBPeriphClockCmd( uart_config->RCC_APBPeriph, ENABLE );
+	/* enable appropriate clocks */
+	RCC_AHBPeriphClockCmd(uart_config->RCC_AHBPeriph, ENABLE);
+	uart_config->RCC_APBPeriphClockCmd(uart_config->RCC_APBPeriph, ENABLE);
+
+	/* configure appropriate GPIO pins */
+    GPIO_InitTypeDef  GPIO_InitStructure;
 
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -87,6 +97,7 @@ void const * stm32f30x_usart_init(usart_init_st *cfg)
     if (cfg->mode & usart_mode_tx)
     {
         GPIO_InitStructure.GPIO_Pin = uart_config->txPin;
+        /* connect pin to USART */
         GPIO_PinAFConfig(uart_config->gpioPort, uart_config->txPinSource, uart_config->txPinAF);
         GPIO_Init(uart_config->gpioPort, &GPIO_InitStructure);
     }
@@ -94,9 +105,18 @@ void const * stm32f30x_usart_init(usart_init_st *cfg)
     if (cfg->mode & usart_mode_rx)
     {
         GPIO_InitStructure.GPIO_Pin = uart_config->rxPin;
+        /* connect pin to USART */
         GPIO_PinAFConfig(uart_config->gpioPort, uart_config->rxPinSource, uart_config->rxPinAF);
         GPIO_Init(uart_config->gpioPort, &GPIO_InitStructure);
     }
+
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+    NVIC_InitStructure.NVIC_IRQChannel = uart_config->irq;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;	// TODO: configurable
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;			// TODO: configurable
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
 
 done:
     return uart_config;
@@ -131,6 +151,7 @@ static void usartIrqHandler(usart_port_config_st const * const uart_config, usar
     if (ISR & USART_FLAG_ORE)
     {
         USART_ClearITPendingBit (uart_config->usart, USART_IT_ORE);
+        // TODO: statistic?
     }
 }
 

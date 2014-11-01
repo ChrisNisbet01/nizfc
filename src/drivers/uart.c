@@ -3,6 +3,7 @@
 
 #include <stm32f30x_usart.h>
 #include <usart_stm32f30x.h>
+#include <stm32f3_discovery.h>
 #include "uart_interface.h"
 #include "uart.h"
 
@@ -156,8 +157,8 @@ void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode )
 
     // Receive IRQ
     if (mode & uart_mode_rx) {
-            USART_ClearITPendingBit(uart_config->usart, USART_IT_RXNE);
-            USART_ITConfig(uart_config->usart, USART_IT_RXNE, ENABLE);
+        USART_ClearITPendingBit(uart_config->usart, USART_IT_RXNE);
+	    USART_ITConfig(uart_config->usart, USART_IT_RXNE, ENABLE);
     }
 
     // Transmit IRQ
@@ -175,7 +176,7 @@ int uartRxReady(void *pv)
 {
 	uart_ctx_st *pctx = pv;
 
-    return (pctx->rxBufferHead - pctx->rxBufferTail) & (pctx->txBufferSize - 1);
+    return (pctx->rxBufferHead - pctx->rxBufferTail) & (pctx->rxBufferSize - 1);
 }
 
 int uartTxBusy(void *pv)
@@ -190,6 +191,8 @@ int uartReadChar(void *pv)
 	uart_ctx_st *pctx = pv;
     uint8_t ch;
 
+    STM_EVAL_LEDToggle(LED9);
+
     ch = pctx->rxBuffer[pctx->rxBufferTail];
     pctx->rxBufferTail = (pctx->rxBufferTail + 1) % pctx->rxBufferSize;
 
@@ -199,6 +202,8 @@ int uartReadChar(void *pv)
 void uartWriteChar(void *pv, uint8_t ch)
 {
 	uart_ctx_st *pctx = pv;
+
+    STM_EVAL_LEDToggle(LED10);
 
     pctx->txBuffer[pctx->txBufferHead] = ch;
     pctx->txBufferHead = (pctx->txBufferHead + 1) % pctx->txBufferSize;
