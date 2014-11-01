@@ -11,7 +11,7 @@ typedef struct usart_cb_st
 {
 	void			*pv;						/* owner context */
 	int				(*getTxChar)( void *pv );	/* get next char to TX to UART from owner */
-	uint8_t			(*putRxChar)( void *pv, uint8_t ch );	/* put next char from UART to owner */
+	void			(*putRxChar)( void *pv, uint8_t ch );	/* put next char from UART to owner */
 } usart_cb_st;
 
 typedef struct usart_init_st

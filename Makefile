@@ -41,6 +41,7 @@ INCLUDE_DIRS = $(SRC_DIR)/cmsis_boot/startup \
 				$(SRC_DIR)/cmsis_lib/include \
 				$(SRC_DIR)/cmsis \
 				$(SRC_DIR)/drivers \
+				$(SRC_DIR)/flightcontroller \
 				$(COOS_DIR) \
 				$(COOS_DIR)/portable \
 				$(COOS_DIR)/kernel \

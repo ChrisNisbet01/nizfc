@@ -6,39 +6,25 @@
 #include <stm32f30x_rcc.h>
 #include "usart_stm32f30x.h"
 
-#define USART2_RX_BUFFER_SIZE	128
-#define USART2_TX_BUFFER_SIZE	128
-
-static volatile uint8_t Usart2TxBuffer[USART2_TX_BUFFER_SIZE];
-static volatile uint8_t Usart2RxBuffer[USART2_RX_BUFFER_SIZE];
-
-typedef enum USART_ID {
-	USART2_ID,
+typedef enum USART_IDX {
+	USART2_IDX,
 	MAX_USARTS
-} USART_ID;
+} USART_IDX;
 
 
 typedef struct usart_port_config_st
 {
 	USART_TypeDef		*usart;
 
-	uint_fast8_t		idx;	/* indicates which entry we are in the usart_configs table */
-
-	uint_fast8_t		txPin;
+	uint_fast16_t		txPin;
 	uint_fast8_t		txPinSource;
 	uint_fast8_t		txPinAF;
 
-	uint_fast8_t		rxPin;
+	uint_fast16_t		rxPin;
 	uint_fast8_t		rxPinSource;
 	uint_fast8_t		rxPinAF;
 
 	GPIO_TypeDef		*gpioPort;	/* Assumes same port for both pins */
-
-	volatile uint8_t	*txBuffer;
-	unsigned int		txBufferSize;
-
-	volatile uint8_t	*rxBuffer;
-	unsigned int		rxBufferSize;
 
 	void 				(*RCC_APBPeriphClockCmd)(uint32_t RCC_APBPeriph, FunctionalState NewState);
 	unsigned int		RCC_APBPeriph;
@@ -47,10 +33,9 @@ typedef struct usart_port_config_st
 
 static const usart_port_config_st usart_configs[] =
 {
-	[USART2_ID] =
+	[USART2_IDX] =
 		{
 			.usart = USART2,
-			.idx = USART2_ID,
 			.txPin = GPIO_Pin_5,
 			.txPinSource = GPIO_PinSource5,
 			.txPinAF = GPIO_AF_7,
@@ -58,15 +43,12 @@ static const usart_port_config_st usart_configs[] =
 			.rxPinSource = GPIO_PinSource6,
 			.rxPinAF = GPIO_AF_7,
 			.gpioPort = GPIOD,
-			.txBuffer = Usart2TxBuffer,
-			.txBufferSize = sizeof Usart2TxBuffer,
-			.rxBuffer = Usart2RxBuffer,
-			.rxBufferSize = sizeof Usart2RxBuffer,
 			.RCC_APBPeriphClockCmd = RCC_APB1PeriphClockCmd,
 			.RCC_APBPeriph = RCC_APB1Periph_USART2,
 
 		}
 };
+#define USART_IDX(ptr)	((ptr)-usart_configs)
 
 static usart_cb_st usartCallbackInfo[MAX_USARTS];
 
@@ -93,7 +75,7 @@ void const * stm32f30x_usart_init(usart_init_st *cfg)
 	if ( (uart_config=usartConfigLookup(cfg->usart)) == NULL )
 		goto done;
 
-	usartCallbackInfo[uart_config->idx] = cfg->callback;
+	usartCallbackInfo[USART_IDX(uart_config)] = cfg->callback;
 
 	uart_config->RCC_APBPeriphClockCmd( uart_config->RCC_APBPeriph, ENABLE );
 
@@ -154,6 +136,6 @@ static void usartIrqHandler(usart_port_config_st const * const uart_config, usar
 
 void USART2_IRQHandler(void)
 {
-    usartIrqHandler(&usart_configs[USART2_ID], &usartCallbackInfo[USART2_ID]);
+    usartIrqHandler(&usart_configs[USART2_IDX], &usartCallbackInfo[USART2_IDX]);
 }
 
