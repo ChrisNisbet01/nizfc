@@ -99,6 +99,7 @@ void *i2cInit(i2c_port_t port)
     RCC_I2CCLKConfig(RCC_I2C1CLK_SYSCLK);
 
     RCC_AHBPeriphClockCmd(i2c_config->sclRCC_AHBPeriph | i2c_config->sdaRCC_AHBPeriph, ENABLE);
+	/* Both I2C using APB1 peripheral clock */
     RCC_APB1PeriphClockCmd(i2c_config->RCC_APB1Periph, ENABLE);
 
     GPIO_PinAFConfig(i2c_config->sclGpio, i2c_config->sclPinSource, i2c_config->sclPinAF);
@@ -107,7 +108,6 @@ void *i2cInit(i2c_port_t port)
     GPIO_StructInit(&GPIO_InitStructure);
 
     // Init pins
-
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
@@ -139,10 +139,10 @@ void *i2cInit(i2c_port_t port)
 		Refer to page 755 of reference manual for examples on how to configure this register.
 	*/
 	I2C_InitStructure.I2C_Timing = ((((clocks.SYSCLK_Frequency/8000000)-1) & 0x0f) << 28)	/* PRESC */
-				| (1 << 20)		/* SCLDEL 	- 2 x 125 = 250ns */
-				| (2 << 16) 	/* SDADEL 	- 2 x 125 = 250ns */
-				| (4 << 8)		/* SCLH   	- 5 x 125 = 650ns */
-				| (10 << 0); 	/* SCLL		- 11 x 125 = 1375ns */
+									| (1 << 20)		/* SCLDEL 	- 2 x 125 = 250ns */
+									| (2 << 16) 	/* SDADEL 	- 2 x 125 = 250ns */
+									| (4 << 8)		/* SCLH   	- 5 x 125 = 650ns */
+									| (10 << 0); 	/* SCLL		- 11 x 125 = 1375ns */
 	/*
 		gives total of 2525ns, which works out to just under 400kHz
 		These values should be within the specs for the lsm303dlhc.
