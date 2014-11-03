@@ -8,12 +8,15 @@
 #include <uart.h>
 #include <utils.h>
 #include <i2c_stm32f30x.h>
+#include "pwm_rx_stm32f30x.h"
+
 #include <stm32f3_discovery_lsm303dlhc.h>
 
 #define MAIN_TASK_STACK_SIZE 0x200
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE] = {0};
 void *debug_uart;
 void *i2c_port;
+void *ppm_port;
 
 #define ABS(x)         (x < 0) ? (-x) : x
 
@@ -435,8 +438,13 @@ void main_task( void *pv )
 
 	i2c_port = i2cInit( I2C_PORT_1 );
 
+	initPWMRx();
+	ppm_port = openPPMInput();
+
 	while (1)
 	{
+		uint_fast16_t signals[MAX_RX_SIGNALS];
+
 		CoTimeDelay(0, 0, 0, 500);
         STM_EVAL_LEDToggle(LED3);
 
@@ -451,7 +459,9 @@ void main_task( void *pv )
 			}
 			printf( "hello\n" );
 		}
-		demoCompass();
+		readRXSignals(ppm_port, signals);
+		printf("s1: %d, s2: %d", signals[0], signals[1] );
+		//demoCompass();
 	}
 }
 
