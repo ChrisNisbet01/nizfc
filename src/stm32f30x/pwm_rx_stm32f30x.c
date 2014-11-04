@@ -427,7 +427,7 @@ static void ppmEdgeCallback(uint_fast8_t port, uint_fast16_t capture)
 
 	CoEnterMutexSection( rx_signals.rx_signals_mutex );
 
-	rx_signals.rx_signals[rx_signals.latest_valid_signals_index][0] = delta;
+	rx_signals.rx_signals[rx_signals.latest_valid_signals_index][port] = delta;
 
 	CoLeaveMutexSection( rx_signals.rx_signals_mutex );
 
@@ -599,34 +599,39 @@ static void handleTIMIRQ( TIM_TypeDef *tim, timer_idx_t timerIndex )
     for (channelIndex = 0; channelIndex < NB_CHANNELS; channelIndex++)
     {
 		timer_configs_st *timer_config = &timer_configs[timerIndex][channelIndex];
+		int got_capture;
 
         if (channelIndex == CH1_IDX && TIM_GetITStatus(tim, TIM_IT_CC1) == SET)
         {
             capture = TIM_GetCapture1(tim);
             TIM_ClearITPendingBit(tim, TIM_IT_CC1);
-            STM_EVAL_LEDToggle(LED4);
+            got_capture = 1;
         }
         else if (channelIndex == CH2_IDX && TIM_GetITStatus(tim, TIM_IT_CC2) == SET)
         {
             capture = TIM_GetCapture2(tim);
             TIM_ClearITPendingBit(tim, TIM_IT_CC2);
+            got_capture = 1;
         }
         else if (channelIndex == CH3_IDX && TIM_GetITStatus(tim, TIM_IT_CC3) == SET)
         {
             capture = TIM_GetCapture3(tim);
             TIM_ClearITPendingBit(tim, TIM_IT_CC3);
+            got_capture = 1;
         }
         else if (channelIndex == CH4_IDX && TIM_GetITStatus(tim, TIM_IT_CC4) == SET)
         {
             capture = TIM_GetCapture4(tim);
             TIM_ClearITPendingBit(tim, TIM_IT_CC4);
+            got_capture = 1;
         }
         else
        	{
+            got_capture = 0;
        		capture = 0;	/* shouldn't happen */
         }
 
-        if (timer_config->edgeCallback != NULL)
+        if (got_capture && timer_config->edgeCallback != NULL)
         {
 	        timer_config->edgeCallback(timer_config->port, capture);
         }
