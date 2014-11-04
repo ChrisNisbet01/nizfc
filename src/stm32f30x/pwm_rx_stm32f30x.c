@@ -14,7 +14,9 @@
 
 typedef enum timer_idx_t
 {
+	TIM1_IDX,
 	TIM3_IDX,
+	TIM8_IDX,
 	NB_TIMERS
 } timer_idx_t;
 
@@ -27,6 +29,11 @@ typedef enum timer_channel_t
 	NB_CHANNELS
 } timer_channel_t;
 
+typedef enum pin_state_t
+{
+	pin_low,
+	pin_high
+} pin_state_t;
 
 typedef struct pwm_rx_config_st
 {
@@ -54,6 +61,78 @@ typedef struct pwm_rx_config_st
 
 static const pwm_rx_config_st pwm_rx_configs[] =
 {
+	{
+		.pin = GPIO_Pin_8,
+		.pinSource = GPIO_PinSource8,
+		.pinAF = GPIO_AF_6,
+		.pinMode = GPIO_OType_PP,
+		.pinPuPd = GPIO_PuPd_DOWN,
+		.gpio = GPIOA,
+		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOA,
+
+		/* Timer related */
+		.RCC_APBPeriphClockCmd = RCC_APB2PeriphClockCmd,
+		.RCC_APBPeriph = RCC_APB2Periph_TIM1,
+		.tim = TIM1,
+		.channel = TIM_Channel_1,
+		.irq = TIM1_CC_IRQn,
+		.timer_index = TIM1_IDX,
+		.channel_index = CH1_IDX
+	},
+	{
+		.pin = GPIO_Pin_9,
+		.pinSource = GPIO_PinSource9,
+		.pinAF = GPIO_AF_6,
+		.pinMode = GPIO_OType_PP,
+		.pinPuPd = GPIO_PuPd_DOWN,
+		.gpio = GPIOA,
+		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOA,
+
+		/* Timer related */
+		.RCC_APBPeriphClockCmd = RCC_APB2PeriphClockCmd,
+		.RCC_APBPeriph = RCC_APB2Periph_TIM1,
+		.tim = TIM1,
+		.channel = TIM_Channel_2,
+		.irq = TIM1_CC_IRQn,
+		.timer_index = TIM1_IDX,
+		.channel_index = CH2_IDX
+	},
+	{
+		.pin = GPIO_Pin_6,
+		.pinSource = GPIO_PinSource6,
+		.pinAF = GPIO_AF_4,
+		.pinMode = GPIO_OType_PP,
+		.pinPuPd = GPIO_PuPd_DOWN,
+		.gpio = GPIOC,
+		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOC,
+
+		/* Timer related */
+		.RCC_APBPeriphClockCmd = RCC_APB2PeriphClockCmd,
+		.RCC_APBPeriph = RCC_APB2Periph_TIM8,
+		.tim = TIM8,
+		.channel = TIM_Channel_1,
+		.irq = TIM8_CC_IRQn,
+		.timer_index = TIM8_IDX,
+		.channel_index = CH1_IDX
+	},
+	{
+		.pin = GPIO_Pin_8,
+		.pinSource = GPIO_PinSource8,
+		.pinAF = GPIO_AF_4,
+		.pinMode = GPIO_OType_PP,
+		.pinPuPd = GPIO_PuPd_DOWN,
+		.gpio = GPIOC,
+		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOC,
+
+		/* Timer related */
+		.RCC_APBPeriphClockCmd = RCC_APB2PeriphClockCmd,
+		.RCC_APBPeriph = RCC_APB2Periph_TIM8,
+		.tim = TIM8,
+		.channel = TIM_Channel_3,
+		.irq = TIM8_CC_IRQn,
+		.timer_index = TIM8_IDX,
+		.channel_index = CH3_IDX
+	},
 	{
 		.pin = GPIO_Pin_6,
 		.pinSource = GPIO_PinSource6,
@@ -131,24 +210,38 @@ static const pwm_rx_config_st pwm_rx_configs[] =
 
 typedef struct rx_signals_st
 {
+	volatile uint_fast8_t last_pin_state;	/* state of pin at last edge ISR */
+	volatile uint_fast32_t	last_capture_value;
+
 	volatile uint_fast8_t rx_signal_count;
 	volatile uint_fast16_t rx_signals[2][MAX_RX_SIGNALS];
 
 	volatile uint_fast8_t current_rx_signal_count;
 	volatile uint_fast8_t latest_valid_signals_index;
+
 	OS_MutexID rx_signals_mutex;
 } rx_signals_st;
 
 typedef struct pwm_ctx_st
 {
 	uint_fast8_t	used;	/* non-zero if pin is in use */
+	volatile pin_state_t last_pin_state;	/* state of pin at last edge ISR */
+	volatile uint_fast32_t overflow_capture_value;
+	volatile uint_fast32_t high_edge_capture_value;
+
+	pwm_rx_config_st const * pconfig;
+	uint_fast8_t channel_index;
+
+	volatile uint_fast16_t rx_signal;
+
 } pwm_ctx_st;
 
 /* one of these for each timer channel */
 typedef struct timer_configs_st
 {
-	void (*edgeCallback)( uint_fast16_t count );
-	void (*overflowCallback)( uint_fast16_t count );
+	uint_fast8_t port;
+	void (*edgeCallback)( uint_fast8_t port, uint_fast16_t count );
+	void (*overflowCallback)( uint_fast8_t port, uint_fast16_t count );
 } timer_configs_st;
 
 static timer_configs_st timer_configs[NB_TIMERS][NB_CHANNELS];
@@ -167,9 +260,6 @@ static void initPwmGpio( pwm_rx_config_st const * pconfig )
 	/* enable the clock for this GPIO port */
     RCC_AHBPeriphClockCmd(pconfig->RCC_AHBPeriph, ENABLE);
 
-	/* configure the pin function */
-    GPIO_PinAFConfig(pconfig->gpio, pconfig->pinSource, pconfig->pinAF);
-
 	/* configure the pin */
 	GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -183,34 +273,40 @@ static void initPwmGpio( pwm_rx_config_st const * pconfig )
 
     GPIO_Init(pconfig->gpio, &GPIO_InitStructure);
 
+	/* configure the pin function */
+    GPIO_PinAFConfig(pconfig->gpio, pconfig->pinSource, pconfig->pinAF);
+
+
 }
 
-static void initInputCompare( pwm_rx_config_st const * pconfig, uint_fast16_t polarity )
+static void initInputCapture( pwm_rx_config_st const * pconfig, uint_fast16_t polarity )
 {
-    TIM_ICInitTypeDef TIM_ICInitStructure;
+	TIM_ICInitTypeDef TIM_ICInitStructure;
 
-    TIM_ICStructInit(&TIM_ICInitStructure);
-    TIM_ICInitStructure.TIM_Channel = pconfig->channel;
-    TIM_ICInitStructure.TIM_ICPolarity = polarity;
-	/* all other fields at defaults */
+	TIM_ICStructInit(&TIM_ICInitStructure);
+	TIM_ICInitStructure.TIM_Channel = pconfig->channel;
+	TIM_ICInitStructure.TIM_ICPolarity = polarity;
+	TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;
+	TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;
+	TIM_ICInitStructure.TIM_ICFilter = 0x0;
 
     TIM_ICInit(pconfig->tim, &TIM_ICInitStructure);
 }
 
 static void initTimerTimeBase(TIM_TypeDef *tim, uint_fast16_t period, uint_fast32_t frequency_hz)
 {
-	RCC_ClocksTypeDef clocks;
-
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
-    TIM_TimeBaseStructure.TIM_Period = period;
 
+	RCC_ClocksTypeDef clocks;
 	RCC_GetClocksFreq(&clocks);
     TIM_TimeBaseStructure.TIM_Prescaler = (clocks.SYSCLK_Frequency/frequency_hz) - 1;
 
-    TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+    TIM_TimeBaseStructure.TIM_Period = period;
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+
     TIM_TimeBaseInit(tim, &TIM_TimeBaseStructure);
 }
 
@@ -222,26 +318,38 @@ static void initTimerNVIC( uint_fast8_t irq )
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+    NVIC_Init(&NVIC_InitStructure);
+
+	/* temp debug */
+    NVIC_InitStructure.NVIC_IRQChannel = TIM8_UP_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+    NVIC_Init(&NVIC_InitStructure);
+
+    NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_TIM16_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
     NVIC_Init(&NVIC_InitStructure);
 }
 
 static void initPwmTimer( pwm_rx_config_st const * pconfig, uint_fast16_t period, uint_fast32_t frequency_hz )
 {
-	/* Start the APB1 peripheral clock */
-    pconfig->RCC_APBPeriphClockCmd(pconfig->RCC_APBPeriph, ENABLE);
-
 	/* configure timer period and frequency */
     initTimerTimeBase(pconfig->tim, period, frequency_hz);	/* gives 1us resolution over 1-2ms width == 0.1% */
 
-    /* start the timer */
-    TIM_Cmd(pconfig->tim, ENABLE);
-
-    /* enable interrupts */
+    /* configure interrupt priorities */
     initTimerNVIC(pconfig->irq);
+
 }
 
-static void configureTimerCallbacks( pwm_rx_config_st const * pconfig, void (*edgeCallback)( uint_fast16_t count ),  void (*overflowCallback)( uint_fast16_t count ) )
+static void configureTimerCallbacks( pwm_rx_config_st const * pconfig, uint_fast8_t port, void (*edgeCallback)( uint_fast8_t port, uint_fast16_t count ),  void (*overflowCallback)( uint_fast8_t port, uint_fast16_t count ) )
 {
+	timer_configs[pconfig->timer_index][pconfig->channel_index].port = port;
 	timer_configs[pconfig->timer_index][pconfig->channel_index].edgeCallback = edgeCallback;
 	timer_configs[pconfig->timer_index][pconfig->channel_index].overflowCallback = overflowCallback;
 }
@@ -251,35 +359,80 @@ static void configureTimerInputCaptureCompareChannel( TIM_TypeDef *tim, const ui
     switch (channel) {
         case TIM_Channel_1:
             TIM_ITConfig(tim, TIM_IT_CC1, ENABLE);
+            //TIM_CCxCmd( tim, channel, TIM_CCx_Enable);
             break;
         case TIM_Channel_2:
             TIM_ITConfig(tim, TIM_IT_CC2, ENABLE);
+            //TIM_CCxCmd( tim, channel, TIM_CCx_Enable );
             break;
         case TIM_Channel_3:
             TIM_ITConfig(tim, TIM_IT_CC3, ENABLE);
+            //TIM_CCxCmd( tim, channel, TIM_CCx_Enable );
             break;
         case TIM_Channel_4:
             TIM_ITConfig(tim, TIM_IT_CC4, ENABLE);
+            //TIM_CCxCmd( tim, channel, TIM_CCx_Enable );
             break;
     }
 }
 
-static void ppmOverflowCallback(uint_fast16_t capture)
+static void pwmOverflowCallback(uint_fast8_t port, uint_fast16_t capture)
 {
-	CoEnterMutexSection( rx_signals.rx_signals_mutex );
+    pwm_ctx_st *pctx = &pwm_ctxs[port];
 
-	rx_signals.rx_signals[rx_signals.latest_valid_signals_index][1] = capture;
-
-	CoLeaveMutexSection( rx_signals.rx_signals_mutex );
+	pctx->overflow_capture_value += capture;
 }
 
-static void ppmEdgeCallback(uint_fast16_t capture)
+static void pwmEdgeCallback(uint_fast8_t port, uint_fast16_t capture)
 {
+    pwm_ctx_st *pctx = &pwm_ctxs[port];
+    pwm_rx_config_st const * pconfig = pctx->pconfig;
+
+    if (pctx->last_pin_state == pin_low)
+    {
+        initInputCapture(pconfig, TIM_ICPolarity_Falling);
+        pctx->last_pin_state = pin_high;
+
+    	/* got rising edge. now wait for falling edge */
+        pctx->high_edge_capture_value = capture + pctx->overflow_capture_value;
+    } else {
+		/* now wait for rising edge */
+        initInputCapture(pconfig, TIM_ICPolarity_Rising);
+        pctx->last_pin_state = pin_low;
+
+		CoEnterMutexSection( rx_signals.rx_signals_mutex );
+
+        rx_signals.rx_signals[rx_signals.latest_valid_signals_index][port] = pctx->overflow_capture_value + capture - pctx->high_edge_capture_value;
+
+		CoLeaveMutexSection( rx_signals.rx_signals_mutex );
+
+    }
+}
+
+
+static void ppmOverflowCallback(uint_fast8_t port, uint_fast16_t capture)
+{
+    pwm_ctx_st *pctx = &pwm_ctxs[port];
+
+	pctx->overflow_capture_value += capture;
+}
+
+static void ppmEdgeCallback(uint_fast8_t port, uint_fast16_t capture)
+{
+    pwm_ctx_st *pctx = &pwm_ctxs[port];
+	uint_fast32_t delta, current;
+
+	current = pctx->overflow_capture_value + capture;
+	delta = current - rx_signals.last_capture_value;
+
 	CoEnterMutexSection( rx_signals.rx_signals_mutex );
 
-	rx_signals.rx_signals[rx_signals.latest_valid_signals_index][0] = capture+101;
+	rx_signals.rx_signals[rx_signals.latest_valid_signals_index][0] = delta;
 
 	CoLeaveMutexSection( rx_signals.rx_signals_mutex );
+
+	rx_signals.last_capture_value = current;
+
 }
 
 void *openPPMInput( void )
@@ -297,22 +450,36 @@ void *openPPMInput( void )
 		/* mark as used */
     	pctx->used = 1;
 
+		/*
+			NB very important to perform these operations as per instructions in
+			stm32f30x_tim.c TIM_ICInit()
+			Order of operations is important.
+		*/
+		/* Start the APB peripheral clock first */
+	    pconfig->RCC_APBPeriphClockCmd(pconfig->RCC_APBPeriph, ENABLE);
+
 		/* configure the pin */
 		initPwmGpio( pconfig );
 
 		/* configure the input compare channel */
-		initInputCompare( pconfig, TIM_ICPolarity_Rising );
+		initInputCapture( pconfig, TIM_ICPolarity_Rising );
 
-		configureTimerCallbacks( pconfig, ppmEdgeCallback, ppmOverflowCallback );
+		configureTimerCallbacks( pconfig, 0, ppmEdgeCallback, ppmOverflowCallback );
 
-		/* configure the timer */
+		/* configure the timer
+			period == 65535ms
+			frequency == 1MHz
+		*/
 		initPwmTimer( pconfig, 0xffff, 1000000 );
 
 		/* configure the channel interrupt */
 		configureTimerInputCaptureCompareChannel( pconfig->tim, pconfig->channel );
 
-		/* configure the oveflow interrupt */
+		/* configure the overflow interrupt */
 		TIM_ITConfig( pconfig->tim, TIM_IT_Update, ENABLE );
+
+	    /* start the timer */
+	    TIM_Cmd(pconfig->tim, ENABLE);
 
 	}
 	else
@@ -320,6 +487,71 @@ void *openPPMInput( void )
 
 	return pctx;
 }
+
+void *openPWMInput( uint_fast8_t nb_channels )
+{
+	/*
+		Set up for receiving PWM input signals.
+	*/
+	pwm_ctx_st *pctx = NULL;
+	uint_fast8_t i;
+
+	for (i=0; i < nb_channels && i < NB_PWM_PORTS; i++)
+	{
+		if (pwm_ctxs[i].used == 0)
+		{
+			pwm_rx_config_st const * pconfig = &pwm_rx_configs[i];
+
+			pctx = &pwm_ctxs[i];
+
+			/* mark as used */
+	    	pctx->used = 1;
+			pctx->pconfig = pconfig;
+
+			/*
+				NB very important to perform these operations as per instructions in
+				stm32f30x_tim.c TIM_ICInit()
+				Order of operations is important.
+			*/
+			/* Start the APB peripheral clock first */
+		    pconfig->RCC_APBPeriphClockCmd(pconfig->RCC_APBPeriph, ENABLE);
+
+			/* configure the pin */
+			initPwmGpio( pconfig );
+
+			/* configure the input compare channel */
+			pctx->last_pin_state = pin_low;
+			initInputCapture( pconfig, TIM_ICPolarity_Rising);
+
+			configureTimerCallbacks( pconfig, i, pwmEdgeCallback, pwmOverflowCallback );
+
+			/* configure the timer
+				period == 65535ms
+				frequency == 1MHz
+			*/
+			initPwmTimer( pconfig, 0xffff, 1000000 );
+
+			/* configure the channel interrupt */
+			configureTimerInputCaptureCompareChannel( pconfig->tim, pconfig->channel );
+
+			/* configure the overflow interrupt */
+			TIM_ITConfig( pconfig->tim, TIM_IT_Update, ENABLE );
+
+		    /* start the timer */
+		    TIM_Cmd(pconfig->tim, ENABLE);
+
+		}
+		else
+		{
+			// TODO: better hanlding if a channel isn't free
+			pctx = NULL;
+			break;
+		}
+	}
+
+	return pctx;
+}
+
 
 void initPWMRx( void )
 {
@@ -335,7 +567,7 @@ int readRXSignals(void *pctx, uint_fast16_t signals[MAX_RX_SIGNALS])
 	CoEnterMutexSection( rx_signals.rx_signals_mutex );
 
 	result = rx_signals.current_rx_signal_count;
-	memcpy( signals, (void *)&rx_signals.rx_signals[rx_signals.latest_valid_signals_index][0], sizeof signals );
+	memcpy( signals, (void *)&rx_signals.rx_signals[rx_signals.latest_valid_signals_index][0], sizeof rx_signals.rx_signals[rx_signals.latest_valid_signals_index] );
 
 	CoLeaveMutexSection( rx_signals.rx_signals_mutex );
 
@@ -359,7 +591,7 @@ static void handleTIMIRQ( TIM_TypeDef *tim, timer_idx_t timerIndex )
 
             if (timer_config->overflowCallback != NULL)
            	{
-            timer_config->overflowCallback(capture);
+            	timer_config->overflowCallback(timer_config->port, capture);
             }
         }
     }
@@ -372,6 +604,7 @@ static void handleTIMIRQ( TIM_TypeDef *tim, timer_idx_t timerIndex )
         {
             capture = TIM_GetCapture1(tim);
             TIM_ClearITPendingBit(tim, TIM_IT_CC1);
+            STM_EVAL_LEDToggle(LED4);
         }
         else if (channelIndex == CH2_IDX && TIM_GetITStatus(tim, TIM_IT_CC2) == SET)
         {
@@ -395,15 +628,36 @@ static void handleTIMIRQ( TIM_TypeDef *tim, timer_idx_t timerIndex )
 
         if (timer_config->edgeCallback != NULL)
         {
-	        timer_config->edgeCallback(capture);
+	        timer_config->edgeCallback(timer_config->port, capture);
         }
     }
 
 	CoExitISR();
 }
 
+/* TIM1 doesn't have a separate CC IRQ handler */
+void TIM1_CC_IRQHandler(void)
+{
+    handleTIMIRQ(TIM1, TIM1_IDX);
+}
+
+void TIM1_UP_TIM16_IRQHandler(void)
+{
+    handleTIMIRQ(TIM1, TIM1_IDX);
+}
+
 void TIM3_IRQHandler(void)
 {
     handleTIMIRQ(TIM3, TIM3_IDX);
+}
+
+void TIM8_CC_IRQHandler(void)
+{
+    handleTIMIRQ(TIM8, TIM8_IDX);
+}
+
+void TIM8_UP_IRQHandler(void)
+{
+    handleTIMIRQ(TIM8, TIM8_IDX);
 }
 

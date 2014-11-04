@@ -439,7 +439,8 @@ void main_task( void *pv )
 	i2c_port = i2cInit( I2C_PORT_1 );
 
 	initPWMRx();
-	ppm_port = openPPMInput();
+	//ppm_port = openPPMInput();
+	ppm_port = openPWMInput(2);
 
 	while (1)
 	{
@@ -457,10 +458,10 @@ void main_task( void *pv )
 				ch = uartReadChar( debug_uart );
 				uartWriteChar( debug_uart, ch );
 			}
-			printf( "hello\n" );
 		}
 		readRXSignals(ppm_port, signals);
-		printf("s1: %d, s2: %d", signals[0], signals[1] );
+		printf("\r\np1 %d", signals[0] );
+		printf("\r\np2 %d", signals[1] );
 		//demoCompass();
 	}
 }
