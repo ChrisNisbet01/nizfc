@@ -22,6 +22,8 @@
    typeof (b) _b = (b); \
  _a < _b ? _a : _b; })
 
+#define PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE
+
 typedef uint32_t capture_t;
 
 typedef enum timer_idx_t
@@ -51,17 +53,18 @@ typedef enum pin_state_t
 #define PWM_FREQUENCY_HZ	1000000
 #define INVALID_RX_SIGNAL	0
 
-#define MIN_IDLE_PULSE_WIDTH					2900
+#define MIN_INTERFRAME_TIME_US					2900
 #define MIN_CONSECUTIVE_FRAMES_OF_SAME_LENGTH	4
-#define MIN_VALID_PPM_PULSE						800
-#define MAX_VALID_PPM_PULSE						2500
+#define MIN_VALID_PPM_CHANNEL_PULSE				800
+#define MAX_VALID_PPM_CHANNEL_PULSE				2500
 #define MAX_PPM_RECEIVER_CHANNELS				12		/* maximum number of channels we're interested in */
-#define MIN_PPM_FRAME_PULSES					4		/* minimum number of pulses in a valid PPM frame */
+#define MIN_PULSES_IN_VALID_PPM_FRAME			4
 #define MAX_PPM_FRAME_PULSES					20		/* maximum number of pulses we'd expect to see in a valid frame. Must be >= MAX_RX_SIGNALS */
 
 typedef struct pwm_rx_config_st
 {
 	/* GPIO settings */
+	uint_fast16_t	pin;
 	uint_fast8_t	pinSource;
 	uint_fast8_t	pinAF;
 	uint_fast8_t	pinOutputType;
@@ -83,7 +86,7 @@ typedef struct pwm_rx_config_st
 
 typedef struct pwm_pin_st
 {
-	uint_fast8_t	pinSource;
+	uint_fast16_t	pin;
 	GPIO_TypeDef	*gpio;
 } pwm_pin_st;
 
@@ -94,27 +97,27 @@ typedef struct pwm_pin_st
 static pwm_pin_st pwm_pins[] =
 {
 	{
-		.pinSource = GPIO_PinSource8,
+		.pin = GPIO_Pin_8,
 		.gpio = GPIOA
 	},
 	{
-		.pinSource = GPIO_PinSource9,
+		.pin = GPIO_Pin_9,
 		.gpio = GPIOA
 	},
 	{
-		.pinSource = GPIO_PinSource6,
+		.pin = GPIO_Pin_6,
 		.gpio = GPIOC
 	},
 	{
-		.pinSource = GPIO_PinSource7,
+		.pin = GPIO_Pin_7,
 		.gpio = GPIOC
 	},
 	{
-		.pinSource = GPIO_PinSource8,
+		.pin = GPIO_Pin_8,
 		.gpio = GPIOC
 	},
 	{
-		.pinSource = GPIO_PinSource9,
+		.pin = GPIO_Pin_9,
 		.gpio = GPIOC
 	}
 };
@@ -122,6 +125,7 @@ static pwm_pin_st pwm_pins[] =
 static const pwm_rx_config_st pwm_rx_configs[] =
 {
 	{
+		.pin = GPIO_Pin_8,
 		.pinSource = GPIO_PinSource8,
 		.pinAF = GPIO_AF_6,
 		.pinOutputType = GPIO_OType_PP,
@@ -139,6 +143,7 @@ static const pwm_rx_config_st pwm_rx_configs[] =
 		.channel_index = CH1_IDX
 	},
 	{
+		.pin = GPIO_Pin_9,
 		.pinSource = GPIO_PinSource9,
 		.pinAF = GPIO_AF_6,
 		.pinOutputType = GPIO_OType_PP,
@@ -156,6 +161,7 @@ static const pwm_rx_config_st pwm_rx_configs[] =
 		.channel_index = CH2_IDX
 	},
 	{
+		.pin = GPIO_Pin_6,
 		.pinSource = GPIO_PinSource6,
 		.pinAF = GPIO_AF_4,
 		.pinOutputType = GPIO_OType_PP,
@@ -173,6 +179,7 @@ static const pwm_rx_config_st pwm_rx_configs[] =
 		.channel_index = CH1_IDX
 	},
 	{
+		.pin = GPIO_Pin_8,
 		.pinSource = GPIO_PinSource8,
 		.pinAF = GPIO_AF_4,
 		.pinOutputType = GPIO_OType_PP,
@@ -190,6 +197,7 @@ static const pwm_rx_config_st pwm_rx_configs[] =
 		.channel_index = CH3_IDX
 	},
 	{
+		.pin = GPIO_Pin_6,
 		.pinSource = GPIO_PinSource6,
 		.pinAF = GPIO_AF_2,
 		.pinOutputType = GPIO_OType_PP,
@@ -207,6 +215,7 @@ static const pwm_rx_config_st pwm_rx_configs[] =
 		.channel_index = CH1_IDX
 	},
 	{
+		.pin = GPIO_Pin_7,
 		.pinSource = GPIO_PinSource7,
 		.pinAF = GPIO_AF_2,
 		.pinOutputType = GPIO_OType_PP,
@@ -224,6 +233,7 @@ static const pwm_rx_config_st pwm_rx_configs[] =
 		.channel_index = CH2_IDX
 	},
 	{
+		.pin = GPIO_Pin_8,
 		.pinSource = GPIO_PinSource8,
 		.pinAF = GPIO_AF_2,
 		.pinOutputType = GPIO_OType_PP,
@@ -241,6 +251,7 @@ static const pwm_rx_config_st pwm_rx_configs[] =
 		.channel_index = CH3_IDX
 	},
 	{
+		.pin = GPIO_Pin_9,
 		.pinSource = GPIO_PinSource9,
 		.pinAF = GPIO_AF_2,
 		.pinOutputType = GPIO_OType_PP,
@@ -319,7 +330,7 @@ static void initPwmGpio( pwm_rx_config_st const * pconfig )
 
     GPIO_StructInit(&GPIO_InitStructure);
 
-    GPIO_InitStructure.GPIO_Pin = (1<<pconfig->pinSource);
+    GPIO_InitStructure.GPIO_Pin = pconfig->pin;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
     GPIO_InitStructure.GPIO_OType = pconfig->pinOutputType;
@@ -436,6 +447,7 @@ static void deliverNewReceiverChannelData( uint32_t *channels, uint_fast8_t firs
 
 	max_channels = min(MAX_RX_SIGNALS, nb_channels);
 	STM_EVAL_LEDToggle(LED7);
+
 	CoEnterMutexSection( rx_signals.rx_signals_mutex );
 
 	for (i=first_index; i < max_channels; i++)
@@ -452,19 +464,27 @@ static void pwmEdgeCallback(uint_fast8_t port, capture_t capture)
     pwm_ctx_st *pctx = &pwm_ctxs[port];
     pwm_rx_config_st const * pconfig = pctx->pconfig;
 
+#if defined(PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE)
+   	if (GPIO_ReadInputDataBit(pconfig->gpio, pconfig->pin) == Bit_SET)	/* then pin is high */
+#else
     if (pctx->last_pin_state == pin_low)
+#endif
     {
+#if !defined(PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE)
         initInputCapture(pconfig, TIM_ICPolarity_Falling);
         pctx->last_pin_state = pin_high;
+#endif
 
     	/* got rising edge. now wait for falling edge */
         pctx->last_rising_edge_capture_value = capture;
     } else {
 		/* now wait for rising edge */
+#if !defined(PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE)
         initInputCapture(pconfig, TIM_ICPolarity_Rising);
         pctx->last_pin_state = pin_low;
+#endif
 
-		pulse_width_us = (capture - pctx->last_rising_edge_capture_value) & 0xffff;
+		pulse_width_us = (capture - pctx->last_rising_edge_capture_value) & PWM_PERIOD;
 
 		deliverNewReceiverChannelData( &pulse_width_us, port, 1 );
     }
@@ -472,7 +492,7 @@ static void pwmEdgeCallback(uint_fast8_t port, capture_t capture)
 
 static void new_ppm_rising_edge( ppm_ctx_st *pctx, uint32_t const pulse_width_us )
 {
-	if (pulse_width_us >= MIN_IDLE_PULSE_WIDTH)
+	if (pulse_width_us >= MIN_INTERFRAME_TIME_US)
 	{
 		/* start of new frame. Check previous frame info. */
 		if (pctx->accumulating_frame == true)
@@ -480,7 +500,7 @@ static void new_ppm_rising_edge( ppm_ctx_st *pctx, uint32_t const pulse_width_us
 			/* after we had a few consecutive frames of the same length we save the number of channels and compare against this. */
 			if (pctx->current_frame_index == pctx->number_of_channels_in_previous_frame )
 			{
-				if (pctx->current_frame_index >= MIN_PPM_FRAME_PULSES)
+				if (pctx->current_frame_index >= MIN_PULSES_IN_VALID_PPM_FRAME)
 				{
 					if( pctx->consecutive_same_length_frames < MIN_CONSECUTIVE_FRAMES_OF_SAME_LENGTH )
 						pctx->consecutive_same_length_frames++;
@@ -516,7 +536,7 @@ static void new_ppm_rising_edge( ppm_ctx_st *pctx, uint32_t const pulse_width_us
 		}
 		pctx->current_frame_index = 0;
 	}
-	else if ( pctx->current_frame_index < MAX_PPM_FRAME_PULSES && pulse_width_us >= MIN_VALID_PPM_PULSE && pulse_width_us <= MAX_VALID_PPM_PULSE)
+	else if ( pctx->current_frame_index < MAX_PPM_FRAME_PULSES && pulse_width_us >= MIN_VALID_PPM_CHANNEL_PULSE && pulse_width_us <= MAX_VALID_PPM_CHANNEL_PULSE)
 	{
 		/* got valid PPM pulse */
 		if (pctx->accumulating_frame == true)
@@ -548,7 +568,6 @@ static void ppmEdgeCallback(uint_fast8_t port, capture_t capture)
 {
     ppm_ctx_st *pctx = &ppm_ctx[port];
 	uint_fast32_t pulse_width_us, current;
-	static int test;
 
 	current = pctx->overflow_capture_value + capture;
 	pulse_width_us = current - pctx->last_rising_edge_capture_value;
@@ -642,7 +661,11 @@ void openPWMInput( uint_fast8_t nb_rx_channels )
 			pctx->pconfig = pconfig;
 			pctx->last_pin_state = pin_low;
 
+#if defined(PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE)
+			enablePWMTiming( pconfig, i, TIM_ICPolarity_BothEdge, pwmEdgeCallback, NULL );
+#else
 			enablePWMTiming( pconfig, i, TIM_ICPolarity_Rising, pwmEdgeCallback, NULL );
+#endif
 		}
 		else
 		{
