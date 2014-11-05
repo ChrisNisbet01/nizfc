@@ -16,7 +16,6 @@
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE] = {0};
 void *debug_uart;
 void *i2c_port;
-void *ppm_port;
 
 #define ABS(x)         (x < 0) ? (-x) : x
 
@@ -439,8 +438,8 @@ void main_task( void *pv )
 	i2c_port = i2cInit( I2C_PORT_1 );
 
 	initPWMRx();
-	//ppm_port = openPPMInput();
-	ppm_port = openPWMInput(2);
+	//openPPMInput();
+	openPWMInput(2);
 
 	while (1)
 	{
@@ -459,7 +458,7 @@ void main_task( void *pv )
 				uartWriteChar( debug_uart, ch );
 			}
 		}
-		readRXSignals(ppm_port, signals);
+		readRXSignals(signals);
 		printf("\r\np1 %d", signals[0] );
 		printf("\r\np2 %d", signals[1] );
 		//demoCompass();
