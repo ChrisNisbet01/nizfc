@@ -53,14 +53,6 @@ typedef enum pin_state_t
 #define PWM_FREQUENCY_HZ	1000000
 #define INVALID_RX_SIGNAL	0
 
-#define MIN_INTERFRAME_TIME_US					2900
-#define MIN_CONSECUTIVE_FRAMES_OF_SAME_LENGTH	4
-#define MIN_VALID_PPM_CHANNEL_PULSE				800
-#define MAX_VALID_PPM_CHANNEL_PULSE				2500
-#define MAX_PPM_RECEIVER_CHANNELS				12		/* maximum number of channels we're interested in */
-#define MIN_PULSES_IN_VALID_PPM_FRAME			4
-#define MAX_PPM_FRAME_PULSES					20		/* maximum number of pulses we'd expect to see in a valid frame. Must be >= MAX_RX_SIGNALS */
-
 typedef struct pwm_rx_config_st
 {
 	/* GPIO settings */
@@ -83,44 +75,6 @@ typedef struct pwm_rx_config_st
     timer_channel_t channel_index;
 
 } pwm_rx_config_st;
-
-typedef struct pwm_pin_st
-{
-	uint_fast16_t	pin;
-	GPIO_TypeDef	*gpio;
-} pwm_pin_st;
-
-/*
-	A table of all pins that can be used as PWM/PPM inputs.
-	Note that some pins may be mapped to more than one timer channel.
-*/
-static pwm_pin_st pwm_pins[] =
-{
-	{
-		.pin = GPIO_Pin_8,
-		.gpio = GPIOA
-	},
-	{
-		.pin = GPIO_Pin_9,
-		.gpio = GPIOA
-	},
-	{
-		.pin = GPIO_Pin_6,
-		.gpio = GPIOC
-	},
-	{
-		.pin = GPIO_Pin_7,
-		.gpio = GPIOC
-	},
-	{
-		.pin = GPIO_Pin_8,
-		.gpio = GPIOC
-	},
-	{
-		.pin = GPIO_Pin_9,
-		.gpio = GPIOC
-	}
-};
 
 static const pwm_rx_config_st pwm_rx_configs[] =
 {
@@ -270,36 +224,21 @@ static const pwm_rx_config_st pwm_rx_configs[] =
 	}
 };
 #define NB_PWM_PORTS	(sizeof(pwm_rx_configs)/sizeof(pwm_rx_configs[0]))
+#define PWM_CONFIG_INDEX(p)	((p)-&pwm_rx_configs[0])
 
-typedef struct rx_signals_st
-{
-	volatile uint_fast16_t rx_signals[MAX_RX_SIGNALS];
-
-	OS_MutexID rx_signals_mutex;	/* protection for the rx_signals data */
-} rx_signals_st;
-
-/* some state information relating to receiving PPM frames */
-typedef struct ppm_ctx_st
-{
-	bool						accumulating_frame;
-	volatile uint_fast32_t 		overflow_capture_value;
-	uint_fast32_t 				last_rising_edge_capture_value;
-	uint_fast16_t				number_of_channels_in_previous_frame;
-	uint_fast8_t				consecutive_same_length_frames;
-	uint_fast8_t				current_frame_index;
-	uint32_t 					receiver_channels[MAX_PPM_RECEIVER_CHANNELS];
-
-} ppm_ctx_st;
-
-typedef struct pwm_ctx_st
+typedef struct pwm_timer_st
 {
 	uint_fast8_t				used;			/* non-zero if pin is in use */
 	volatile pin_state_t 		last_pin_state;	/* state of pin at last edge ISR */
 	volatile capture_t			last_rising_edge_capture_value;
+	volatile uint_fast32_t		overflow_capture_value;
 
 	pwm_rx_config_st const 		* pconfig;			/* the GPIO/TIM details */
 
-} pwm_ctx_st;
+	pwm_mode_t 					mode;
+	void 						(*newPulseCb)( void *pv, uint32_t const pulse_width_us );
+	void 						*userPv;
+} pwm_timer_st;
 
 /* one of these for each timer channel */
 typedef struct timer_configs_st
@@ -310,15 +249,18 @@ typedef struct timer_configs_st
 } timer_configs_st;
 
 static timer_configs_st timer_configs[NB_TIMERS][NB_CHANNELS];
+static pwm_timer_st 	pwm_timers[NB_PWM_PORTS];
 
-// The index of the timer configs we expect to see PPM signals on
-// TODO: allow user to specify
-#define PPM_RX_IDX	0	/* the index into the timer config table */
-#define NB_PPM_CTX	1	/* the number of PPM contexts */
+// TODO: move into different file
+typedef struct rx_signals_st
+{
+	volatile uint_fast16_t rx_signals[MAX_RX_SIGNALS];
+
+	OS_MutexID rx_signals_mutex;	/* protection for the rx_signals data */
+} rx_signals_st;
 
 static rx_signals_st	rx_signals;
-static pwm_ctx_st 		pwm_ctxs[NB_PWM_PORTS];
-static ppm_ctx_st 		ppm_ctx[NB_PPM_CTX];
+
 
 static void initPwmGpio( pwm_rx_config_st const * pconfig )
 {
@@ -440,7 +382,7 @@ static void configureTimerInputCaptureCompareChannel( TIM_TypeDef *tim, const ui
     }
 }
 
-static void deliverNewReceiverChannelData( uint32_t *channels, uint_fast8_t first_index, uint_fast8_t nb_channels )
+void deliverNewReceiverChannelData( uint32_t *channels, uint_fast8_t first_index, uint_fast8_t nb_channels )
 {
 	/* new frame of channel data from the RC receiver */
 	uint_fast8_t i, max_channels;
@@ -456,12 +398,11 @@ static void deliverNewReceiverChannelData( uint32_t *channels, uint_fast8_t firs
 	CoLeaveMutexSection( rx_signals.rx_signals_mutex );
 }
 
-
 static void pwmEdgeCallback(uint_fast8_t port, capture_t capture)
 {
 	uint32_t pulse_width_us;
 
-    pwm_ctx_st *pctx = &pwm_ctxs[port];
+    pwm_timer_st *pctx = &pwm_timers[port];
     pwm_rx_config_st const * pconfig = pctx->pconfig;
 
 #if defined(PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE)
@@ -486,79 +427,13 @@ static void pwmEdgeCallback(uint_fast8_t port, capture_t capture)
 
 		pulse_width_us = (capture - pctx->last_rising_edge_capture_value) & PWM_PERIOD;
 
-		deliverNewReceiverChannelData( &pulse_width_us, port, 1 );
+		pctx->newPulseCb( pctx->userPv, pulse_width_us );
     }
-}
-
-static void new_ppm_rising_edge( ppm_ctx_st *pctx, uint32_t const pulse_width_us )
-{
-	if (pulse_width_us >= MIN_INTERFRAME_TIME_US)
-	{
-		/* start of new frame. Check previous frame info. */
-		if (pctx->accumulating_frame == true)
-		{
-			/* after we had a few consecutive frames of the same length we save the number of channels and compare against this. */
-			if (pctx->current_frame_index == pctx->number_of_channels_in_previous_frame )
-			{
-				if (pctx->current_frame_index >= MIN_PULSES_IN_VALID_PPM_FRAME)
-				{
-					if( pctx->consecutive_same_length_frames < MIN_CONSECUTIVE_FRAMES_OF_SAME_LENGTH )
-						pctx->consecutive_same_length_frames++;
-					else	/* all good, deliver the current frame. */
-						deliverNewReceiverChannelData( pctx->receiver_channels, 0, pctx->current_frame_index );
-				}
-				else
-				{
-					/* short frame statistic? */
-				}
-			}
-			else	/* different length from previous frame */
-			{
-				if (pctx->consecutive_same_length_frames == MIN_CONSECUTIVE_FRAMES_OF_SAME_LENGTH )
-				{
-					/*
-						lost sync. deliver event?
-					*/
-				}
-				pctx->consecutive_same_length_frames = 0;
-			}
-			pctx->number_of_channels_in_previous_frame = pctx->current_frame_index;
-		}
-		else
-		{
-			if (pctx->consecutive_same_length_frames == MIN_CONSECUTIVE_FRAMES_OF_SAME_LENGTH )
-			{
-				/*
-					lost sync. deliver event?
-				*/
-			}
-			pctx->accumulating_frame = true;
-		}
-		pctx->current_frame_index = 0;
-	}
-	else if ( pctx->current_frame_index < MAX_PPM_FRAME_PULSES && pulse_width_us >= MIN_VALID_PPM_CHANNEL_PULSE && pulse_width_us <= MAX_VALID_PPM_CHANNEL_PULSE)
-	{
-		/* got valid PPM pulse */
-		if (pctx->accumulating_frame == true)
-		{
-			/* ensure we don't overflow our channel data buffer */
-			if ( pctx->current_frame_index < MAX_PPM_RECEIVER_CHANNELS )
-			{
-				pctx->receiver_channels[pctx->current_frame_index] = pulse_width_us;
-			}
-			pctx->current_frame_index++;
-		}
-	}
-	else
-	{
-		/* got dodgy pulse, or too many pulses for this frame to be sensible */
-		pctx->accumulating_frame = false;
-	}
 }
 
 static void ppmOverflowCallback(uint_fast8_t port, capture_t capture)
 {
-    ppm_ctx_st *pctx = &ppm_ctx[port];
+    pwm_timer_st *pctx = &pwm_timers[port];
 
 	/* capture should equal the period of the timer */
 	pctx->overflow_capture_value += capture;
@@ -566,14 +441,14 @@ static void ppmOverflowCallback(uint_fast8_t port, capture_t capture)
 
 static void ppmEdgeCallback(uint_fast8_t port, capture_t capture)
 {
-    ppm_ctx_st *pctx = &ppm_ctx[port];
+    pwm_timer_st *pctx = &pwm_timers[port];
 	uint_fast32_t pulse_width_us, current;
 
 	current = pctx->overflow_capture_value + capture;
 	pulse_width_us = current - pctx->last_rising_edge_capture_value;
 	pctx->last_rising_edge_capture_value = current;
 
-	new_ppm_rising_edge( pctx, pulse_width_us );
+	pctx->newPulseCb( pctx->userPv, pulse_width_us );
 }
 
 static void enablePWMTiming( pwm_rx_config_st const * pconfig, uint_fast8_t pwm_context_index, uint_fast16_t polarity, void (*edgeCallback)(uint_fast8_t port, capture_t capture), void (*overflowCallback)(uint_fast8_t port, capture_t capture) )
@@ -612,71 +487,55 @@ static void enablePWMTiming( pwm_rx_config_st const * pconfig, uint_fast8_t pwm_
     TIM_Cmd(pconfig->tim, ENABLE);
 }
 
-static void initPPMContext( ppm_ctx_st *pctx )
+static pwm_rx_config_st const *pwmTimerConfigLookup( pin_st const * pin )
 {
-	pctx->accumulating_frame = false;
-	pctx->consecutive_same_length_frames = 0;
-	pctx->current_frame_index = 0;
-	pctx->last_rising_edge_capture_value = 0;
-	pctx->number_of_channels_in_previous_frame = 0;
-	pctx->overflow_capture_value = 0;
-}
+	uint_fast8_t index;
 
-void openPPMInput( void )
-{
-	/* Set up for receiving a PPM input signal.
-	*/
-
-	ppm_ctx_st *pctx;
-	uint_fast8_t ppm_idx = 0;
-
-	pctx = &ppm_ctx[ppm_idx];
-
-	initPPMContext( pctx );
-
-	enablePWMTiming( &pwm_rx_configs[0], ppm_idx, TIM_ICPolarity_Rising, ppmEdgeCallback, ppmOverflowCallback );
-
-}
-
-void openPWMInput( uint_fast8_t nb_rx_channels )
-{
-	/*
-		Set up for receiving PWM input signals.
-	*/
-	uint_fast8_t i;
-
-	for (i=0; i < nb_rx_channels && i < NB_PWM_PORTS; i++)
+	for (index = 0; index < NB_PWM_PORTS; index++)
 	{
-		pwm_ctx_st *pctx;
+		if (pin->pin == pwm_rx_configs[index].pin && pin->gpio == pwm_rx_configs[index].gpio)
+			return &pwm_rx_configs[index];
+	}
 
-		pctx = &pwm_ctxs[i];
-		if (pctx->used == 0)
-		{
-			pwm_rx_config_st const * pconfig;
-			/* mark as used */
-	    	pctx->used = 1;
-			pconfig = &pwm_rx_configs[i];
+	return NULL;
+}
+void openPwmTimer( pin_st const * const pin, pwm_mode_t mode, void (*newPulseCb)( void *pv, uint32_t const pulse_width_us ), void *pv )
+{
+	pwm_rx_config_st const * pconfig;
 
-			/* remember the pin configuration */
-			pctx->pconfig = pconfig;
+	pconfig = pwmTimerConfigLookup(pin);
+
+	if (pconfig == NULL)
+		goto done;
+
+	pwm_timer_st *pctx;
+	pctx = &pwm_timers[PWM_CONFIG_INDEX(pconfig)];
+	pctx->pconfig = pconfig;
+	pctx->mode = mode;
+	pctx->newPulseCb = newPulseCb;
+	pctx->userPv = pv;
+
+	switch (mode)
+	{
+		case pwm_mode:
 			pctx->last_pin_state = pin_low;
 
 #if defined(PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE)
-			enablePWMTiming( pconfig, i, TIM_ICPolarity_BothEdge, pwmEdgeCallback, NULL );
+			pctx->pconfig = pconfig;
+			enablePWMTiming( pconfig, PWM_CONFIG_INDEX(pconfig), TIM_ICPolarity_BothEdge, pwmEdgeCallback, NULL );
 #else
-			enablePWMTiming( pconfig, i, TIM_ICPolarity_Rising, pwmEdgeCallback, NULL );
+			enablePWMTiming( pconfig, PWM_CONFIG_INDEX(pconfig), TIM_ICPolarity_Rising, pwmEdgeCallback, NULL );
 #endif
-		}
-		else
-		{
-			// TODO: better handling if a channel isn't free
-		}
+			break;
+		case ppm_mode:
+			enablePWMTiming( pconfig, PWM_CONFIG_INDEX(pconfig), TIM_ICPolarity_Rising, ppmEdgeCallback, ppmOverflowCallback );
+			break;
 	}
-
+done:
+	return;
 }
 
-
-void initPWMRx( void )
+void initPWMTimer( void )
 {
 	/* called at startup time. Create mutex for rx_signals */
 	rx_signals.rx_signals_mutex = CoCreateMutex();
