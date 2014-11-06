@@ -7,6 +7,7 @@
 #include <coos.h>
 #include <pins.h>
 
+#include <receiver.h>
 #include "pwm_rx_stm32f30x.h"
 
 #define MIN_INTERFRAME_TIME_US					2900
@@ -34,6 +35,7 @@ typedef struct ppm_ctx_st
 /*
 	This table defines the pins we use as PPM inputs.
 */
+// TODO: support a configurable pin/s specified by the caller to initPPMRx.
 static const pin_st ppm_pins[] =
 {
 	{
@@ -44,6 +46,7 @@ static const pin_st ppm_pins[] =
 #define NB_PPM_PINS	(sizeof(ppm_pins)/sizeof(ppm_pins[0]))
 
 static ppm_ctx_st 		ppm_ctx[NB_PPM_PINS];
+static void (*NewReceiverChannelDataCallback)( uint32_t *channels, uint_fast8_t first_index, uint_fast8_t nb_channels );
 
 
 static void initPPMContext( ppm_ctx_st *pctx )
@@ -56,6 +59,14 @@ static void initPPMContext( ppm_ctx_st *pctx )
 	pctx->overflow_capture_value = 0;
 }
 
+/*
+	newPPMPulse:
+
+	Called when a new rising edge has been detected on the configured PPM pin.
+	Called with the context of an ISR.
+	pv: Our PPM context.
+	pulse_width_us: The time since the last rising edge
+*/
 static void newPPMPulse( void *pv, uint32_t const pulse_width_us )
 {
 	ppm_ctx_st *pctx = pv;
@@ -74,8 +85,7 @@ static void newPPMPulse( void *pv, uint32_t const pulse_width_us )
 						pctx->consecutive_same_length_frames++;
 					else	/* all good, deliver the current frame. */
 					{
-						// TODO: timestamp
-						deliverNewReceiverChannelData( pctx->receiver_channels, 0, pctx->current_frame_index );
+						NewReceiverChannelDataCallback( pctx->receiver_channels, 0, pctx->current_frame_index );
 					}
 				}
 				else
@@ -127,14 +137,19 @@ static void newPPMPulse( void *pv, uint32_t const pulse_width_us )
 	}
 }
 
-void initPPMRx( void )
+/*
+	initPPMRx:
+	Initialise the hardware to receive a PPM input.
+	newReceiverChannelDataCb: The callback to call with each new PPM frame.
+*/
+void initPPMRx( NewReceiverChannelDataCB newReceiverChannelDataCb )
 {
 	/* Set up for receiving a PPM input signal.
 	*/
-
 	ppm_ctx_st *pctx;
 	uint_fast8_t ppm_idx = 0;
 
+	NewReceiverChannelDataCallback = newReceiverChannelDataCb;
 	pctx = &ppm_ctx[ppm_idx];
 
 	initPPMContext( pctx );

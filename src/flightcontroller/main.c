@@ -8,9 +8,7 @@
 #include <uart.h>
 #include <utils.h>
 #include <i2c_stm32f30x.h>
-#include "pwm_rx_stm32f30x.h"
-#include "ppm.h"
-#include "pwm.h"
+#include "receiver.h"
 
 #include <stm32f3_discovery_lsm303dlhc.h>
 
@@ -439,14 +437,11 @@ void main_task( void *pv )
 
 	i2c_port = i2cInit( I2C_PORT_1 );
 
-	initPWMTimer();
-	//initPPMRx();
-	initPWMRx();
+	initReceiver();
+	openReceiver( receiver_mode_pwm );
 
 	while (1)
 	{
-		uint_fast16_t signals[MAX_RX_SIGNALS];
-
 		CoTimeDelay(0, 0, 1, 0);
         STM_EVAL_LEDToggle(LED3);
 
@@ -460,9 +455,8 @@ void main_task( void *pv )
 				uartWriteChar( debug_uart, ch );
 			}
 		}
-		readRXSignals(signals);
-		printf("\r\nc1 %d", signals[0] );
-		printf("\r\nc2 %d", signals[1] );
+		printf("\r\nc1 %d", readReceiverChannel(0) );
+		printf("\r\nc2 %d", readReceiverChannel(1) );
 		//demoCompass();
 	}
 }
