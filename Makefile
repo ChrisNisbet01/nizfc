@@ -65,6 +65,8 @@ CO_FLASH_PROCESSOR_TYPE = STM32F303VC
 
 endif
 
+LTO_FLAGS	 = -flto -fuse-linker-plugin
+
 CFLAGS = $(COMMON_CFLAGS) \
 			$(OPTIMISE_FLAGS) \
 			-DUSE_STDPERIPH_DRIVER \
@@ -76,11 +78,12 @@ CFLAGS = $(COMMON_CFLAGS) \
 			$(FPU_DEFINES) \
 			$(addprefix -D,$(PLATFORM_FLAGS)) \
 			$(addprefix -D,$(USER_OPTIONS)) \
+			$(LTO_FLAGS) \
 			-MMD
 
 COMMON_LDFLAGS = -g \
                  -Wall \
-                 -Os \
+                 $(OPTIMISE_FLAGS) \
                  -Wl,--gc-sections \
                  -nostartfiles \
                  -lm
@@ -92,6 +95,7 @@ LDFLAGS = $(CPU_FLAGS) \
           $(FPU_FLAGS) \
           $(COMMON_LDFLAGS) \
           -Wl,-Map=$(TARGET_MAP) \
+          $(LTO_FLAGS) \
           -T$(LINK_SCRIPT)
 
 # now specify source files
@@ -99,8 +103,9 @@ COMMON_SRC = $(SRC_DIR)/flightcontroller/*.c \
              $(SRC_DIR)/drivers/*.c \
              $(SRC_DIR)/stdio/*.c
 COOS_SRC = $(COOS_DIR)/kernel/*.c \
-           $(COOS_DIR)/portable/*.c \
-           $(COOS_DIR)/portable/gcc/*.c \
+           $(COOS_DIR)/portable/*.c
+
+COOS_SRC_NO_LTO = $(wildcard $(COOS_DIR)/portable/gcc/*.c)
 
 CMSIS_BOOT_SRC = $(SRC_DIR)/cmsis_boot/startup/*.S \
                  $(SRC_DIR)/cmsis_boot/*.c
@@ -113,6 +118,9 @@ SRC_FILES = $(COMMON_SRC) \
             $(COOS_SRC) \
             $(CMSIS_LIB_SRC)
 
+SRC_FILES_NO_LTO = $(COOS_SRC_NO_LTO)
+
+
 # add .c files to object list
 OBJS = $(patsubst %.c,%.o,$(wildcard $(SRC_FILES)))
 # add .S files to object list
@@ -120,7 +128,12 @@ OBJS := $(patsubst %.S,%.o,$(OBJS))
 # prepend obj directory to object list
 OBJS := $(OBJS:%=$(OBJ_DIR)/%)
 
-TARGET_DEPENDENCIES = $(patsubst %.o,%.d,$(OBJS))
+OBJS_NO_LTO = $(patsubst %.c,%.o,$(wildcard $(SRC_FILES_NO_LTO)))
+# prepend obj directory to object list
+OBJS_NO_LTO := $(OBJS_NO_LTO:%=$(OBJ_DIR)/no_lto/%)
+
+
+TARGET_DEPENDENCIES = $(patsubst %.o,%.d,$(OBJS)) $(patsubst %.o,%.d,$(OBJS_NO_LTO))
 
 
 all: $(TARGET_HEX)
@@ -131,9 +144,14 @@ flash: all
 $(TARGET_HEX): $(TARGET_ELF)
 	$(OBJCOPY) -O ihex --set-start 0x8000000 $< $@
 
-$(TARGET_ELF): $(OBJS)
+$(TARGET_ELF): $(OBJS) $(OBJS_NO_LTO)
 	$(CC) -o $@ $^ $(LDFLAGS)
 	$(SIZE) $(TARGET_ELF)
+
+$(OBJ_DIR)/no_lto/%.o: CFLAGS_NO_LTO=$(filter-out -flto, $(CFLAGS))
+$(OBJ_DIR)/no_lto/%.o : %.c
+	@mkdir -p $(dir $@)
+	@$(CC) -c -o $@ $< $(CFLAGS_NO_LTO)
 
 $(OBJ_DIR)/%.o : %.c
 	@mkdir -p $(dir $@)
