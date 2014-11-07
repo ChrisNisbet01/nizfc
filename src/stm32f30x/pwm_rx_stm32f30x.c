@@ -76,10 +76,10 @@ typedef struct channel_config_st {
 
 /* Ensure there is one of these configured for each timer channel used. */
 static const channel_config_st channel_configs[] = {
-    { TIM_Channel_1, TIM_IT_CC1, TIM_GetCapture1 },
-    { TIM_Channel_2, TIM_IT_CC2, TIM_GetCapture2 },
-    { TIM_Channel_3, TIM_IT_CC3, TIM_GetCapture3 },
-    { TIM_Channel_4, TIM_IT_CC4, TIM_GetCapture4 }
+    [CH1_IDX] = { TIM_Channel_1, TIM_IT_CC1, TIM_GetCapture1 },
+    [CH2_IDX] = { TIM_Channel_2, TIM_IT_CC2, TIM_GetCapture2 },
+    [CH3_IDX] = { TIM_Channel_3, TIM_IT_CC3, TIM_GetCapture3 },
+    [CH4_IDX] = { TIM_Channel_4, TIM_IT_CC4, TIM_GetCapture4 }
 };
 
 static const pwm_timer_config_st pwm_timer_configs[] =

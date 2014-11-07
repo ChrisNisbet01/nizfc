@@ -5,8 +5,8 @@
 
 typedef enum receiver_mode_type
 {
-	receiver_mode_pwm,
-	receiver_mode_ppm
+	receiver_mode_pwm = 0,
+	receiver_mode_ppm = 1
 } receiver_mode_type;
 
 uint_fast16_t readReceiverChannel(uint_fast8_t channel);
