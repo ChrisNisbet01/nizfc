@@ -79,7 +79,7 @@ static const command_st receiver_commands[] =
 
 static int receiver_command( run_command_data_st *pcommand )
 {
-	return handleCommand( pcommand,
+	return handleStandardCommand( pcommand,
 							receiver_configuration,
 							ARRAY_SIZE(receiver_configuration),
 							sizeof(receiver_configuration[0]),

@@ -19,7 +19,7 @@ typedef struct command_st
 
 int runCommand( int argc, char **argv, void *pv );
 int runCommandHandler( command_st const * const commands, uint32_t nb_commands, void *pv );
-int handleCommand( run_command_data_st const * command_context,
+int handleStandardCommand( run_command_data_st const * command_context,
 					void const * pcfg,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,

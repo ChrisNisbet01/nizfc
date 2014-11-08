@@ -76,7 +76,14 @@ static void print_parameter_names( config_data_point_st const * data_points, uns
 	}
 }
 
-int handleCommand( run_command_data_st const * command_context,
+/*
+	handleStandardCommand:
+	handle a standard CLI command of the form:
+		<name> ?
+		<name> <instance> <parameter> ?
+		<name> <instance> <parameter> <value|!>
+*/
+int handleStandardCommand( run_command_data_st const * command_context,
 					void const * pcfg,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
@@ -150,7 +157,7 @@ int handleCommand( run_command_data_st const * command_context,
 
 	if ( result == -1 )
 	{
-		cliPrintf( pctx, "Format: %s <0 -> %d> <parameter> <value>\n", argv[0], nb_configurations-1 );
+		cliPrintf( pctx, "Format: %s <0 -> %d> <parameter> <value|!>\n", argv[0], nb_configurations-1 );
 	}
 
 	return result;
