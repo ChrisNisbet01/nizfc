@@ -61,6 +61,11 @@ static char const * command_name_lookup( command_st *commands, uint32_t nb_comma
 	return NULL;
 }
 
+static void print_parameter_name( config_data_point_st const * data_point, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
+{
+	cliPrintf( cliCtx, "%20s", ParameterNameLookupCB(data_point->parameter_id));
+}
+
 static void print_parameter_names( config_data_point_st const * data_points, unsigned int nb_data_points, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
 {
 	unsigned int index;
@@ -69,7 +74,8 @@ static void print_parameter_names( config_data_point_st const * data_points, uns
 
 	for (index=0; index < nb_data_points; index++ )
 	{
-		cliPrintf( cliCtx, "    %20s", ParameterNameLookupCB(data_points[index].parameter_id));
+		print_parameter_name( &data_points[index], ParameterNameLookupCB, cliCtx );
+		cliPrintf( cliCtx, "\n" );
 	}
 }
 
@@ -340,19 +346,18 @@ static bool assign_configuration_data_point( void * const pdata,
 
 
 static config_data_point_st const * config_data_point_lookup( config_data_point_st const * const data_points,
-																uint8_t nb_data_points,
+																uint32_t nb_data_points,
 																ParameterNameLookup ParameterNameLookupCB,
 																char const * parameter_name)
 {
-	config_data_point_st const *data_point =  data_points;
+	unsigned int index;
 
-	while (data_point < data_points + nb_data_points )
+	for (index = 0; index < nb_data_points; index++)
 	{
-		if (strcasecmp( ParameterNameLookupCB(data_point->parameter_id), parameter_name ) == 0 )
+		if (strcasecmp( ParameterNameLookupCB(data_points[index].parameter_id), parameter_name ) == 0 )
 		{
-			return data_point;
+			return &data_points[index];
 		}
-		data_point++;
 	}
 
 	return NULL;
@@ -403,9 +408,10 @@ static bool assign_config_value( void *pcfg,
 /*
 	handleStandardCommand:
 	handle a standard CLI command of the form:
-		<name> ?
-		<name> <instance> <parameter> ?
-		<name> <instance> <parameter> <value|!>
+		<name> ?									print parameter names
+		<name> <instance> ?							print all parameter values for this instance
+		<name> <instance> <parameter> ?				print a single parameter value
+		<name> <instance> <parameter> <value|!>		set a parameter value
 */
 int handleStandardCommand( run_command_data_st const * command_context,
 					void const * pcfg,
@@ -428,36 +434,64 @@ int handleStandardCommand( run_command_data_st const * command_context,
 		print_parameter_names( data_points, nb_data_points, ParameterNameLookupCB, cliCtx );
 		result = 0;
 	}
+	else if (argc == 3 && strcmp( argv[2], "?" ) == 0 )
+	{
+		/* print all parameters for this group/instance */
+		unsigned int instance;
+
+		if ( strtoint( argv[1], &instance ) )
+		{
+			unsigned int index;
+
+			for (index=0; index < nb_data_points; index++)
+			{
+				char const * parameter_name = ParameterNameLookupCB(data_points[index].parameter_id);
+
+				cliPrintf( cliCtx, "%20s: ", parameter_name );
+				(void)print_config_value( (char *)pcfg + (instance*configuration_size),
+											data_points,
+											nb_data_points,
+											ParameterNameLookupCB,
+											parameter_name,
+											cliCtx );
+				cliPrintf( cliCtx, "\n");
+				result = 0;
+			}
+		}
+	}
 	else if ( argc > 3 )
 	{
-		unsigned int instance = atoi( argv[1] );
+		unsigned int instance;
 
-		if ( instance < nb_configurations )
+		if ( strtoint( argv[1], &instance ) )
 		{
-			if ( strcmp( argv[3], "?" ) == 0 )
+			if ( instance < nb_configurations )
 			{
-				if ( print_config_value( (char *)pcfg + (instance*configuration_size),
-											data_points,
-											nb_data_points,
-											ParameterNameLookupCB,
-											argv[2],
-											cliCtx ) == true )
+				if ( strcmp( argv[3], "?" ) == 0 )
 				{
-					result = 0;
+					if ( print_config_value( (char *)pcfg + (instance*configuration_size),
+												data_points,
+												nb_data_points,
+												ParameterNameLookupCB,
+												argv[2],
+												cliCtx ) == true )
+					{
+						result = 0;
+					}
 				}
-			}
-			else
-			{
-				/* write the new value */
-				if ( assign_config_value( (char *)pcfg + (instance*configuration_size),
-											default_configuration,
-											data_points,
-											nb_data_points,
-											ParameterNameLookupCB,
-											argv[2],
-											argv[3] ) == true )
+				else
 				{
-					result = 0;
+					/* write the new value */
+					if ( assign_config_value( (char *)pcfg + (instance*configuration_size),
+												default_configuration,
+												data_points,
+												nb_data_points,
+												ParameterNameLookupCB,
+												argv[2],
+												argv[3] ) == true )
+					{
+						result = 0;
+					}
 				}
 			}
 		}
@@ -465,7 +499,10 @@ int handleStandardCommand( run_command_data_st const * command_context,
 
 	if ( result == -1 )
 	{
-		cliPrintf( cliCtx, "Format: %s <0 -> %d> <parameter> <value|!>\n", argv[0], nb_configurations-1 );
+		cliPrintf( cliCtx, "Format: %s ? 								- print all parameter names\n", argv[0] );
+		cliPrintf( cliCtx, "        %s <0 -> %d> ? 						- print all parameter values\n", argv[0], nb_configurations-1 );
+		cliPrintf( cliCtx, "        %s <0 -> %d> <parameter> ?          - print a single parameter value\n", argv[0], nb_configurations-1 );
+		cliPrintf( cliCtx, "        %s <0 -> %d> <parameter> <value|!>  - set a paremeter value (!) = default)\n", argv[0], nb_configurations-1 );
 	}
 
 	return result;

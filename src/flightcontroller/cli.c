@@ -185,10 +185,10 @@ void cliHandleNewChar( void *pv, char const ch )
 			switch (command_result)
 			{
 				case 0:
-					cliPrintf( pctx, cliOK );
+					cliPrintf( pctx, "\n%s", cliOK );
 					break;
 				default:
-					cliPrintf( pctx, cliERROR );
+					cliPrintf( pctx, "\n%s", cliERROR );
 					break;
 			}
 		}

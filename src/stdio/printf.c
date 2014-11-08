@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <string.h>
 #include <uart.h>
 
 /**
@@ -58,12 +59,23 @@ signed int PutChar(char *pStr, char c)
  * @param  pSource  Source string.
  * @return  The size of the written
  */
-signed int PutString(char *pStr, const char *pSource)
+signed int PutString(char *pStr, char fill, signed int width, const char *pSource)
 {
     signed int num = 0;
 
 	if ( pSource == NULL )
 		pSource = "(NULL)";
+
+	if (width > (signed)strlen(pSource))
+	{
+		int i = width - strlen(pSource);
+		while( i-- )
+		{
+	        *pStr++ = fill;
+	        num++;
+		}
+	}
+
     while (*pSource != 0) {
 
         *pStr++ = *pSource++;
@@ -335,7 +347,7 @@ signed int vsnprintf(char *pStr, size_t length, const char *pFormat, va_list ap)
             case 'u': num = PutUnsignedInt(pStr, fill, width, va_arg(ap, unsigned int)); break;
             case 'x': num = PutHexa(pStr, fill, width, 0, va_arg(ap, unsigned int)); break;
             case 'X': num = PutHexa(pStr, fill, width, 1, va_arg(ap, unsigned int)); break;
-            case 's': num = PutString(pStr, va_arg(ap, char *)); break;
+            case 's': num = PutString(pStr, fill, width, va_arg(ap, char *)); break;
             case 'c': num = PutChar(pStr, va_arg(ap, unsigned int)); break;
             default:
                 return EOF;

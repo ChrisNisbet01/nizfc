@@ -193,8 +193,6 @@ int uartReadChar(void *pv)
 	uart_ctx_st *pctx = pv;
     uint8_t ch;
 
-    STM_EVAL_LEDToggle(LED9);
-
     ch = pctx->rxBuffer[pctx->rxBufferTail];
     pctx->rxBufferTail = (pctx->rxBufferTail + 1) % pctx->rxBufferSize;
 
