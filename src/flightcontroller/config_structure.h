@@ -8,7 +8,7 @@ typedef enum config_group_t
 
 typedef enum poll_id_t
 {
-	poll_id_command,				/* a CLI command to be processed */
+	poll_id_run_command,			/* a CLI command to be processed */
 	poll_id_save_configuration,		/* saving configuration */
 	poll_id_show_configuration		/* show configuration (all, non-default) */
 } poll_id_t;
@@ -90,6 +90,15 @@ typedef struct config_data_point_st
 #define CONFIG_PARAMETER_LENGTH_MASK	0x0000007f
 
 #define GET_CONFIG_FIELD( value, field )	((value >> CONFIG_ ## field ## _SHIFT) & CONFIG_ ## field ## _MASK)
+
+typedef struct run_command_data_st
+{
+	void *pctx;
+	int argc;
+	char **argv;
+} run_command_data_st;
+
+poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups, void *user_context );
 
 #endif /*  __CONFIG_STRUCTURE_H__ */
 

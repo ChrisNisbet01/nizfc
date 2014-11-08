@@ -8,7 +8,8 @@
 #include <uart.h>
 #include <utils.h>
 #include <i2c_stm32f30x.h>
-#include "receiver.h"
+#include <receiver.h>
+#include <cli.h>
 
 #include <stm32f3_discovery_lsm303dlhc.h>
 
@@ -16,6 +17,7 @@
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE] = {0};
 void *debug_uart;
 void *i2c_port;
+void *pcli;
 
 #define ABS(x)         (x < 0) ? (-x) : x
 
@@ -420,6 +422,11 @@ void demoCompass( void )
     }
 }
 
+static int uartPutChar( int ch )
+{
+	return uartWriteCharBlockingWithTimeout( debug_uart, ch, 2 );
+}
+
 void main_task( void *pv )
 {
 	UNUSED(pv);
@@ -434,6 +441,8 @@ void main_task( void *pv )
 	STM_EVAL_LEDInit(LED10);
 
 	debug_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx );
+	if ( debug_uart != NULL )
+		pcli = initCli( uartPutChar );
 
 	i2c_port = i2cInit( I2C_PORT_1 );
 
@@ -452,11 +461,11 @@ void main_task( void *pv )
 				uint8_t ch;
 
 				ch = uartReadChar( debug_uart );
-				uartWriteChar( debug_uart, ch );
+				cliHandleNewChar( pcli, ch );
 			}
 		}
-		printf("\r\nc1 %d", readReceiverChannel(0) );
-		printf("\r\nc2 %d", readReceiverChannel(1) );
+		//printf("\r\nc1 %d", readReceiverChannel(0) );
+		//printf("\r\nc2 %d", readReceiverChannel(1) );
 		//demoCompass();
 	}
 }
