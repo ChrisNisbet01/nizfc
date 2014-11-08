@@ -188,7 +188,7 @@ bool completeConfigurationSave( void )
 	/* pad out to the next word boundary */
 	while ( config_save_ctx.bufferIndex != 0 )
 	{
-		if (writeConfigByte( config_group_reserved ) == false)
+		if (writeConfigByte( configuration_id_reserved ) == false)
 			goto done;
 	}
 

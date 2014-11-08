@@ -1,11 +1,17 @@
 #ifndef __CONFIG_STRUCTURE_H__
 #define __CONFIG_STRUCTURE_H__
 
-typedef enum config_group_t
+typedef enum configuration_id_t
 {
-	config_group_reserved = 0,	/* used as padding at the end of the config. */
-	config_group_reciever = 1
-} config_group_t;
+	configuration_id_reserved = 0,	/* used as padding at the end of the config. */
+	configuration_id_receiver = 1
+} configuration_id_t;
+
+typedef struct configuration_group_mapping_st
+{
+	configuration_id_t	id;
+	char 				const *	name;
+} configuration_group_mapping_st;
 
 typedef enum poll_id_t
 {
@@ -14,11 +20,10 @@ typedef enum poll_id_t
 	poll_id_show_configuration		/* show configuration (all, non-default) */
 } poll_id_t;
 
-typedef struct config_group_mappings_st
+typedef struct code_group_mappings_st
 {
-	char 			const * group_name;
-	int          	(*handler)(poll_id_t poll_id, void *pv);
-} config_group_mappings_st;
+	int          	(*poll_handler)(poll_id_t poll_id, void *pv);
+} code_group_mappings_st;
 
 typedef enum poll_result_t
 {
@@ -71,7 +76,7 @@ typedef struct enum_data_point_st
 
 typedef struct config_data_point_st
 {
-	char 					const * name;
+	unsigned int			parameter_id;		/* configuration specific ID. Used to obtain name and when storing to FLASH */
 	config_data_types_t		data_type;
 	uint_fast8_t			offset_to_data_point;
 	union
@@ -101,13 +106,7 @@ typedef struct config_data_point_st
 #define GET_CONFIG_FIELD( value, field )	((value & CONFIG_ ## field ## _MASK) >> CONFIG_ ## field ## _SHIFT)
 
 poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups );
-bool print_config_value( void *pdata,
-						config_data_point_st const * const data_points,
-						uint8_t nb_data_points,
-						char const * parameter_name,
-						void *printfpv
-						);
-bool assign_config_value( void *pcfg, void const * pdefault_configuration, config_data_point_st const * const data_points, uint8_t nb_data_points, char * parameter_name, char *parameter_value);
+
 
 #endif /*  __CONFIG_STRUCTURE_H__ */
 

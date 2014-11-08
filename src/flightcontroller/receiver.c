@@ -60,10 +60,21 @@ static const receiver_configuration_st default_receiver_configuration =
 	.mode = (int8_t)receiver_mode_pwm
 };
 
+typedef enum receiver_parameter_id_t
+{
+	receiver_parameter_id_mode = 0
+} receiver_parameter_id_t;
+
+
+static const char * receiver_parameter_name_mappings[] =
+{
+	[receiver_parameter_id_mode] = "mode"
+};
+
 static const config_data_point_st receiver_config_data_points[] =
 {
 	{
-	.name = "mode",
+	.parameter_id = receiver_parameter_id_mode,
 	.data_type = config_data_type_enum,
 	.offset_to_data_point = offsetof(receiver_configuration_st, mode),
 	.type_specific.enum_data.enum_mappings = receiver_mode_mappings,
@@ -73,9 +84,17 @@ static const config_data_point_st receiver_config_data_points[] =
 
 static const command_st receiver_commands[] =
 {
-	{ .name = "rx", .handler = receiver_command	}
+	{ configuration_id_receiver, .handler = receiver_command	}
 };
 
+static char const * receiverParameterNameLookup( unsigned int parameterID )
+{
+	if (parameterID < ARRAY_SIZE(receiver_parameter_name_mappings) )
+		return receiver_parameter_name_mappings[parameterID];
+
+	/* shouldn't happen */
+	return "";
+}
 
 static int receiver_command( run_command_data_st *pcommand )
 {
@@ -85,10 +104,11 @@ static int receiver_command( run_command_data_st *pcommand )
 							sizeof(receiver_configuration[0]),
 							&default_receiver_configuration,
 							receiver_config_data_points,
-							ARRAY_SIZE(receiver_config_data_points));
+							ARRAY_SIZE(receiver_config_data_points),
+							receiverParameterNameLookup);
 }
 
-int receiver_group_handler( poll_id_t poll_id, void *pv )
+int receiver_poll_handler( poll_id_t poll_id, void *pv )
 {
 	int result = poll_result_error;
 

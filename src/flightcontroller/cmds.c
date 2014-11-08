@@ -8,13 +8,35 @@
 #include <cmds.h>
 #include <cli.h>
 
+static const configuration_group_mapping_st configuration_group_mappings[] =
+{
+		{ .id = configuration_id_receiver, .name = "rx" }
+};
+
+static char const * lookupCommandNameByID( configuration_id_t id )
+{
+	uint_fast8_t index;
+
+	for ( index=0; index < ARRAY_SIZE(configuration_group_mappings); index++ )
+	{
+		if ( configuration_group_mappings[index].id == id )
+			return configuration_group_mappings[index].name;
+	}
+
+	/* shouldn't happen */
+	return "";
+}
+
+
 static command_st const * findCommand( command_st const * commands, uint32_t nb_commands, char const * name )
 {
 	unsigned int index;
 
 	for (index = 0; index < nb_commands; index++)
 	{
-		if ( strcasecmp(commands[index].name, name) == 0 )
+		char const * commandName = lookupCommandNameByID( commands[index].group_id );
+
+		if ( strcasecmp(name, commandName) == 0 )
 			return &commands[index];
 	}
 
@@ -27,24 +49,436 @@ static char const * command_name_lookup( command_st *commands, uint32_t nb_comma
 
 	for (index=(*previous_index+1); index < nb_commands; index++)
 	{
-		if( strncasecmp( partial_name, commands[index].name, strlen( partial_name ) ) == 0 )
+		char const * commandName = lookupCommandNameByID( commands[index].group_id );
+
+		if( strncasecmp( partial_name, commandName, strlen( partial_name ) ) == 0 )
 		{
 			*previous_index = index;
-			return commands[index].name;
+			return commandName;
 		}
 	}
 
 	return NULL;
 }
 
+static void print_parameter_names( config_data_point_st const * data_points, unsigned int nb_data_points, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
+{
+	unsigned int index;
+
+	cliPrintf( cliCtx, "parameters are:\n" );
+
+	for (index=0; index < nb_data_points; index++ )
+	{
+		cliPrintf( cliCtx, "    %20s", ParameterNameLookupCB(data_points[index].parameter_id));
+	}
+}
+
+static char const *enumLookup( int8_t value, enum_mapping_st const * mappings, uint_fast8_t nb_mappings )
+{
+	uint_fast8_t index;
+
+	for (index=0; index < nb_mappings; index++)
+	{
+		if (value == mappings[index].value)
+			return mappings[index].name;
+	}
+
+	/* not found in mappings */
+	return NULL;
+}
+
+static bool enumLookupByName( char const * const name, enum_mapping_st const const * const mappings, uint_fast8_t const nb_mappings, uint8_t * const enum_value )
+{
+	uint_fast8_t index;
+
+	for (index=0; index < nb_mappings; index++)
+	{
+		if (strcasecmp(name, mappings[index].name) == 0)
+		{
+			*enum_value = mappings[index].value;
+			return true;
+		}
+	}
+
+	/* not found in mappings */
+	return false;
+}
+
+
+static void print_configuration_data_point( void *pdata,
+											config_data_point_st const * pconfig,
+											void *printfpv )
+{
+	void *pconfig_data = (char *)pdata + pconfig->offset_to_data_point;
+
+	switch( pconfig->data_type )
+	{
+		case config_data_type_boolean:
+		{
+			int8_t value = *(int8_t *)pconfig_data;
+
+			cliPrintf(printfpv, "%s", (value != 0) ? "on" : "off");
+			break;
+		}
+		case config_data_type_int8:
+		{
+			int value = *(int8_t *)pconfig_data;
+
+			cliPrintf(printfpv, "%d", value);
+			break;
+		}
+		case config_data_type_int16:
+		{
+			int value = *(int16_t *)pconfig_data;
+
+			cliPrintf(printfpv, "%d", value);
+			break;
+		}
+		case config_data_type_int32:
+		{
+			int value = *(int32_t *)pconfig_data;
+
+			cliPrintf(printfpv, "%d", value);
+			break;
+		}
+		case config_data_type_uint8:
+		{
+			unsigned int value = *(int8_t *)pconfig_data;
+
+			cliPrintf(printfpv, "%u", value);
+			break;
+		}
+		case config_data_type_uint16:
+		{
+			uint16_t value = *(int16_t *)pconfig_data;
+
+			cliPrintf(printfpv, "%u", value);
+			break;
+		}
+		case config_data_type_uint32:
+		{
+			uint16_t value = *(int32_t *)pconfig_data;
+
+			cliPrintf(printfpv, "%u", value);
+			break;
+		}
+		case config_data_type_float:
+		{
+			float value = *(float *)pconfig_data;
+
+			// TODO: printf floating point
+			cliPrintf(printfpv, "%f", value);
+			break;
+		}
+		case config_data_type_string:
+		{
+			char * value = (char *)pconfig_data;
+
+			cliPrintf(printfpv, "%s", value);
+			break;
+		}
+		case config_data_type_enum:
+		{
+			int8_t value = *(int8_t *)pconfig_data;
+			char const * mapping = enumLookup( value,
+												pconfig->type_specific.enum_data.enum_mappings,
+												pconfig->type_specific.enum_data.num_enum_mappings );
+
+			cliPrintf(printfpv, "%s", (mapping != NULL) ? mapping : "???" );
+			break;
+		}
+	}
+}
+
+/*
+	A table of all string considered to be 'true', or 'on'.
+	Everything else is considered to be 'false'.
+*/
+static const char * const true_values[] =
+{
+	"yes",
+	"on",
+	"1",
+	"true"
+};
+
+static bool isValueTrue( char const * const value )
+{
+	uint32_t index;
+
+	for (index=0; index < ARRAY_SIZE(true_values); index++)
+	{
+		if (strcasecmp( value, true_values[index] ) == 0)
+			return true;
+	}
+
+	return false;
+}
+
+static bool assign_configuration_data_point( void * const pdata,
+												void const * const pdefault_configuration,
+												config_data_point_st const * const pconfig,
+												char const * const value )
+{
+	bool wrote_parameter_value = false;
+	void *pconfig_data = (char *)pdata + pconfig->offset_to_data_point;
+	long val = strtol(value, NULL, 0);
+	static uint32_t const zero = 0;
+
+	if ( strcmp( value, "!" ) == 0 )	/* write default value to current value */
+	{
+		void const * pdefault_data = (char const *)pdefault_configuration + pconfig->offset_to_data_point;
+
+		if (pdefault_data == NULL)
+			pdefault_data = &zero;
+
+		switch( pconfig->data_type )
+		{
+			case config_data_type_boolean:
+			case config_data_type_int8:
+			case config_data_type_uint8:
+			case config_data_type_enum:
+				*(int8_t *)pconfig_data = *(int8_t *)pdefault_data;
+				wrote_parameter_value = true;
+				break;
+				break;
+			case config_data_type_int16:
+			case config_data_type_uint16:
+				*(int16_t *)pconfig_data = *(int16_t *)pdefault_data;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_int32:
+			case config_data_type_uint32:
+				*(int32_t *)pconfig_data = *(int32_t *)pdefault_data;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_float:
+				*(float *)pconfig_data = *(float *)pdefault_data;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_string:
+				strlcpy( pconfig_data, (char *)pdefault_data, pconfig->type_specific.max_string_length );
+				wrote_parameter_value = true;
+				break;
+		}
+	}
+	else
+	{
+		switch( pconfig->data_type )
+		{
+			case config_data_type_boolean:
+			{
+				int is_true = isValueTrue( value );
+
+				*(int8_t *)pconfig_data = is_true;
+				wrote_parameter_value = true;
+				break;
+			}
+			case config_data_type_int8:
+				*(int8_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_int16:
+				*(int16_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_int32:
+				*(int32_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_uint8:
+				*(uint8_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_uint16:
+				*(uint16_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_uint32:
+				*(uint32_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_float:
+				*(float *)pconfig_data = strtof(value, NULL);
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_string:
+				strlcpy( pconfig_data, value, pconfig->type_specific.max_string_length );
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_enum:
+			{
+				uint8_t enum_value;
+				bool found_mapping = enumLookupByName( value,
+														pconfig->type_specific.enum_data.enum_mappings,
+														pconfig->type_specific.enum_data.num_enum_mappings,
+														&enum_value );
+
+				if ( found_mapping == false )
+				{
+					/* see if we can find a matching enum by value */
+					if (enumLookup( val,
+									pconfig->type_specific.enum_data.enum_mappings,
+									pconfig->type_specific.enum_data.num_enum_mappings ) != NULL)
+					{
+						enum_value = val;
+						found_mapping = true;
+					}
+				}
+				if ( found_mapping == true )
+				{
+					*(uint8_t *)pconfig_data = enum_value;
+					wrote_parameter_value = true;
+				}
+				break;
+			}
+		}
+	}
+
+	return wrote_parameter_value;
+}
+
+
+static config_data_point_st const * config_data_point_lookup( config_data_point_st const * const data_points,
+																uint8_t nb_data_points,
+																ParameterNameLookup ParameterNameLookupCB,
+																char const * parameter_name)
+{
+	config_data_point_st const *data_point =  data_points;
+
+	while (data_point < data_points + nb_data_points )
+	{
+		if (strcasecmp( ParameterNameLookupCB(data_point->parameter_id), parameter_name ) == 0 )
+		{
+			return data_point;
+		}
+		data_point++;
+	}
+
+	return NULL;
+}
+
+static bool print_config_value( void *pdata,
+						config_data_point_st const * const data_points,
+						uint8_t nb_data_points,
+						ParameterNameLookup ParameterNameLookupCB,
+						char const * parameter_name,
+						void *printfpv
+						)
+{
+	config_data_point_st const *data_point;
+	bool printed_parameter = false;
+
+	data_point = config_data_point_lookup( data_points, nb_data_points, ParameterNameLookupCB, parameter_name );
+	if (data_point != NULL)
+	{
+		print_configuration_data_point( pdata, data_point, printfpv );
+		printed_parameter = true;
+	}
+
+	return printed_parameter;
+}
+
+static bool assign_config_value( void *pcfg,
+							void const * pdefault_configuration,
+							config_data_point_st const * const data_points,
+							uint8_t nb_data_points,
+							ParameterNameLookup ParameterNameLookupCB,
+							char * parameter_name,
+							char *parameter_value)
+{
+	config_data_point_st const *data_point;
+	bool wrote_parameter = false;
+
+	data_point = config_data_point_lookup( data_points, nb_data_points, ParameterNameLookupCB, parameter_name );
+	if (data_point != NULL)
+	{
+		wrote_parameter = assign_configuration_data_point( pcfg, pdefault_configuration, data_point, parameter_value );
+	}
+
+	return wrote_parameter;
+}
+
+
+/*
+	handleStandardCommand:
+	handle a standard CLI command of the form:
+		<name> ?
+		<name> <instance> <parameter> ?
+		<name> <instance> <parameter> <value|!>
+*/
+int handleStandardCommand( run_command_data_st const * command_context,
+					void const * pcfg,
+					unsigned int const nb_configurations,
+					unsigned int const configuration_size,
+					void const * default_configuration,
+					config_data_point_st const * data_points,
+					unsigned int const nb_data_points,
+					ParameterNameLookup ParameterNameLookupCB
+					)
+{
+	void * const cliCtx = command_context->cliCtx;
+	int const argc = command_context->argc;
+	char * * const argv = command_context->argv;
+	int result = -1;
+
+	if ( argc == 2 && strcmp( argv[1], "?" ) == 0 )
+	{
+		/* display all parameter names */
+		print_parameter_names( data_points, nb_data_points, ParameterNameLookupCB, cliCtx );
+		result = 0;
+	}
+	else if ( argc > 3 )
+	{
+		unsigned int instance = atoi( argv[1] );
+
+		if ( instance < nb_configurations )
+		{
+			if ( strcmp( argv[3], "?" ) == 0 )
+			{
+				if ( print_config_value( (char *)pcfg + (instance*configuration_size),
+											data_points,
+											nb_data_points,
+											ParameterNameLookupCB,
+											argv[2],
+											cliCtx ) == true )
+				{
+					result = 0;
+				}
+			}
+			else
+			{
+				/* write the new value */
+				if ( assign_config_value( (char *)pcfg + (instance*configuration_size),
+											default_configuration,
+											data_points,
+											nb_data_points,
+											ParameterNameLookupCB,
+											argv[2],
+											argv[3] ) == true )
+				{
+					result = 0;
+				}
+			}
+		}
+	}
+
+	if ( result == -1 )
+	{
+		cliPrintf( cliCtx, "Format: %s <0 -> %d> <parameter> <value|!>\n", argv[0], nb_configurations-1 );
+	}
+
+	return result;
+}
+
 /* called from the CLI */
-int runCommand( int argc, char **argv, void *pv )
+int runCommand( int argc, char **argv, void *cliCtx )
 {
 	run_command_data_st command_data;
 
 	command_data.argc = argc;
 	command_data.argv = argv;
-	command_data.pctx = pv;
+	command_data.cliCtx = cliCtx;
 
 	return poll_groups( poll_id_run_command, &command_data, 0 );
 }
@@ -64,101 +498,4 @@ int runCommandHandler( command_st const * commands, uint32_t nb_commands, void *
 	return result;
 }
 
-static void print_parameter_names( config_data_point_st const * data_points, unsigned int nb_data_points, void *pv )
-{
-	unsigned int index;
 
-	cliPrintf( pv, "parameters are:\n" );
-
-	for (index=0; index < nb_data_points; index++ )
-	{
-		cliPrintf( pv, "    %20s", data_points[index].name );
-	}
-}
-
-/*
-	handleStandardCommand:
-	handle a standard CLI command of the form:
-		<name> ?
-		<name> <instance> <parameter> ?
-		<name> <instance> <parameter> <value|!>
-*/
-int handleStandardCommand( run_command_data_st const * command_context,
-					void const * pcfg,
-					unsigned int const nb_configurations,
-					unsigned int const configuration_size,
-					void const * default_configuration,
-					config_data_point_st const * data_points,
-					unsigned int const nb_data_points
-					)
-{
-	void * const pctx = command_context->pctx;
-	int const argc = command_context->argc;
-	char * * const argv = command_context->argv;
-	int result = -1;
-
-	if ( argc == 2 && strcmp( argv[1], "?" ) == 0 )
-	{
-		/* display all parameter names */
-		print_parameter_names( data_points, nb_data_points, pctx );
-		result = 0;
-	}
-#if 0
-	else if ( argc == 3 && && strcmp( argv[1], "?" ) == 0 )
-	{
-		/* print all parameter values for a given instance */
-		unsigned int index;
-		unsigned int instance = atoi( argv[1] );
-
-		if ( instance < nb_configurations )
-		{
-			cliPrintf( pctx, "%s %d parameter values:\n", argv[0], instance );
-			for (index=0; index < nb_data_points; index++ )
-			{
-				cliPrintf( pctx, "%20s: ", data_points[index]->name );
-				print_configuration_data_point( (char *)pcfg + (instance*configuration_size), data_points[index], pctx );
-				cliPrintf( pctx, "\n", data_points[index]->name );
-			}
-		}
-	}
-#endif
-	else if ( argc > 3 )
-	{
-		unsigned int instance = atoi( argv[1] );
-
-		if ( instance < nb_configurations )
-		{
-			if ( strcmp( argv[3], "?" ) == 0 )
-			{
-				if ( print_config_value( (char *)pcfg + (instance*configuration_size),
-											data_points,
-											nb_data_points,
-											argv[2],
-											pctx ) == true )
-				{
-					result = 0;
-				}
-			}
-			else
-			{
-				/* write the new value */
-				if ( assign_config_value( (char *)pcfg + (instance*configuration_size),
-											default_configuration,
-											data_points,
-											nb_data_points,
-											argv[2],
-											argv[3] ) == true )
-				{
-					result = 0;
-				}
-			}
-		}
-	}
-
-	if ( result == -1 )
-	{
-		cliPrintf( pctx, "Format: %s <0 -> %d> <parameter> <value|!>\n", argv[0], nb_configurations-1 );
-	}
-
-	return result;
-}
