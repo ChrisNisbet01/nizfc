@@ -74,7 +74,7 @@ static void print_configuration_data_point( void *pdata,
 {
 	void *pconfig_data = (char *)pdata + pconfig->offset_to_data_point;
 
-	switch( pconfig->type )
+	switch( pconfig->data_type )
 	{
 		case config_data_type_boolean:
 		{
@@ -186,24 +186,24 @@ static bool assign_configuration_data_point( void * const pdata,
 	bool wrote_parameter_value = false;
 	void *pconfig_data = (char *)pdata + pconfig->offset_to_data_point;
 	long val = strtol(value, NULL, 0);
+	static uint32_t const zero = 0;
 
 	if ( strcmp( value, "!" ) == 0 )	/* write default value to current value */
 	{
 		void const * pdefault_data = (char const *)pdefault_configuration + pconfig->offset_to_data_point;
 
-		switch( pconfig->type )
+		if (pdefault_data == NULL)
+			pdefault_data = &zero;
+
+		switch( pconfig->data_type )
 		{
 			case config_data_type_boolean:
 			case config_data_type_int8:
 			case config_data_type_uint8:
 			case config_data_type_enum:
-			{
 				*(int8_t *)pconfig_data = *(int8_t *)pdefault_data;
 				wrote_parameter_value = true;
 				break;
-			}
-				*(int8_t *)pconfig_data = val;
-				wrote_parameter_value = true;
 				break;
 			case config_data_type_int16:
 			case config_data_type_uint16:
@@ -227,7 +227,7 @@ static bool assign_configuration_data_point( void * const pdata,
 	}
 	else
 	{
-		switch( pconfig->type )
+		switch( pconfig->data_type )
 		{
 			case config_data_type_boolean:
 			{

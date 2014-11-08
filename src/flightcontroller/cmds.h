@@ -3,18 +3,19 @@
 
 #include <config_structure.h>
 
-typedef struct command_st
-{
-	char const * name;		   /* Name of command */
-	int (* handler)(int argc, char *argv[], void *p);
-} command_st;
-
 typedef struct run_command_data_st
 {
 	void *pctx;
 	int argc;
 	char **argv;
 } run_command_data_st;
+
+typedef struct command_st
+{
+	char const * name;		   /* Name of command */
+	int (* handler)(run_command_data_st *p);
+} command_st;
+
 
 int runCommand( int argc, char **argv, void *pv );
 int runCommandHandler( command_st const * const commands, uint32_t nb_commands, void *pv );

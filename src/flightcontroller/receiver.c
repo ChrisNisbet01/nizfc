@@ -37,10 +37,10 @@ static rx_signals_st	rx_signals;
 
 typedef struct receiver_configuration_st
 {
-	int8_t mode;	/* note that as this is mapped to an enum_data type, its size must be 8 bits */
+	int8_t mode;	/* note that as this is mapped to an enum data type, its size must be 8 bits */
 }receiver_configuration_st;
 
-static int receiver_command( void *pv );
+static int receiver_command( run_command_data_st *pcommand );
 
 static const enum_mapping_st receiver_mode_mappings[] =
 {
@@ -64,7 +64,7 @@ static const config_data_point_st receiver_config_data_points[] =
 {
 	{
 	.name = "mode",
-	.type = config_data_type_enum,
+	.data_type = config_data_type_enum,
 	.offset_to_data_point = offsetof(receiver_configuration_st, mode),
 	.type_specific.enum_data.enum_mappings = receiver_mode_mappings,
 	.type_specific.enum_data.num_enum_mappings = ARRAY_SIZE(receiver_mode_mappings)
@@ -77,9 +77,9 @@ static const command_st receiver_commands[] =
 };
 
 
-static int receiver_command( void *pv )
+static int receiver_command( run_command_data_st *pcommand )
 {
-	return handleCommand( pv,
+	return handleCommand( pcommand,
 							receiver_configuration,
 							ARRAY_SIZE(receiver_configuration),
 							sizeof(receiver_configuration[0]),

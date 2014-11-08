@@ -46,7 +46,7 @@ int runCommand( int argc, char **argv, void *pv )
 	command_data.argv = argv;
 	command_data.pctx = pv;
 
-	return poll_groups( poll_id_run_command, &pv, 0 );
+	return poll_groups( poll_id_run_command, &command_data, 0 );
 }
 
 /* called from the code repsonsible for the various commands from within the poll_id_run_command poll_groups() call. */
@@ -57,7 +57,7 @@ int runCommandHandler( command_st const * commands, uint32_t nb_commands, void *
 	run_command_data_st *pcmd_data = pv;
 
 	if ( (pcmd=findCommand(commands, nb_commands, pcmd_data->argv[0])) != NULL )
-		result = pcmd->handler( pcmd_data->argc, pcmd_data->argv, pcmd_data->pctx );
+		result = pcmd->handler( pcmd_data );
 	else
 		result = -1;
 
@@ -85,9 +85,9 @@ int handleCommand( run_command_data_st const * command_context,
 					unsigned int const nb_data_points
 					)
 {
-	void const * pctx = command_context->pctx;
+	void * const pctx = command_context->pctx;
 	int const argc = command_context->argc;
-	char const * * argv = command_context->argv;
+	char * * const argv = command_context->argv;
 	int result = -1;
 
 	if ( argc == 2 && strcmp( argv[1], "?" ) == 0 )
@@ -147,8 +147,6 @@ int handleCommand( run_command_data_st const * command_context,
 			}
 		}
 	}
-
-done:
 
 	if ( result == -1 )
 	{
