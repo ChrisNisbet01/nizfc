@@ -9,84 +9,8 @@
 #include <receiver.h>
 
 static const char group_name_receiver[] = "rx";
-typedef struct receiver_configuration_st
-{
-	uint8_t mode;	/* note that as this is mapped to an enum_data type, its size must be 8 bits */
-}receiver_configuration_st;
 
-bool print_config_value( void *pdata, config_data_point_st const * const data_points, uint8_t nb_data_points, char const * parameter_name);
-
-static const enum_mapping_st receiver_mode_mappings[] =
-{
-	{
-		.name = "ppm",
-		.value = (int8_t)receiver_mode_ppm
-	},
-	{
-		.name = "pwm",
-		.value = (int8_t)receiver_mode_pwm
-	}
-};
-
-#define NB_RECEIVER_CONFIGURATIONS	1
-static receiver_configuration_st receiver_configuration[1];
-static const receiver_configuration_st default_receiver_configuration =
-{
-	.mode = (uint8_t)receiver_mode_ppm
-};
-
-static const config_data_point_st receiver_config_data_points[] =
-{
-	{
-	.name = "mode",
-	.type = config_data_type_enum,
-	.offset_to_data_point = offsetof(receiver_configuration_st, mode),
-	.type_specific.enum_data.enum_mappings = receiver_mode_mappings,
-	.type_specific.enum_data.num_enum_mappings = ARRAY_SIZE(receiver_mode_mappings)
-	}
-};
-
-int receiver_command( int argc, char **argv, void *pv )
-{
-	if ( argc > 1 && atoi( argv[1] ) == 0 )
-	{
-		config_data_point_st const * pcfg;
-
-		for (pcfg = receiver_config_data_points; pcfg < receiver_config_data_points + ARRAY_SIZE(receiver_config_data_points); pcfg++)
-		{
-			cliPrintf( pv, "%s %u %s ", group_name_receiver, 0, pcfg->name );
-			print_config_value( receiver_configuration, receiver_config_data_points, ARRAY_SIZE(receiver_config_data_points), pcfg->name );
-			cliPrintf( pv, "\r\n" );
-		}
-	}
-	return poll_result_ok;
-}
-
-int receiver_group_handler( poll_id_t poll_id, void *pv, void *user_context )
-{
-	int result = poll_result_error;
-
-	switch( poll_id )
-	{
-		case poll_id_run_command:
-		{
-			run_command_data_st *prun_command_data = pv;
-
-			if (prun_command_data->argc > 0 && strcasecmp( prun_command_data->argv[0], group_name_receiver ) == 0)
-			{
-				/* got a command to run */
-				result = receiver_command( prun_command_data->argc, prun_command_data->argv, prun_command_data->pctx );
-			}
-			break;
-		}
-		default:
-			break;
-	}
-
-	return result;
-}
-
-
+extern int receiver_group_handler( poll_id_t poll_id, void *pv );
 
 static const config_group_mappings_st config_groups[] =
 {
@@ -97,31 +21,14 @@ static const config_group_mappings_st config_groups[] =
 		}
 };
 
-uint_fast32_t config_group_lookup( char *partial_name, uint32_t previous_index )
-{
-	uint_fast32_t index;
-
-	for (index=(previous_index+1); index < ARRAY_SIZE(config_groups); index++)
-	{
-		if( strncasecmp( partial_name, config_groups[index].group_name, strlen( partial_name ) ) == 0 )
-		{
-			return index;
-		}
-	}
-
-	return -1;
-}
-
-poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups, void *user_context )
+poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups )
 {
 	uint_fast32_t index;
 	poll_result_t result = poll_result_ok;
-	int header = 0, group;
 
-	group = GET_CONFIG_FIELD(header, GROUP);
 	for (index=0; index < ARRAY_SIZE(config_groups); index++)
 	{
-		result = config_groups[index].handler(poll_id, pv, user_context);
+		result = config_groups[index].handler(poll_id, pv);
 		if( poll_all_groups != true && result != poll_result_ok )
 			break;
 	}
@@ -161,7 +68,10 @@ static bool enumLookupByName( char *name, enum_mapping_st const * mappings, uint
 }
 
 
-static void print_configuration_data_point( void *pdata, config_data_point_st const * pconfig )
+static void print_configuration_data_point( void *pdata,
+											config_data_point_st const * pconfig,
+											int (*printfn)( void *pv, const char *fmt, ...),
+											void *printfpv )
 {
 	void *pconfig_data = (char *)pdata + pconfig->offset_to_data_point;
 
@@ -171,49 +81,49 @@ static void print_configuration_data_point( void *pdata, config_data_point_st co
 		{
 			int8_t value = *(int8_t *)pconfig_data;
 
-			printf("%s", (value != 0) ? "ON" : "OFF");
+			printfn(printfpv, "%s", (value != 0) ? "ON" : "OFF");
 			break;
 		}
 		case config_data_type_int8:
 		{
 			int value = *(int8_t *)pconfig_data;
 
-			printf("%d", value);
+			printfn(printfpv, "%d", value);
 			break;
 		}
 		case config_data_type_int16:
 		{
 			int value = *(int16_t *)pconfig_data;
 
-			printf("%d", value);
+			printfn(printfpv, "%d", value);
 			break;
 		}
 		case config_data_type_int32:
 		{
 			int value = *(int32_t *)pconfig_data;
 
-			printf("%d", value);
+			printfn(printfpv, "%d", value);
 			break;
 		}
 		case config_data_type_uint8:
 		{
 			unsigned int value = *(int8_t *)pconfig_data;
 
-			printf("%u", value);
+			printfn(printfpv, "%u", value);
 			break;
 		}
 		case config_data_type_uint16:
 		{
 			uint16_t value = *(int16_t *)pconfig_data;
 
-			printf("%u", value);
+			printfn(printfpv, "%u", value);
 			break;
 		}
 		case config_data_type_uint32:
 		{
 			uint16_t value = *(int32_t *)pconfig_data;
 
-			printf("%u", value);
+			printfn(printfpv, "%u", value);
 			break;
 		}
 		case config_data_type_float:
@@ -221,14 +131,14 @@ static void print_configuration_data_point( void *pdata, config_data_point_st co
 			float value = *(float *)pconfig_data;
 
 			// TODO: printf floating point
-			printf("%f", value);
+			printfn(printfpv, "%f", value);
 			break;
 		}
 		case config_data_type_string:
 		{
 			char * value = (char *)pconfig_data;
 
-			printf("%s", value);
+			printfn(printfpv, "%s", value);
 			break;
 		}
 		case config_data_type_enum:
@@ -238,7 +148,7 @@ static void print_configuration_data_point( void *pdata, config_data_point_st co
 												pconfig->type_specific.enum_data.enum_mappings,
 												pconfig->type_specific.enum_data.num_enum_mappings );
 
-			printf("%s", (mapping != NULL) ? mapping : "???" );
+			printfn(printfpv, "%s", (mapping != NULL) ? mapping : "???" );
 			break;
 		}
 	}
@@ -360,7 +270,13 @@ static config_data_point_st const * config_data_point_lookup( config_data_point_
 	return NULL;
 }
 
-bool print_config_value( void *pdata, config_data_point_st const * const data_points, uint8_t nb_data_points, char const * parameter_name)
+bool print_config_value( void *pdata,
+						config_data_point_st const * const data_points,
+						uint8_t nb_data_points,
+						char const * parameter_name,
+						int (*printfn)( void *pv, const char *fmt, ...),
+						void *printfpv
+						)
 {
 	config_data_point_st const *data_point;
 	bool printed_parameter = false;
@@ -368,7 +284,7 @@ bool print_config_value( void *pdata, config_data_point_st const * const data_po
 	data_point = config_data_point_lookup( data_points, nb_data_points, parameter_name );
 	if (data_point != NULL)
 	{
-		print_configuration_data_point( pdata, data_point );
+		print_configuration_data_point( pdata, data_point, printfn, printfpv );
 		printed_parameter = true;
 	}
 

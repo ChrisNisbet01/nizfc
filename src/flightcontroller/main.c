@@ -447,7 +447,7 @@ void main_task( void *pv )
 	i2c_port = i2cInit( I2C_PORT_1 );
 
 	initReceiver();
-	openReceiver( receiver_mode_pwm );
+	openReceiver();
 
 	while (1)
 	{

@@ -4,9 +4,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <utils.h>
-#include <config_structure.h>
 #include <ctype.h>
+#include <utils.h>
+#include <cmds.h>
 
 #define CLI_LINEBUFFER_SIZE 	64
 #define MAX_COMMAND_LINE_ARGS	6
@@ -81,7 +81,7 @@ int cliPrintf(void *pv, const char *pFormat, ...)
     va_list ap;
     signed int result;
 
-    /* Forward call to vfprintf */
+    /* Forward call to clivfprintf */
     va_start(ap, pFormat);
     result = clivfprintf(pctx, pFormat, ap);
     va_end(ap);
@@ -164,17 +164,6 @@ static void cliPrintPrompt( cliCtx_st *pctx )
 	cliPrintf(pctx, cliPrompt);
 }
 
-static void cliRunCommand( cliCtx_st *pctx, int argc, char **argv )
-{
-	run_command_data_st run_command_data;
-
-	run_command_data.pctx = pctx;
-	run_command_data.argc = argc;
-	run_command_data.argv = argv;
-
-	poll_groups( poll_id_run_command, &run_command_data, 0, NULL );
-}
-
 void cliHandleNewChar( void *pv, char const ch )
 {
 	cliCtx_st *pctx = pv;
@@ -188,9 +177,8 @@ void cliHandleNewChar( void *pv, char const ch )
 		*/
 		if ( (argc=commandLineParse( pctx->lineBuffer, MAX_COMMAND_LINE_ARGS, pctx->commandArgs )) > 0 )
 		{
-			/* now run the command */
-			// TODO:
-			cliRunCommand( pctx, argc, pctx->commandArgs );
+			/* run the command */
+			runCommand( argc, pctx->commandArgs, pctx );
 		}
 
 		/* clear the previous command */

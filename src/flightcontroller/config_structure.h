@@ -15,8 +15,8 @@ typedef enum poll_id_t
 
 typedef struct config_group_mappings_st
 {
-	char const * group_name;
-	int          (*handler)(poll_id_t poll_id, void *pv, void *user_context);
+	char 			const * group_name;
+	int          	(*handler)(poll_id_t poll_id, void *pv);
 } config_group_mappings_st;
 
 typedef enum poll_result_t
@@ -91,14 +91,15 @@ typedef struct config_data_point_st
 
 #define GET_CONFIG_FIELD( value, field )	((value >> CONFIG_ ## field ## _SHIFT) & CONFIG_ ## field ## _MASK)
 
-typedef struct run_command_data_st
-{
-	void *pctx;
-	int argc;
-	char **argv;
-} run_command_data_st;
-
-poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups, void *user_context );
+poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups );
+bool print_config_value( void *pdata,
+						config_data_point_st const * const data_points,
+						uint8_t nb_data_points,
+						char const * parameter_name,
+						int (*printfn)( void *pv, const char *fmt, ...),
+						void *printfpv
+						);
+bool assign_config_value( void *pdata, config_data_point_st const * const data_points, uint8_t nb_data_points, char * parameter_name, char *parameter_value);
 
 #endif /*  __CONFIG_STRUCTURE_H__ */
 
