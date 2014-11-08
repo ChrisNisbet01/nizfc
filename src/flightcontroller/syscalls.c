@@ -13,6 +13,7 @@ extern int  __StackLimit;
  *        Exported functions
  *----------------------------------------------------------------------------*/
 
+#if 0
 static unsigned char *heap = (unsigned char *)&_end;
 extern caddr_t _sbrk(int nbytes)
 {
@@ -26,4 +27,5 @@ extern caddr_t _sbrk(int nbytes)
     return ((void*)-1);
   }
 }
+#endif
 

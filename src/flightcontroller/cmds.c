@@ -446,17 +446,18 @@ int handleStandardCommand( run_command_data_st const * command_context,
 			for (index=0; index < nb_data_points; index++)
 			{
 				char const * parameter_name = ParameterNameLookupCB(data_points[index].parameter_id);
+				unsigned int offset_to_correct_configuration_data = (instance*configuration_size);
 
 				cliPrintf( cliCtx, "%20s: ", parameter_name );
-				(void)print_config_value( (char *)pcfg + (instance*configuration_size),
+				(void)print_config_value( (char *)pcfg + offset_to_correct_configuration_data,
 											data_points,
 											nb_data_points,
 											ParameterNameLookupCB,
 											parameter_name,
 											cliCtx );
 				cliPrintf( cliCtx, "\n");
-				result = 0;
 			}
+			result = 0;
 		}
 	}
 	else if ( argc > 3 )
@@ -469,7 +470,9 @@ int handleStandardCommand( run_command_data_st const * command_context,
 			{
 				if ( strcmp( argv[3], "?" ) == 0 )
 				{
-					if ( print_config_value( (char *)pcfg + (instance*configuration_size),
+					unsigned int offset_to_correct_configuration_data = (instance*configuration_size);
+
+					if ( print_config_value( (char *)pcfg + offset_to_correct_configuration_data,
 												data_points,
 												nb_data_points,
 												ParameterNameLookupCB,

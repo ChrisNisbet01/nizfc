@@ -34,7 +34,7 @@ COMMON_CFLAGS = -ffunction-sections \
 				-Wall \
 				-Wextra
 
-OPTIMISE_FLAGS = -Os
+OPTIMISE_FLAGS = -O3
 
 INCLUDE_DIRS = $(SRC_DIR)/cmsis_boot/startup \
 				$(SRC_DIR)/cmsis_boot \
