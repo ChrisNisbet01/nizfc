@@ -62,6 +62,8 @@ signed int PutString(char *pStr, const char *pSource)
 {
     signed int num = 0;
 
+	if ( pSource == NULL )
+		pSource = "(NULL)";
     while (*pSource != 0) {
 
         *pStr++ = *pSource++;

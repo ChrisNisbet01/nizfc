@@ -96,10 +96,9 @@ bool print_config_value( void *pdata,
 						config_data_point_st const * const data_points,
 						uint8_t nb_data_points,
 						char const * parameter_name,
-						int (*printfn)( void *pv, const char *fmt, ...),
 						void *printfpv
 						);
-bool assign_config_value( void *pdata, config_data_point_st const * const data_points, uint8_t nb_data_points, char * parameter_name, char *parameter_value);
+bool assign_config_value( void *pcfg, void const * pdefault_configuration, config_data_point_st const * const data_points, uint8_t nb_data_points, char * parameter_name, char *parameter_value);
 
 #endif /*  __CONFIG_STRUCTURE_H__ */
 

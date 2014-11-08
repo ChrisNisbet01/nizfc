@@ -50,7 +50,7 @@ static char const *enumLookup( int8_t value, enum_mapping_st const * mappings, u
 	return NULL;
 }
 
-static bool enumLookupByName( char *name, enum_mapping_st const * mappings, uint_fast8_t nb_mappings, uint8_t *enum_value )
+static bool enumLookupByName( char const * const name, enum_mapping_st const const * const mappings, uint_fast8_t const nb_mappings, uint8_t * const enum_value )
 {
 	uint_fast8_t index;
 
@@ -70,7 +70,6 @@ static bool enumLookupByName( char *name, enum_mapping_st const * mappings, uint
 
 static void print_configuration_data_point( void *pdata,
 											config_data_point_st const * pconfig,
-											int (*printfn)( void *pv, const char *fmt, ...),
 											void *printfpv )
 {
 	void *pconfig_data = (char *)pdata + pconfig->offset_to_data_point;
@@ -81,49 +80,49 @@ static void print_configuration_data_point( void *pdata,
 		{
 			int8_t value = *(int8_t *)pconfig_data;
 
-			printfn(printfpv, "%s", (value != 0) ? "ON" : "OFF");
+			cliPrintf(printfpv, "%s", (value != 0) ? "on" : "off");
 			break;
 		}
 		case config_data_type_int8:
 		{
 			int value = *(int8_t *)pconfig_data;
 
-			printfn(printfpv, "%d", value);
+			cliPrintf(printfpv, "%d", value);
 			break;
 		}
 		case config_data_type_int16:
 		{
 			int value = *(int16_t *)pconfig_data;
 
-			printfn(printfpv, "%d", value);
+			cliPrintf(printfpv, "%d", value);
 			break;
 		}
 		case config_data_type_int32:
 		{
 			int value = *(int32_t *)pconfig_data;
 
-			printfn(printfpv, "%d", value);
+			cliPrintf(printfpv, "%d", value);
 			break;
 		}
 		case config_data_type_uint8:
 		{
 			unsigned int value = *(int8_t *)pconfig_data;
 
-			printfn(printfpv, "%u", value);
+			cliPrintf(printfpv, "%u", value);
 			break;
 		}
 		case config_data_type_uint16:
 		{
 			uint16_t value = *(int16_t *)pconfig_data;
 
-			printfn(printfpv, "%u", value);
+			cliPrintf(printfpv, "%u", value);
 			break;
 		}
 		case config_data_type_uint32:
 		{
 			uint16_t value = *(int32_t *)pconfig_data;
 
-			printfn(printfpv, "%u", value);
+			cliPrintf(printfpv, "%u", value);
 			break;
 		}
 		case config_data_type_float:
@@ -131,14 +130,14 @@ static void print_configuration_data_point( void *pdata,
 			float value = *(float *)pconfig_data;
 
 			// TODO: printf floating point
-			printfn(printfpv, "%f", value);
+			cliPrintf(printfpv, "%f", value);
 			break;
 		}
 		case config_data_type_string:
 		{
 			char * value = (char *)pconfig_data;
 
-			printfn(printfpv, "%s", value);
+			cliPrintf(printfpv, "%s", value);
 			break;
 		}
 		case config_data_type_enum:
@@ -148,20 +147,25 @@ static void print_configuration_data_point( void *pdata,
 												pconfig->type_specific.enum_data.enum_mappings,
 												pconfig->type_specific.enum_data.num_enum_mappings );
 
-			printfn(printfpv, "%s", (mapping != NULL) ? mapping : "???" );
+			cliPrintf(printfpv, "%s", (mapping != NULL) ? mapping : "???" );
 			break;
 		}
 	}
 }
 
-static const char *true_values[] =
+/*
+	A table of all string considered to be 'true', or 'on'.
+	Everything else is considered to be 'false'.
+*/
+static const char * const true_values[] =
 {
 	"yes",
 	"on",
 	"1",
+	"true"
 };
 
-bool true_value_lookup( char *value )
+bool isValueTrue( char const * const value )
 {
 	uint32_t index;
 
@@ -174,79 +178,123 @@ bool true_value_lookup( char *value )
 	return false;
 }
 
-static bool assign_configuration_data_point( void *pdata, config_data_point_st const * pconfig, char *value )
+static bool assign_configuration_data_point( void * const pdata,
+												void const * const pdefault_configuration,
+												config_data_point_st const * const pconfig,
+												char const * const value )
 {
 	bool wrote_parameter_value = false;
 	void *pconfig_data = (char *)pdata + pconfig->offset_to_data_point;
 	long val = strtol(value, NULL, 0);
 
-	switch( pconfig->type )
+	if ( strcmp( value, "!" ) == 0 )	/* write default value to current value */
 	{
-		case config_data_type_boolean:
-		{
-			int is_true = true_value_lookup( value );
+		void const * pdefault_data = (char const *)pdefault_configuration + pconfig->offset_to_data_point;
 
-			*(int8_t *)pconfig_data = is_true;
-			wrote_parameter_value = true;
-			break;
-		}
-		case config_data_type_int8:
-			*(int8_t *)pconfig_data = val;
-			wrote_parameter_value = true;
-			break;
-		case config_data_type_int16:
-			*(int16_t *)pconfig_data = val;
-			wrote_parameter_value = true;
-			break;
-		case config_data_type_int32:
-			*(int32_t *)pconfig_data = val;
-			wrote_parameter_value = true;
-			break;
-		case config_data_type_uint8:
-			*(uint8_t *)pconfig_data = val;
-			wrote_parameter_value = true;
-			break;
-		case config_data_type_uint16:
-			*(uint16_t *)pconfig_data = val;
-			wrote_parameter_value = true;
-			break;
-		case config_data_type_uint32:
-			*(uint32_t *)pconfig_data = val;
-			wrote_parameter_value = true;
-			break;
-		case config_data_type_float:
-			*(float *)pconfig_data = strtof(value, NULL);
-			wrote_parameter_value = true;
-			break;
-		case config_data_type_string:
-			strlcpy( pconfig_data, value, pconfig->type_specific.max_string_length );
-			wrote_parameter_value = true;
-			break;
-		case config_data_type_enum:
+		switch( pconfig->type )
 		{
-			uint8_t enum_value;
-			bool found_mapping = enumLookupByName( value,
-													pconfig->type_specific.enum_data.enum_mappings,
-													pconfig->type_specific.enum_data.num_enum_mappings,
-													&enum_value );
-
-			if ( found_mapping == false )
+			case config_data_type_boolean:
+			case config_data_type_int8:
+			case config_data_type_uint8:
+			case config_data_type_enum:
 			{
-				/* see if we can find a matching enum by value */
-				if (enumLookup( val,
-								pconfig->type_specific.enum_data.enum_mappings,
-								pconfig->type_specific.enum_data.num_enum_mappings ) != NULL)
-				{
-					enum_value = val;
-					found_mapping = true;
-				}
-			}
-			if ( found_mapping == true )
-			{
-				*(uint8_t *)pconfig_data = enum_value;
+				*(int8_t *)pconfig_data = *(int8_t *)pdefault_data;
 				wrote_parameter_value = true;
+				break;
 			}
-			break;
+				*(int8_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_int16:
+			case config_data_type_uint16:
+				*(int16_t *)pconfig_data = *(int16_t *)pdefault_data;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_int32:
+			case config_data_type_uint32:
+				*(int32_t *)pconfig_data = *(int32_t *)pdefault_data;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_float:
+				*(float *)pconfig_data = *(float *)pdefault_data;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_string:
+				strlcpy( pconfig_data, (char *)pdefault_data, pconfig->type_specific.max_string_length );
+				wrote_parameter_value = true;
+				break;
+		}
+	}
+	else
+	{
+		switch( pconfig->type )
+		{
+			case config_data_type_boolean:
+			{
+				int is_true = isValueTrue( value );
+
+				*(int8_t *)pconfig_data = is_true;
+				wrote_parameter_value = true;
+				break;
+			}
+			case config_data_type_int8:
+				*(int8_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_int16:
+				*(int16_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_int32:
+				*(int32_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_uint8:
+				*(uint8_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_uint16:
+				*(uint16_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_uint32:
+				*(uint32_t *)pconfig_data = val;
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_float:
+				*(float *)pconfig_data = strtof(value, NULL);
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_string:
+				strlcpy( pconfig_data, value, pconfig->type_specific.max_string_length );
+				wrote_parameter_value = true;
+				break;
+			case config_data_type_enum:
+			{
+				uint8_t enum_value;
+				bool found_mapping = enumLookupByName( value,
+														pconfig->type_specific.enum_data.enum_mappings,
+														pconfig->type_specific.enum_data.num_enum_mappings,
+														&enum_value );
+
+				if ( found_mapping == false )
+				{
+					/* see if we can find a matching enum by value */
+					if (enumLookup( val,
+									pconfig->type_specific.enum_data.enum_mappings,
+									pconfig->type_specific.enum_data.num_enum_mappings ) != NULL)
+					{
+						enum_value = val;
+						found_mapping = true;
+					}
+				}
+				if ( found_mapping == true )
+				{
+					*(uint8_t *)pconfig_data = enum_value;
+					wrote_parameter_value = true;
+				}
+				break;
+			}
 		}
 	}
 
@@ -274,7 +322,6 @@ bool print_config_value( void *pdata,
 						config_data_point_st const * const data_points,
 						uint8_t nb_data_points,
 						char const * parameter_name,
-						int (*printfn)( void *pv, const char *fmt, ...),
 						void *printfpv
 						)
 {
@@ -284,14 +331,14 @@ bool print_config_value( void *pdata,
 	data_point = config_data_point_lookup( data_points, nb_data_points, parameter_name );
 	if (data_point != NULL)
 	{
-		print_configuration_data_point( pdata, data_point, printfn, printfpv );
+		print_configuration_data_point( pdata, data_point, printfpv );
 		printed_parameter = true;
 	}
 
 	return printed_parameter;
 }
 
-bool assign_config_value( void *pdata, config_data_point_st const * const data_points, uint8_t nb_data_points, char * parameter_name, char *parameter_value)
+bool assign_config_value( void *pcfg, void const * pdefault_configuration, config_data_point_st const * const data_points, uint8_t nb_data_points, char * parameter_name, char *parameter_value)
 {
 	config_data_point_st const *data_point;
 	bool wrote_parameter = false;
@@ -299,7 +346,7 @@ bool assign_config_value( void *pdata, config_data_point_st const * const data_p
 	data_point = config_data_point_lookup( data_points, nb_data_points, parameter_name );
 	if (data_point != NULL)
 	{
-		wrote_parameter = assign_configuration_data_point( pdata, data_point, parameter_value );
+		wrote_parameter = assign_configuration_data_point( pcfg, pdefault_configuration, data_point, parameter_value );
 	}
 
 	return wrote_parameter;

@@ -40,7 +40,7 @@ typedef struct receiver_configuration_st
 	int8_t mode;	/* note that as this is mapped to an enum_data type, its size must be 8 bits */
 }receiver_configuration_st;
 
-static int receiver_command( int argc, char **argv, void *pv );
+static int receiver_command( void *pv );
 
 static const enum_mapping_st receiver_mode_mappings[] =
 {
@@ -73,34 +73,19 @@ static const config_data_point_st receiver_config_data_points[] =
 
 static const command_st receiver_commands[] =
 {
-	{
-	.name = "rx",
-	.handler = receiver_command
-	}
+	{ .name = "rx", .handler = receiver_command	}
 };
 
-static int receiver_command( int argc, char **argv, void *pv )
+
+static int receiver_command( void *pv )
 {
-	if ( argc > 1 && (unsigned)atoi( argv[1] ) < ARRAY_SIZE(receiver_configuration) )
-	{
-		config_data_point_st const * pcfg;
-
-		for (pcfg = receiver_config_data_points; pcfg < receiver_config_data_points + ARRAY_SIZE(receiver_config_data_points); pcfg++)
-		{
-			cliPrintf( pv, "%s %u %s ", argv[0], 0, pcfg->name );
-			print_config_value( receiver_configuration,
-								receiver_config_data_points,
-								ARRAY_SIZE(receiver_config_data_points),
-								pcfg->name,
-								cliPrintf,
-								pv );
-			cliPrintf( pv, "\n" );
-		}
-
-	return poll_result_ok;
-	}
-
-	return poll_result_error;
+	return handleCommand( pv,
+							receiver_configuration,
+							ARRAY_SIZE(receiver_configuration),
+							sizeof(receiver_configuration[0]),
+							&default_receiver_configuration,
+							receiver_config_data_points,
+							ARRAY_SIZE(receiver_config_data_points));
 }
 
 int receiver_group_handler( poll_id_t poll_id, void *pv )
@@ -114,6 +99,8 @@ int receiver_group_handler( poll_id_t poll_id, void *pv )
 			result = runCommandHandler( receiver_commands, ARRAY_SIZE(receiver_commands), pv );
 			break;
 		}
+		// TODO: handle new config event after parameter written
+		// TODO: apply current config into running config
 		default:
 			break;
 	}

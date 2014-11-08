@@ -13,7 +13,9 @@
 #define CLI_OUTPUT_BUFFER_SIZE	256	/* buffer used to output CLI responses */
 
 static const char cliPrompt[] = "#>";
-static const char pError[] = "increase CLI_OUTPUT_BUFFER_SIZE\r\n";
+static const char cliOK[]     = "OK\n";
+static const char cliERROR[]     = "ERROR\n";
+static const char pError[] = "increase CLI_OUTPUT_BUFFER_SIZE\n";
 
 typedef enum special_char_t
 {
@@ -35,7 +37,7 @@ typedef struct cliCtx_st
 
 static cliCtx_st cli[1];
 
-int clifputc(void *pv, signed int c)
+static int clifputc(void *pv, signed int c)
 {
 	cliCtx_st *pctx	= pv;
 
@@ -44,7 +46,7 @@ int clifputc(void *pv, signed int c)
     return -1;
 }
 
-int clifputs(void *pv, const char *pStr)
+static int clifputs(void *pv, const char *pStr)
 {
 	cliCtx_st *pctx	= pv;
     signed int num = 0;
@@ -60,7 +62,7 @@ int clifputs(void *pv, const char *pStr)
     return num;
 }
 
-int clivfprintf(void *pv, const char *pFormat, va_list ap)
+static int clivfprintf(void *pv, const char *pFormat, va_list ap)
 {
 	cliCtx_st *pctx	= pv;
 
@@ -177,8 +179,18 @@ void cliHandleNewChar( void *pv, char const ch )
 		*/
 		if ( (argc=commandLineParse( pctx->lineBuffer, MAX_COMMAND_LINE_ARGS, pctx->commandArgs )) > 0 )
 		{
+			int command_result;
 			/* run the command */
-			runCommand( argc, pctx->commandArgs, pctx );
+			command_result = runCommand( argc, pctx->commandArgs, pctx );
+			switch (command_result)
+			{
+				case 0:
+					cliPrintf( pctx, cliOK );
+					break;
+				default:
+					cliPrintf( pctx, cliERROR );
+					break;
+			}
 		}
 
 		/* clear the previous command */
