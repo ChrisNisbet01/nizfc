@@ -237,7 +237,36 @@ done:
 
 int getConfigurationSize( void )
 {
+	int configurationSize = -1;
+
+	if (validateConfigurationData() == false)
+		goto done;
+
+	config_header_st *header = (config_header_st *)CONFIG_START_ADDRESS;
+	configurationSize = header->length;
+
+done:
+
+	return configurationSize;
+}
+
+void const * getConfigurationData( unsigned int *data_size )
+{
+	void const *configuration_data = NULL;
 	config_header_st *header = (config_header_st *)CONFIG_START_ADDRESS;
 
-	return header->length;
+	if (validateConfigurationData() == false)
+		goto done;
+
+	configuration_data = header + 1;
+	*data_size = header->length;
+
+	/*
+		Note that configuration data length may be 0.
+		We differentiate between this and an error by returning a
+		non-NULL pointer, but indicating length is 0.
+	*/
+done:
+
+	return configuration_data;
 }

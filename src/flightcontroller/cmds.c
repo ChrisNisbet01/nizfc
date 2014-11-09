@@ -8,55 +8,14 @@
 #include <cmds.h>
 #include <cli.h>
 
-static const configuration_group_mapping_st configuration_group_mappings[] =
-{
-		{ .id = configuration_id_receiver, .name = "rx" },
-		{ .id = configuration_id_save,     .name = "save" }
-};
-
-static char const * lookupCommandNameByID( configuration_id_t id )
-{
-	uint_fast8_t index;
-
-	for ( index=0; index < ARRAY_SIZE(configuration_group_mappings); index++ )
-	{
-		if ( configuration_group_mappings[index].id == id )
-			return configuration_group_mappings[index].name;
-	}
-
-	/* shouldn't happen */
-	return "";
-}
-
-
 static command_st const * findCommand( command_st const * commands, uint32_t nb_commands, char const * name )
 {
-	unsigned int index;
+	uint32_t index;
 
 	for (index = 0; index < nb_commands; index++)
 	{
-		char const * commandName = lookupCommandNameByID( commands[index].group_id );
-
-		if ( strcasecmp(name, commandName) == 0 )
+		if ( strcasecmp(name, commands[index].name) == 0 )
 			return &commands[index];
-	}
-
-	return NULL;
-}
-
-static char const * command_name_lookup( command_st *commands, uint32_t nb_commands, char *partial_name, uint32_t *previous_index )
-{
-	uint_fast32_t index;
-
-	for (index=(*previous_index+1); index < nb_commands; index++)
-	{
-		char const * commandName = lookupCommandNameByID( commands[index].group_id );
-
-		if( strncasecmp( partial_name, commandName, strlen( partial_name ) ) == 0 )
-		{
-			*previous_index = index;
-			return commandName;
-		}
 	}
 
 	return NULL;

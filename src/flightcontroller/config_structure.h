@@ -5,14 +5,9 @@ typedef enum configuration_id_t
 {
 	configuration_id_reserved = 0,	/* used as padding at the end of the config. */
 	configuration_id_receiver = 1,
-	configuration_id_save = 2
+	configuration_id_save = 2,
+	configuration_id_show = 3
 } configuration_id_t;
-
-typedef struct configuration_group_mapping_st
-{
-	configuration_id_t	id;
-	char 				const *	name;
-} configuration_group_mapping_st;
 
 typedef enum poll_id_t
 {

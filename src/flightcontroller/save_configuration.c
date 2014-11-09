@@ -10,12 +10,18 @@
 #include <configuration.h>
 
 static int save_command( run_command_data_st *pcommand );
+static int show_command( run_command_data_st *pcommand );
 
 static const command_st config_commands[] =
 {
-	{ configuration_id_save,     .handler = save_command	}
+	{ .group_id = configuration_id_save, .name = "save",    .handler = save_command	},
+	{ .group_id = configuration_id_show, .name = "show",    .handler = show_command	}
 };
 
+static int show_command( run_command_data_st *pcommand )
+{
+	return poll_result_ok;
+}
 /*
 	save_command:
 	A command to save all configuration.
@@ -167,6 +173,7 @@ int save_configuration( run_command_data_st const * command_context,
 		For each data point in each configuration, we write out the current value,
 		but only if it differs from the default value.
 	*/
+	UNUSED(command_context);
 	int result = poll_result_error;
 	unsigned int configuration_index, data_point_index;
 

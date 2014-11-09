@@ -85,7 +85,7 @@ static const config_data_point_st receiver_config_data_points[] =
 
 static const command_st receiver_commands[] =
 {
-	{ configuration_id_receiver, .handler = receiver_command	}
+	{ .group_id = configuration_id_receiver, .name = "rx", .handler = receiver_command	}
 };
 
 static char const * receiverParameterNameLookup( unsigned int parameterID )
