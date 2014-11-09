@@ -31,6 +31,7 @@ typedef struct config_header_st
 
 typedef struct config_save_ctx_st
 {
+	bool			saving_config;
 	uint8_t			check_value;
 	uint_fast16_t 	word_offset;
 	uint32_t		buffer;
@@ -133,6 +134,8 @@ bool initConfigurationSave( void )
 	if ( status != FLASH_COMPLETE )
 		initOK = false;
 
+	config_save_ctx.saving_config = true;
+
 	return initOK;
 }
 
@@ -141,13 +144,15 @@ bool saveConfigurationData( void const * const data, uint32_t length )
 	uint8_t const * pdata = data;
 	bool wrote_data = false;
 
-	while ( length-- )
+	if ( config_save_ctx.saving_config == true )
 	{
-		if ( writeConfigByte( *pdata++ ) == false )
-			goto done;
+		while ( length-- )
+		{
+			if ( writeConfigByte( *pdata++ ) == false )
+				goto done;
+		}
+		wrote_data = true;
 	}
-
-	wrote_data = true;
 
 done:
 
@@ -185,15 +190,18 @@ bool completeConfigurationSave( void )
 	uint8_t *pch;
 	uint_fast8_t offset;
 
+	config_save_ctx.saving_config = false;
+
 	/* pad out to the next word boundary */
 	while ( config_save_ctx.bufferIndex != 0 )
 	{
+		/* pad out with a reserved value so that we can identify when the config ends */
 		if (writeConfigByte( configuration_id_reserved ) == false)
 			goto done;
 	}
 
 	/* include the header in the check value */
-	header.length = config_save_ctx.config_size;	/* includes header and all config data, but not padding at the end */
+	header.length = config_save_ctx.config_size + sizeof header;	/* includes header and all config data and padding at the end */
 	header.check_value = 0;
 	header.version = config_version_1;
 

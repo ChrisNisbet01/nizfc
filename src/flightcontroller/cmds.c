@@ -10,7 +10,8 @@
 
 static const configuration_group_mapping_st configuration_group_mappings[] =
 {
-		{ .id = configuration_id_receiver, .name = "rx" }
+		{ .id = configuration_id_receiver, .name = "rx" },
+		{ .id = configuration_id_save,     .name = "save" }
 };
 
 static char const * lookupCommandNameByID( configuration_id_t id )
@@ -70,12 +71,12 @@ static void print_parameter_names( config_data_point_st const * data_points, uns
 {
 	unsigned int index;
 
-	cliPrintf( cliCtx, "parameters are:\n" );
+	cliPrintf( cliCtx, "\r\nparameters are:" );
 
 	for (index=0; index < nb_data_points; index++ )
 	{
-		print_parameter_name( &data_points[index], ParameterNameLookupCB, cliCtx );
 		cliPrintf( cliCtx, "\n" );
+		print_parameter_name( &data_points[index], ParameterNameLookupCB, cliCtx );
 	}
 }
 
@@ -247,7 +248,6 @@ static bool assign_configuration_data_point( void * const pdata,
 				*(int8_t *)pconfig_data = *(int8_t *)pdefault_data;
 				wrote_parameter_value = true;
 				break;
-				break;
 			case config_data_type_int16:
 			case config_data_type_uint16:
 				*(int16_t *)pconfig_data = *(int16_t *)pdefault_data;
@@ -263,7 +263,7 @@ static bool assign_configuration_data_point( void * const pdata,
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_string:
-				strlcpy( pconfig_data, (char *)pdefault_data, pconfig->type_specific.max_string_length );
+				strlcpy( (char *)pconfig_data, (char *)pdefault_data, pconfig->type_specific.max_string_length );
 				wrote_parameter_value = true;
 				break;
 		}
@@ -309,7 +309,7 @@ static bool assign_configuration_data_point( void * const pdata,
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_string:
-				strlcpy( pconfig_data, value, pconfig->type_specific.max_string_length );
+				strlcpy( (char *)pconfig_data, value, pconfig->type_specific.max_string_length );
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_enum:
@@ -448,14 +448,13 @@ int handleStandardCommand( run_command_data_st const * command_context,
 				char const * parameter_name = ParameterNameLookupCB(data_points[index].parameter_id);
 				unsigned int offset_to_correct_configuration_data = (instance*configuration_size);
 
-				cliPrintf( cliCtx, "%20s: ", parameter_name );
+				cliPrintf( cliCtx, "\n%20s: ", parameter_name );
 				(void)print_config_value( (char *)pcfg + offset_to_correct_configuration_data,
 											data_points,
 											nb_data_points,
 											ParameterNameLookupCB,
 											parameter_name,
 											cliCtx );
-				cliPrintf( cliCtx, "\n");
 			}
 			result = 0;
 		}
@@ -502,10 +501,10 @@ int handleStandardCommand( run_command_data_st const * command_context,
 
 	if ( result == -1 )
 	{
-		cliPrintf( cliCtx, "Format: %s ? 								- print all parameter names\n", argv[0] );
-		cliPrintf( cliCtx, "        %s <0 -> %d> ? 						- print all parameter values\n", argv[0], nb_configurations-1 );
-		cliPrintf( cliCtx, "        %s <0 -> %d> <parameter> ?          - print a single parameter value\n", argv[0], nb_configurations-1 );
-		cliPrintf( cliCtx, "        %s <0 -> %d> <parameter> <value|!>  - set a paremeter value (!) = default)\n", argv[0], nb_configurations-1 );
+		cliPrintf( cliCtx, "\nFormat: %s ?                                - print all parameter names", argv[0] );
+		cliPrintf( cliCtx, "\n        %s <0 -> %d> ?                      - print all parameter values", argv[0], nb_configurations-1 );
+		cliPrintf( cliCtx, "\n        %s <0 -> %d> <parameter> ?          - print a single parameter value", argv[0], nb_configurations-1 );
+		cliPrintf( cliCtx, "\n        %s <0 -> %d> <parameter> <value|!>  - set a paremeter value (!) = default)", argv[0], nb_configurations-1 );
 	}
 
 	return result;

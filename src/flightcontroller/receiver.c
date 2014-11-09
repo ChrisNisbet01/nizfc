@@ -13,6 +13,7 @@
 #include <cmds.h>
 #include <cli.h>
 #include <config_structure.h>
+#include <save_configuration.h>
 #include <receiver.h>
 #include <pwm.h>
 #include <ppm.h>
@@ -121,6 +122,23 @@ int receiver_poll_handler( poll_id_t poll_id, void *pv )
 		}
 		// TODO: handle new config event after parameter written
 		// TODO: apply current config into running config
+		case poll_id_save_configuration:
+		{
+			unsigned int index;
+
+			for (index = 0; index < ARRAY_SIZE(receiver_configuration); index++ )
+			{
+				result = save_configuration( pv,
+									configuration_id_receiver,
+									receiver_configuration,
+									ARRAY_SIZE(receiver_configuration),
+									sizeof(receiver_configuration[0]),
+									&default_receiver_configuration,
+									receiver_config_data_points,
+									ARRAY_SIZE(receiver_config_data_points) );
+			}
+			break;
+		}
 		default:
 			break;
 	}

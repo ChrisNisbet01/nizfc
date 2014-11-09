@@ -4,7 +4,8 @@
 typedef enum configuration_id_t
 {
 	configuration_id_reserved = 0,	/* used as padding at the end of the config. */
-	configuration_id_receiver = 1
+	configuration_id_receiver = 1,
+	configuration_id_save = 2
 } configuration_id_t;
 
 typedef struct configuration_group_mapping_st
@@ -104,6 +105,7 @@ typedef struct config_data_point_st
 #define CONFIG_PARAMETER_LENGTH_SHIFT	0
 
 #define GET_CONFIG_FIELD( value, field )	((value & CONFIG_ ## field ## _MASK) >> CONFIG_ ## field ## _SHIFT)
+#define MAKE_CONFIG_FIELD_VALUE( value, field )	((value << CONFIG_ ## field ## _SHIFT) & CONFIG_ ## field ## _MASK)
 
 poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups );
 

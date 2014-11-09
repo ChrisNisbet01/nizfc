@@ -9,10 +9,12 @@
 #include <receiver.h>
 
 extern int receiver_poll_handler( poll_id_t poll_id, void *pv );
+extern int config_poll_handler( poll_id_t poll_id, void *pv );
 
 static const code_group_mappings_st config_groups[] =
 {
-	{ .poll_handler = receiver_poll_handler }
+	{ .poll_handler = receiver_poll_handler },
+	{ .poll_handler = config_poll_handler }
 };
 
 poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups )
@@ -23,7 +25,7 @@ poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups )
 	for (index=0; index < ARRAY_SIZE(config_groups); index++)
 	{
 		result = config_groups[index].poll_handler(poll_id, pv);
-		if( poll_all_groups != true && result != poll_result_ok )
+		if( poll_all_groups != true && result == poll_result_ok )
 			break;
 	}
 

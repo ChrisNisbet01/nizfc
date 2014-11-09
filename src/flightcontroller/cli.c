@@ -13,9 +13,9 @@
 #define CLI_OUTPUT_BUFFER_SIZE	256	/* buffer used to output CLI responses */
 
 static const char cliPrompt[] = "#>";
-static const char cliOK[]     = "OK\n";
-static const char cliERROR[]     = "ERROR\n";
-static const char pError[] = "increase CLI_OUTPUT_BUFFER_SIZE\n";
+static const char cliOK[]     = "OK";
+static const char cliERROR[]     = "ERROR";
+static const char pError[] = "increase CLI_OUTPUT_BUFFER_SIZE";
 
 typedef enum special_char_t
 {
@@ -163,7 +163,7 @@ static int commandLineParse( char * const linebuffer, int max_args, char **argv 
 
 static void cliPrintPrompt( cliCtx_st *pctx )
 {
-	cliPrintf(pctx, cliPrompt);
+	cliPrintf(pctx, "\n%s", cliPrompt);
 }
 
 void cliHandleNewChar( void *pv, char const ch )
