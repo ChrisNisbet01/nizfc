@@ -71,11 +71,10 @@ static bool enumLookupByName( char const * const name, enum_mapping_st const con
 }
 
 
-static void print_configuration_data_point( void *pdata,
+void print_configuration_data_point( void *pconfig_data,
 											config_data_point_st const * pconfig,
 											void *printfpv )
 {
-	void *pconfig_data = (char *)pdata + pconfig->offset_to_data_point;
 
 	switch( pconfig->data_type )
 	{
@@ -336,7 +335,7 @@ static bool print_config_value( void *pdata,
 	data_point = config_data_point_lookup( data_points, nb_data_points, ParameterNameLookupCB, parameter_name );
 	if (data_point != NULL)
 	{
-		print_configuration_data_point( pdata, data_point, printfpv );
+		print_configuration_data_point( (char *)pdata + data_point->offset_to_data_point, data_point, printfpv );
 		printed_parameter = true;
 	}
 

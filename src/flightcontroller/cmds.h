@@ -13,7 +13,7 @@ typedef struct run_command_data_st
 typedef struct command_st
 {
 	configuration_id_t	group_id;
-	char *name;
+	char 				const * name;
 	int 				(* handler)(run_command_data_st *p);
 } command_st;
 

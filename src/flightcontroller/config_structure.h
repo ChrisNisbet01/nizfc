@@ -96,7 +96,7 @@ typedef struct config_data_point_st
 #define CONFIG_PARAMETER_TYPE_MASK		0x0000007f	/* 7 bits */
 #define CONFIG_PARAMETER_TYPE_SHIFT		0u
 
-#define GET_CONFIG_FIELD( value, field )	((value & CONFIG_ ## field ## _MASK) >> CONFIG_ ## field ## _SHIFT)
+#define GET_CONFIG_FIELD( value, field )	(((uint32_t)(value) & CONFIG_ ## field ## _MASK) >> CONFIG_ ## field ## _SHIFT)
 #define MAKE_CONFIG_FIELD_VALUE( value, field )	((value << CONFIG_ ## field ## _SHIFT) & CONFIG_ ## field ## _MASK)
 
 poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups );

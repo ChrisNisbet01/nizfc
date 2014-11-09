@@ -20,7 +20,7 @@ static const code_group_mappings_st config_groups[] =
 poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups )
 {
 	uint_fast32_t index;
-	poll_result_t result = poll_result_ok;
+	poll_result_t result = poll_result_error;
 
 	for (index=0; index < ARRAY_SIZE(config_groups); index++)
 	{

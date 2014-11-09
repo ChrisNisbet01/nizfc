@@ -18,9 +18,114 @@ static const command_st config_commands[] =
 	{ .group_id = configuration_id_show, .name = "show",    .handler = show_command	}
 };
 
+typedef struct show_config_data_st
+{
+	run_command_data_st *run_command_data;
+	configuration_id_t configuration_id = GET_CONFIG_FIELD( pcfg, GROUP );
+	unsigned int instance = GET_CONFIG_FIELD( pcfg, INSTANCE );
+	unsigned int parameter_id = GET_CONFIG_FIELD( pcfg, PARAMETER_ID );
+	config_data_types_t data_type = GET_CONFIG_FIELD( pcfg, TYPE );
+	void * pcfg;				/* pointer to the data available after the current header */
+} show_config_data_st;
+
+static int getLengthOfData( config_data_types_t data_type, void *pcfg )
+{
+	int data_length = -1;
+
+	switch( data_type )
+	{
+		case config_data_type_boolean:
+		case config_data_type_int8:
+		case config_data_type_uint8:
+		case config_data_type_enum:
+			data_length = sizeof(int8_t);
+			break;
+		case config_data_type_int16:
+		case config_data_type_uint16:
+			data_length = sizeof(int8_t);
+			break;
+		case config_data_type_int32:
+		case config_data_type_uint32:
+			data_length = sizeof(int8_t);
+			break;
+		case config_data_type_float:
+			data_length = sizeof(int8_t);
+			break;
+		case config_data_type_string:
+			data_length = strlen( (char *)pcfg ) + 1;	/* include NUL terminator */
+			break;
+		default:
+			break;
+	}
+
+	return data_length;
+}
+
 static int show_command( run_command_data_st *pcommand )
 {
-	return poll_result_ok;
+	int result = poll_result_error;
+	int argc = pcommand->argc;
+	char * * argv = pcommand->argv;
+
+	if ( argc > 1 )
+	{
+		if ( strcasecmp( argv[[1], "saved" ) == 0 )
+		{
+			unsigned int configuration_data_size;
+			void const * pcfg = getConfigurationData( &configuration_data_size );
+
+			if ( pcfg != NULL )
+			{
+				show_config_data_st show_config_data;
+
+				show_config_data.run_command_data = pcommand;
+
+				show_config_data.pcfg = pcfg;
+				while( configuration_data_size >= sizeof(uint32_t) )
+				{
+					int data_length;
+
+					show_config_data.configuration_id = GET_CONFIG_FIELD( pcfg, GROUP );
+					show_config_data.instance = GET_CONFIG_FIELD( pcfg, INSTANCE );
+					show_config_data.parameter_id = GET_CONFIG_FIELD( pcfg, PARAMETER_ID );
+					show_config_data.data_type = GET_CONFIG_FIELD( pcfg, TYPE );
+
+					show_config_data.data_length -= sizeof uint32_t;
+					show_config_data.pcfg = (char *)show_config_data.pcfg + 4;
+					if ( (data_length = getLengthOfData( show_config_data.data_type, pcfg )) < 0 || data_length > configuration_data_size )
+					{
+						cliPrintf( pcommand->cliCtx, "\nError processing configuration item" );
+						cliPrintf( pcommand->cliCtx, "\ng:%d i:%d p:%d",
+									show_config_data.configuration_id,
+									show_config_data.instance,
+									show_config_data.parameter_id );
+						break;
+					}
+
+					if ( poll_groups( poll_id_show_configuration, &show_config_data, false ) != poll_result_ok )
+					{
+						cliPrintf( pcommand->cliCtx, "\nUnprocessed configuration item" );
+						cliPrintf( pcommand->cliCtx, "\ng:%d i:%d p:%d",
+									show_config_data.configuration_id,
+									show_config_data.instance,
+									show_config_data.parameter_id );
+					}
+
+					/* move to next item */
+					show_config_data.pcfg = (char *)show_config_data.pcfg + data_length;
+					configuration_data_size -= data_length;
+
+				}
+			}
+			else
+				cliPrintf( pcommand->cliCtx, "\nSaved configuration is invalid" );
+		}
+	}
+
+	result = poll_result_ok;
+
+done:
+	return result;
 }
 /*
 	save_command:
@@ -115,31 +220,8 @@ static bool save_data_point( configuration_id_t configuration_id,
 	unsigned int data_length;
 	uint32_t data_header = 0;
 
-	switch( data_point->data_type )
-	{
-		case config_data_type_boolean:
-		case config_data_type_int8:
-		case config_data_type_uint8:
-		case config_data_type_enum:
-			data_length = sizeof(int8_t);
-			break;
-		case config_data_type_int16:
-		case config_data_type_uint16:
-			data_length = sizeof(int8_t);
-			break;
-		case config_data_type_int32:
-		case config_data_type_uint32:
-			data_length = sizeof(int8_t);
-			break;
-		case config_data_type_float:
-			data_length = sizeof(int8_t);
-			break;
-		case config_data_type_string:
-			data_length = strlen( (char *)pcfg + data_point->offset_to_data_point ) + 1;	/* include NUL terminator */
-			break;
-		default:
-			goto done;
-	}
+	if ( (data_length = getLengthOfData( data_point, (char *)pcfg + data_point->offset_to_data_point )) < 0 )
+		goto done;
 
 	data_header |= MAKE_CONFIG_FIELD_VALUE(configuration_id, GROUP);
 	data_header |= MAKE_CONFIG_FIELD_VALUE(instance, INSTANCE);
@@ -204,3 +286,70 @@ done:
 
 	return result;
 }
+
+int show_configuration( show_config_data_st * show_config_data,
+					command_st const *commands,
+					unsigned int nb_commands,
+					void const * pcfg,
+					unsigned int const nb_configurations,
+					unsigned int const configuration_size,
+					void const * default_configuration,
+					config_data_point_st const * data_points,
+					unsigned int const nb_data_points,
+					char const * parameter_name_mappings,
+					unsigned int const nb_parameter_name_mappings
+					)
+{
+	run_command_data_st *run_command_data = show_config_data->run_command_data;
+	/*
+		For each data point in each configuration, we write out the current value,
+		but only if it differs from the default value.
+	*/
+	int result = poll_result_error;
+	unsigned int command_index, configuration_index, data_point_index;
+
+	for ( command_index = 0; command_index < nb_commands && result == poll_result_error; command_index++ )
+	{
+		if ( commands[command_index].group_id == show_config_data_st.configuration_id )
+		{
+			if ( show_config_data_st.instance < nb_configurations )
+			{
+				if ( show_config_data.parameter_id < nb_parameter_name_mappings )
+				{
+					unsigned int data_point_index;
+
+					/* find the data point with the matching parameter ID */
+					for ( data_point_index = 0; data_point_index < nb_data_points; data_point_index++ )
+					{
+						if ( data_points[data_point_index].parameter_id == show_config_data.parameter_id )
+						{
+							/* check that the data types match */
+							if ( data_points[data_point_index].data_type == show_config_data.data_type )
+							{
+								cliPrintf( run_command_data->cliCtx,
+											"\n%s %d %s ",
+											commands[command_index].name,
+											show_config_data_st.instance,
+											parameter_name_mappings[show_config_data.parameter_id]);
+								print_configuration_data_point( show_config_data_st.pcfg,
+																&data_points[data_point_index],
+																run_command_data->cliCtx );
+							}
+							else
+							{
+								/* we can coerce one data type to another */
+								// TODO:
+							}
+							result == poll_result_ok;
+						}
+					}
+				}
+			}
+		}
+	}
+
+done:
+
+	return result;
+}
+
