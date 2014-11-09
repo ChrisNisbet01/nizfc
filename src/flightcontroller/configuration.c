@@ -19,7 +19,7 @@
 
 typedef enum config_version_t
 {
-	config_version_1 = 0
+	config_version_1 = 1
 } config_version_t;
 
 typedef struct config_header_st
@@ -67,6 +67,8 @@ bool writeConfigWord( uint32_t value )
 		        status = FLASH_ErasePage(config_destination);
 		        if (status != FLASH_COMPLETE)
 		            continue;
+
+			    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
 		    }
 		}
 
@@ -100,6 +102,7 @@ bool writeConfigByte( uint8_t byte )
 	if (config_save_ctx.bufferIndex == 4)	/* time to write the next word */
 	{
 		config_save_ctx.bufferIndex = 0;
+		/* got a full word buffered up. Write it to FLASH. */
 		if (writeConfigWord( config_save_ctx.buffer ) == false)
 			goto done;
 	}
@@ -123,6 +126,8 @@ bool initConfigurationSave( void )
 	config_save_ctx.config_size = 0;
 	config_save_ctx.bufferIndex = 0;
 	config_save_ctx.eraseSector = true;
+
+    FLASH_Unlock();
 
 	/* erase the first sector. Assumes that config starts at begining of sector */
     FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
@@ -190,8 +195,6 @@ bool completeConfigurationSave( void )
 	uint8_t *pch;
 	uint_fast8_t offset;
 
-	config_save_ctx.saving_config = false;
-
 	/* pad out to the next word boundary */
 	while ( config_save_ctx.bufferIndex != 0 )
 	{
@@ -205,7 +208,7 @@ bool completeConfigurationSave( void )
 	header.check_value = 0;
 	header.version = config_version_1;
 
-	/* update the check value withthe header bytes */
+	/* update the check value with the header bytes */
 	pch = (uint8_t *)&header;
 	for	( offset = 0; offset < sizeof header; offset++ )
 		config_save_ctx.check_value ^= *pch++;
@@ -227,7 +230,14 @@ bool completeConfigurationSave( void )
 	success = validateConfigurationData();
 done:
 
+	config_save_ctx.saving_config = false;
+
 	return success;
 }
 
+int getConfigurationSize( void )
+{
+	config_header_st *header = (config_header_st *)CONFIG_START_ADDRESS;
 
+	return header->length;
+}

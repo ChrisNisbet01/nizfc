@@ -40,6 +40,8 @@ static int save_command( run_command_data_st *pcommand )
 		goto done;
 	}
 
+	cliPrintf( pcommand->cliCtx, "Configuration size: %d bytes", getConfigurationSize() );
+
 	result = 0;
 
 done:
@@ -98,6 +100,59 @@ static bool current_value_matches_default_value( void const * pconfig_data,
 	return areSame;
 }
 
+static bool save_data_point( configuration_id_t configuration_id,
+								unsigned int instance,
+								void const * pcfg,
+								config_data_point_st const * data_point )
+{
+	bool saved_data_point = false;
+	unsigned int data_length;
+	uint32_t data_header = 0;
+
+	switch( data_point->data_type )
+	{
+		case config_data_type_boolean:
+		case config_data_type_int8:
+		case config_data_type_uint8:
+		case config_data_type_enum:
+			data_length = sizeof(int8_t);
+			break;
+		case config_data_type_int16:
+		case config_data_type_uint16:
+			data_length = sizeof(int8_t);
+			break;
+		case config_data_type_int32:
+		case config_data_type_uint32:
+			data_length = sizeof(int8_t);
+			break;
+		case config_data_type_float:
+			data_length = sizeof(int8_t);
+			break;
+		case config_data_type_string:
+			data_length = strlen( (char *)pcfg + data_point->offset_to_data_point ) + 1;	/* include NUL terminator */
+			break;
+		default:
+			goto done;
+	}
+
+	data_header |= MAKE_CONFIG_FIELD_VALUE(configuration_id, GROUP);
+	data_header |= MAKE_CONFIG_FIELD_VALUE(instance, INSTANCE);
+	data_header |= MAKE_CONFIG_FIELD_VALUE(data_point->parameter_id, PARAMETER_ID);
+	data_header |= MAKE_CONFIG_FIELD_VALUE(data_point->data_type, PARAMETER_TYPE);
+
+	if ( saveConfigurationData( &data_header, sizeof(data_header) ) == false )
+		goto done;
+
+	if ( saveConfigurationData( (char *)pcfg + data_point->offset_to_data_point, data_length ) == false )
+		goto done;
+
+	saved_data_point = true;
+
+done:
+
+	return saved_data_point;
+}
+
 int save_configuration( run_command_data_st const * command_context,
 					configuration_id_t configuration_id,
 					void const * pcfg,
@@ -112,6 +167,7 @@ int save_configuration( run_command_data_st const * command_context,
 		For each data point in each configuration, we write out the current value,
 		but only if it differs from the default value.
 	*/
+	int result = poll_result_error;
 	unsigned int configuration_index, data_point_index;
 
 	for ( configuration_index = 0; configuration_index < nb_configurations; configuration_index++ )
@@ -124,20 +180,20 @@ int save_configuration( run_command_data_st const * command_context,
 															default_configuration,
 															&data_points[data_point_index] ) == false )
 			{
-				cliPrintf( command_context->cliCtx, "need to save" );
-#if 0
-				save_data_point( configuration_id,
+				if (save_data_point( configuration_id,
+									configuration_index,
 									(char *)pcfg + offset_to_correct_configuration_data,
-									default_configuration,
-									&data_point[data_point_index] );
-#endif
-			}
-			else
-			{
-				cliPrintf( command_context->cliCtx, "no need to save" );
+									&data_points[data_point_index] ) == false)
+				{
+					goto done;
+				}
 			}
 		}
 	}
 
-	return 0;
+	result = poll_result_ok;
+
+done:
+
+	return result;
 }

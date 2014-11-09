@@ -5,5 +5,6 @@ bool initConfigurationSave( void );
 bool saveConfigurationData( void const * const data, uint32_t length );
 bool validateConfigurationData( void );
 bool completeConfigurationSave( void );
+int getConfigurationSize( void );
 
 #endif /*  __CONFIGURATION_H__ */

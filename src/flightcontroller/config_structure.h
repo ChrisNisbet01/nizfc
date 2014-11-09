@@ -89,20 +89,17 @@ typedef struct config_data_point_st
 } config_data_point_st;
 
 /* definitions for extracting fields out of the config header */
-#define CONFIG_GROUP_MASK				0xfe000000	/* 7 bits */
-#define CONFIG_GROUP_SHIFT				26u
+#define CONFIG_GROUP_MASK				0x0fe00000	/* 7 bits */
+#define CONFIG_GROUP_SHIFT				21u
 
-#define CONFIG_INSTANCE_MASK			0x01f80000	/* 6 bits */
-#define CONFIG_INSTANCE_SHIFT			19u
+#define CONFIG_INSTANCE_MASK			0x001fc000	/* 7 bits */
+#define CONFIG_INSTANCE_SHIFT			14u
 
-#define CONFIG_PARAMETER_ID_MASK		0x0007f000	/* 7 bits */
-#define CONFIG_PARAMETER_ID_SHIFT		12u
+#define CONFIG_PARAMETER_ID_MASK		0x00003f80	/* 7 bits */
+#define CONFIG_PARAMETER_ID_SHIFT		7u
 
-#define CONFIG_PARAMETER_TYPE_MASK		0x00000f80	/* 5 bits */
-#define CONFIG_PARAMETER_TYPE_SHIFT		7u
-
-#define CONFIG_PARAMETER_LENGTH_MASK	0x0000003f	/* 7 bits */
-#define CONFIG_PARAMETER_LENGTH_SHIFT	0
+#define CONFIG_PARAMETER_TYPE_MASK		0x0000007f	/* 7 bits */
+#define CONFIG_PARAMETER_TYPE_SHIFT		0u
 
 #define GET_CONFIG_FIELD( value, field )	((value & CONFIG_ ## field ## _MASK) >> CONFIG_ ## field ## _SHIFT)
 #define MAKE_CONFIG_FIELD_VALUE( value, field )	((value << CONFIG_ ## field ## _SHIFT) & CONFIG_ ## field ## _MASK)
