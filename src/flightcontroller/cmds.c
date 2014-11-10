@@ -16,7 +16,7 @@ static command_st const * findCommand( command_st const * commands, uint32_t nb_
 
 	for (index = 0; index < nb_commands; index++)
 	{
-		if ( strcasecmp(name, commands[index].name) == 0 )
+		if ( strncasecmp(name, commands[index].name, strlen(name) ) == 0 )
 			return &commands[index];
 	}
 
@@ -61,7 +61,7 @@ static bool lookupEnumValueByName( char const * const name, enum_mapping_st cons
 
 	for (index=0; index < nb_mappings; index++)
 	{
-		if (strcasecmp(name, mappings[index].name) == 0)
+		if (strncasecmp(name, mappings[index].name, strlen(name)) == 0)
 		{
 			*enum_value = mappings[index].value;
 			return true;
@@ -189,14 +189,24 @@ static bool assignParameterValue( void * const pdata,
 {
 	bool wrote_parameter_value = false;
 	void *pconfig_data = pdata;
-	static uint32_t const zero = 0;
+	static const uint32_t zeroOther = 0;
+	static const float zeroFloat = 0.0f;
 
 	if ( strcmp( value, "!" ) == 0 )	/* write default value to current value */
 	{
-		void const * pdefault_data = (char const *)pdefault_configuration + pconfig->offset_to_data_point;
+		void const * pdefault_data;
+		float const *default_float;
 
-		if (pdefault_data == NULL)
-			pdefault_data = &zero;
+		if (pdefault_configuration == NULL)
+		{
+			pdefault_data = &zeroOther;
+			default_float = &zeroFloat;
+		}
+		else
+		{
+			pdefault_data = (char const *)pdefault_configuration + pconfig->offset_to_data_point;
+			default_float = (float *)((char const *)pdefault_configuration + pconfig->offset_to_data_point);
+		}
 
 		switch( pconfig->data_type )
 		{
@@ -218,7 +228,7 @@ static bool assignParameterValue( void * const pdata,
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_float:
-				*(float *)pconfig_data = *(float *)pdefault_data;
+				*(float *)pconfig_data = *default_float;
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_string:
@@ -315,7 +325,7 @@ static config_data_point_st const * lookupParameterByName( config_data_point_st 
 
 	for (index = 0; index < nb_data_points; index++)
 	{
-		if (strcasecmp( ParameterNameLookupCB(data_points[index].parameter_id), parameter_name ) == 0 )
+		if (strncasecmp( parameter_name, ParameterNameLookupCB(data_points[index].parameter_id), strlen(parameter_name) ) == 0 )
 		{
 			return &data_points[index];
 		}
@@ -365,11 +375,77 @@ static bool lookupParameterAssignValue( void *pcfg,
 	return wrote_parameter;
 }
 
-bool currentParameterValueMatchesDefaultValue( void const * pconfig_data,
-														void const * pdefault_data,
-														config_data_point_st const * data_point )
+bool savedParameterValueMatchesCurrentValue( void const *psaved,
+												void const * pCurrentValue,
+												config_data_point_st const * data_point )
 {
 	bool areSame = false;
+	config_data_types_t data_type;
+	void const *savedValue;
+
+	data_type = GET_CONFIG_FIELD( *(uint32_t *)psaved, PARAMETER_TYPE );
+	savedValue = (char *)psaved + sizeof(uint32_t);
+
+	if (data_type != data_point->data_type)
+	{
+		goto done;
+	}
+
+	switch (data_type)
+	{
+		case config_data_type_boolean:
+		case config_data_type_int8:
+		case config_data_type_uint8:
+		case config_data_type_enum:
+			areSame = *(int8_t *)pCurrentValue == *(int8_t *)savedValue;
+			break;
+		case config_data_type_int16:
+		case config_data_type_uint16:
+			areSame = *(int16_t *)pCurrentValue == *(int16_t *)savedValue;
+			break;
+		case config_data_type_int32:
+		case config_data_type_uint32:
+			areSame = *(int32_t *)pCurrentValue == *(int32_t *)savedValue;
+			break;
+		case config_data_type_float:
+			areSame = *(float *)pCurrentValue == *(float *)savedValue;
+			break;
+		case config_data_type_string:
+			areSame = strcasecmp( (char *)pCurrentValue, (char *)savedValue ) == 0;
+			break;
+	}
+
+done:
+
+	return areSame;
+}
+
+bool currentParameterValueMatchesDefaultValue( void const * pconfig_data,
+												void const * pdefault_data,
+												config_data_point_st const * data_point )
+{
+	bool areSame = false;
+
+	static const uint32_t zeroBuffer[2] = {0};
+	static float floatZero = 0.0f;
+	void const *default_other;
+	float const *default_float;
+
+	/*
+		pconfig_data points to the actual parameter.
+		pdefault data points to the start of the configuration sturcture, so needs the dta point offset added to it.
+	*/
+
+	if (pdefault_data == NULL)
+	{
+		default_other = zeroBuffer;
+		default_float = &floatZero;
+	}
+	else
+	{
+		default_other = (char *)pdefault_data + data_point->offset_to_data_point;
+		default_float = (float *)((char *)pdefault_data + data_point->offset_to_data_point);
+	}
 
 	switch (data_point->data_type)
 	{
@@ -377,21 +453,21 @@ bool currentParameterValueMatchesDefaultValue( void const * pconfig_data,
 		case config_data_type_int8:
 		case config_data_type_uint8:
 		case config_data_type_enum:
-			areSame = *(int8_t *)pconfig_data == *(int8_t *)pdefault_data;
+			areSame = *(int8_t *)pconfig_data == *(int8_t *)default_other;
 			break;
 		case config_data_type_int16:
 		case config_data_type_uint16:
-			areSame = *(int16_t *)pconfig_data == *(int16_t *)pdefault_data;
+			areSame = *(int16_t *)pconfig_data == *(int16_t *)default_other;
 			break;
 		case config_data_type_int32:
 		case config_data_type_uint32:
-			areSame = *(int32_t *)pconfig_data == *(int32_t *)pdefault_data;
+			areSame = *(int32_t *)pconfig_data == *(int32_t *)default_other;
 			break;
 		case config_data_type_float:
-			areSame = *(float *)pconfig_data == *(float *)pdefault_data;
+			areSame = *(float *)pconfig_data == *default_float;
 			break;
 		case config_data_type_string:
-			areSame = strcasecmp( (char *)pconfig_data, (char *)pdefault_data ) == 0;
+			areSame = strcasecmp( (char *)pconfig_data, (char *)default_other ) == 0;
 			break;
 	}
 
@@ -461,11 +537,12 @@ int handleStandardCommand( run_command_data_st const * command_context,
 		{
 			if ( instance < nb_configurations )
 			{
+				unsigned int offset_to_configuration_data = (instance*configuration_size);
+
 				if ( strcmp( argv[3], "?" ) == 0 )
 				{
-					unsigned int offset_to_correct_configuration_data = (instance*configuration_size);
 
-					if ( lookupParameterPrintValue( (char *)pcfg + offset_to_correct_configuration_data,
+					if ( lookupParameterPrintValue( (char *)pcfg + offset_to_configuration_data,
 												data_points,
 												nb_data_points,
 												ParameterNameLookupCB,
@@ -478,7 +555,7 @@ int handleStandardCommand( run_command_data_st const * command_context,
 				else
 				{
 					/* write the new value */
-					if ( lookupParameterAssignValue( (char *)pcfg + (instance*configuration_size),
+					if ( lookupParameterAssignValue( (char *)pcfg + offset_to_configuration_data,
 												default_configuration,
 												data_points,
 												nb_data_points,

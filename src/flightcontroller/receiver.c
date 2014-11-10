@@ -135,7 +135,7 @@ int receiverPollHandler( poll_id_t poll_id, void *pv )
 			break;
 		}
 		case poll_id_show_configuration:
-			result = printSavedParameters( pv,
+			result = printParametersHandler( pv,
 								receiver_commands,
 								ARRAY_SIZE(receiver_commands),
 								receiver_configuration,

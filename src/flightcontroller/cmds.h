@@ -32,6 +32,10 @@ int handleStandardCommand( run_command_data_st const * command_context,
 					unsigned int const nb_data_points,
 					ParameterNameLookup ParameterNameLookupCB
 					);
+bool savedParameterValueMatchesCurrentValue( void const *psaved,
+												void const * pCurrentValue,
+												config_data_point_st const * data_point );
+
 bool currentParameterValueMatchesDefaultValue( void const * pconfig_data,
 														void const * pdefault_data,
 														config_data_point_st const * data_point );

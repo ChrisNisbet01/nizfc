@@ -1,16 +1,6 @@
 #ifndef __CONFIGURATION_COMMANDS__
 #define __CONFIGURATION_COMMANDS__
 
-typedef struct show_config_data_st
-{
-	run_command_data_st *run_command_data;
-	configuration_id_t configuration_id;
-	unsigned int instance;
-	unsigned int parameter_id;
-	config_data_types_t data_type;
-	void const * pcfg;				/* pointer to the data available after the current header */
-} show_config_data_st;
-
 int saveParameterValues( run_command_data_st const * command_context,
 					configuration_id_t configuration_id,
 					void const * pcfg,
@@ -21,7 +11,7 @@ int saveParameterValues( run_command_data_st const * command_context,
 					unsigned int const nb_data_points
 					);
 
-int printSavedParameters( void * pv,
+int printParametersHandler( void * pv,
 					command_st const *commands,
 					unsigned int nb_commands,
 					void const * pcfg,

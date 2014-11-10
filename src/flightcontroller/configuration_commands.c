@@ -20,6 +20,161 @@ static const command_st config_commands[] =
 	{ .group_id = configuration_id_show, .name = "show",    .handler = showCommand	}
 };
 
+typedef enum printConfig_t
+{
+	print_saved,		/* print anything in the saved config */
+	print_current,	/* print anythnig that differs from default */
+	print_unsaved,	/* print anything that differs from what we have saved. */
+} printConfig_t;
+
+typedef struct show_config_data_st
+{
+	run_command_data_st *run_command_data;
+	printConfig_t		whatToPrint;
+	configuration_id_t configuration_id;
+	unsigned int instance;
+	unsigned int parameter_id;
+	config_data_types_t data_type;
+	void const * pcfg;				/* pointer to the data available after the current header */
+} show_config_data_st;
+
+
+static void const * findSavedParameter( configuration_id_t const configuration_id, unsigned int const instance, unsigned int const parameter_id )
+{
+	unsigned int configuration_data_size;
+	void const * pcfg = getConfigurationData( &configuration_data_size );
+	void const *psaved = NULL;
+
+	if ( pcfg != NULL )
+	{
+		while( configuration_data_size >= sizeof(uint32_t) )
+		{
+			configuration_id_t saved_configuration_id;
+			unsigned int saved_instance;
+			unsigned int saved_parameter_id;
+			config_data_types_t saved_data_type;
+			int saved_data_length;
+
+			saved_configuration_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, GROUP );
+			saved_instance = GET_CONFIG_FIELD( *(uint32_t *)pcfg, INSTANCE );
+			saved_parameter_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_ID );
+			saved_data_type = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_TYPE );
+
+			if ( saved_configuration_id == configuration_id_reserved )	/* indicates end of config */
+				break;
+
+			if ( (saved_data_length = getLengthOfData( saved_data_type, (char *)pcfg + sizeof(uint32_t) )) < 0
+				|| (unsigned)saved_data_length > configuration_data_size - sizeof(uint32_t) )
+			{
+				goto done;
+			}
+
+			if (saved_configuration_id == configuration_id && saved_instance == instance && saved_parameter_id == parameter_id )
+			{
+				psaved = pcfg;
+				goto done;	/* found it */
+			}
+
+			/* move to next item */
+			pcfg = (char *)pcfg + sizeof(uint32_t) + saved_data_length;
+			configuration_data_size -= sizeof(uint32_t) + saved_data_length;
+
+		}
+	}
+
+done:
+	return psaved;
+}
+
+static int printUnsavedConfig( run_command_data_st *pcommand )
+{
+	int result = poll_result_error;
+	show_config_data_st show_config_data;
+
+	memset( &show_config_data, 0, sizeof show_config_data );
+	show_config_data.run_command_data = pcommand;
+	show_config_data.whatToPrint = print_unsaved;
+
+	result = pollCodeGroups( poll_id_show_configuration, &show_config_data, false );
+
+	return result;
+}
+
+static int printCurrentConfig( run_command_data_st *pcommand )
+{
+	int result = poll_result_error;
+	show_config_data_st show_config_data;
+
+	memset( &show_config_data, 0, sizeof show_config_data );
+	show_config_data.run_command_data = pcommand;
+	show_config_data.whatToPrint = print_current;
+
+	result = pollCodeGroups( poll_id_show_configuration, &show_config_data, false );
+
+	return result;
+}
+
+static int printSavedConfig( run_command_data_st *pcommand )
+{
+	int result = poll_result_error;
+
+	unsigned int configuration_data_size;
+	void const * pcfg = getConfigurationData( &configuration_data_size );
+
+	if ( pcfg != NULL )
+	{
+		show_config_data_st show_config_data;
+
+		show_config_data.run_command_data = pcommand;
+		show_config_data.whatToPrint = print_saved;
+		show_config_data.pcfg = pcfg;
+		while( configuration_data_size >= sizeof(uint32_t) )
+		{
+			int data_length;
+
+			show_config_data.configuration_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, GROUP );
+			show_config_data.instance = GET_CONFIG_FIELD( *(uint32_t *)pcfg, INSTANCE );
+			show_config_data.parameter_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_ID );
+			show_config_data.data_type = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_TYPE );
+
+			if ( show_config_data.configuration_id == configuration_id_reserved ) /* indicates end of config */
+				break;
+			show_config_data.pcfg = (char *)show_config_data.pcfg + sizeof(uint32_t);
+			configuration_data_size -= sizeof(uint32_t);
+
+			if ( (data_length = getLengthOfData( show_config_data.data_type, pcfg )) < 0 || (unsigned)data_length > configuration_data_size )
+			{
+				cliPrintf( pcommand->cliCtx, "\nError processing configuration item" );
+				cliPrintf( pcommand->cliCtx, "\ng:%d i:%d p:%d",
+							show_config_data.configuration_id,
+							show_config_data.instance,
+							show_config_data.parameter_id );
+				break;
+			}
+
+			if ( pollCodeGroups( poll_id_show_configuration, &show_config_data, false ) != poll_result_ok )
+			{
+				cliPrintf( pcommand->cliCtx, "\nUnprocessed configuration item" );
+				cliPrintf( pcommand->cliCtx, "\ng:%d i:%d p:%d",
+							show_config_data.configuration_id,
+							show_config_data.instance,
+							show_config_data.parameter_id );
+			}
+
+			/* move to next item */
+			show_config_data.pcfg = (char *)show_config_data.pcfg + data_length;
+			configuration_data_size -= data_length;
+
+		}
+
+		result = poll_result_ok;
+	}
+	else
+		cliPrintf( pcommand->cliCtx, "\nSaved configuration is invalid" );
+
+	return result;
+}
+
 static int showCommand( run_command_data_st *pcommand )
 {
 	int result = poll_result_error;
@@ -29,67 +184,22 @@ static int showCommand( run_command_data_st *pcommand )
 	if ( argc > 1 )
 	{
 		if ( strncasecmp( argv[1], "saved", strlen(argv[1]) ) == 0 )
-		{
-			unsigned int configuration_data_size;
-			void const * pcfg = getConfigurationData( &configuration_data_size );
+			result = printSavedConfig( pcommand );
+		else if ( strncasecmp( argv[1], "current", strlen(argv[1]) ) == 0 )
+			result = printCurrentConfig( pcommand );
+		else if ( strncasecmp( argv[1], "unsaved", strlen(argv[1]) ) == 0 )
+			result = printUnsavedConfig( pcommand );
+		else
+			goto done;
 
-			if ( pcfg != NULL )
-			{
-				show_config_data_st show_config_data;
-
-				show_config_data.run_command_data = pcommand;
-
-				show_config_data.pcfg = pcfg;
-				while( configuration_data_size >= sizeof(uint32_t) )
-				{
-					int data_length;
-
-					show_config_data.configuration_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, GROUP );
-					show_config_data.instance = GET_CONFIG_FIELD( *(uint32_t *)pcfg, INSTANCE );
-					show_config_data.parameter_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_ID );
-					show_config_data.data_type = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_TYPE );
-
-					if ( show_config_data.configuration_id == configuration_id_reserved ) /* indicates end of config */
-						break;
-					show_config_data.pcfg = (char *)show_config_data.pcfg + sizeof(uint32_t);
-					configuration_data_size -= sizeof(uint32_t);
-
-					if ( (data_length = getLengthOfData( show_config_data.data_type, pcfg )) < 0 || (unsigned)data_length > configuration_data_size )
-					{
-						cliPrintf( pcommand->cliCtx, "\nError processing configuration item" );
-						cliPrintf( pcommand->cliCtx, "\ng:%d i:%d p:%d",
-									show_config_data.configuration_id,
-									show_config_data.instance,
-									show_config_data.parameter_id );
-						break;
-					}
-
-					if ( pollCodeGroups( poll_id_show_configuration, &show_config_data, false ) != poll_result_ok )
-					{
-						cliPrintf( pcommand->cliCtx, "\nUnprocessed configuration item" );
-						cliPrintf( pcommand->cliCtx, "\ng:%d i:%d p:%d",
-									show_config_data.configuration_id,
-									show_config_data.instance,
-									show_config_data.parameter_id );
-					}
-
-					/* move to next item */
-					show_config_data.pcfg = (char *)show_config_data.pcfg + data_length;
-					configuration_data_size -= data_length;
-
-				}
-			}
-			else
-				cliPrintf( pcommand->cliCtx, "\nSaved configuration is invalid" );
-
-			result = poll_result_ok;
-		}
 	}
+
+done:
 
 	if ( result == poll_result_error )
 	{
-		cliPrintf( pcommand->cliCtx, "\nFormat: %s ?                                - print all parameter names", argv[0] );
-		cliPrintf( pcommand->cliCtx, "\nFormat: show <saved|running>                - print all parameter names", argv[0] );
+		cliPrintf( pcommand->cliCtx, "\nFormat: %s ?                                - show help for this command", argv[0] );
+		cliPrintf( pcommand->cliCtx, "\nFormat: %s <saved|current|unsaved>          - show configuration", argv[0] );
 	}
 	return result;
 }
@@ -181,7 +291,7 @@ int saveParameterValues( run_command_data_st const * command_context,
 
 		for ( data_point_index = 0; data_point_index < nb_data_points; data_point_index++ )
 		{
-			if (currentParameterValueMatchesDefaultValue( (char *)pcfg + offset_to_correct_configuration_data,
+			if (currentParameterValueMatchesDefaultValue( (char *)pcfg + offset_to_correct_configuration_data + data_points[data_point_index].offset_to_data_point,
 															default_configuration,
 															&data_points[data_point_index] ) == false )
 			{
@@ -203,13 +313,10 @@ done:
 	return result;
 }
 
-int printSavedParameters( void *pv,
+static int printSavedParameters( void *pv,
 					command_st const *commands,
 					unsigned int nb_commands,
-					void const * pcfg,
 					unsigned int const nb_configurations,
-					unsigned int const configuration_size,
-					void const * default_configuration,
 					config_data_point_st const * data_points,
 					unsigned int const nb_data_points,
 					char const * const * parameter_name_mappings,
@@ -224,7 +331,7 @@ int printSavedParameters( void *pv,
 	if (  (command = findCommandFromID( commands,
 										nb_commands,
 										show_config_data->configuration_id )) != NULL )
-		{
+	{
 		if ( show_config_data->instance < nb_configurations )
 		{
 			if ( show_config_data->parameter_id < nb_parameter_name_mappings )
@@ -256,6 +363,174 @@ int printSavedParameters( void *pv,
 				}
 			}
 		}
+	}
+
+	return result;
+}
+
+static int printCurrentParameters( void *pv,
+					command_st const *commands,
+					unsigned int nb_commands,
+					void const * pcfg,
+					unsigned int const nb_configurations,
+					unsigned int const configuration_size,
+					void const * default_configuration,
+					config_data_point_st const * data_points,
+					unsigned int const nb_data_points,
+					char const * const * parameter_name_mappings
+					)
+{
+	show_config_data_st * show_config_data = pv;
+	run_command_data_st *run_command_data = show_config_data->run_command_data;
+	int result = poll_result_ok;
+	unsigned int command_index;
+
+	for (command_index = 0; command_index < nb_commands; command_index++)
+	{
+		unsigned int instance;
+
+		for (instance = 0; instance < nb_configurations; instance++)
+		{
+			unsigned int data_point_instance;
+			unsigned int offset_to_correct_configuration_data = (instance*configuration_size);
+
+			for (data_point_instance = 0; data_point_instance < nb_data_points; data_point_instance++)
+			{
+				void *parameter = (char *)pcfg + offset_to_correct_configuration_data + data_points[data_point_instance].offset_to_data_point;
+
+				if (currentParameterValueMatchesDefaultValue(parameter, default_configuration, &data_points[data_point_instance] ) == false)
+				{
+					cliPrintf( run_command_data->cliCtx,
+								"\n%s %d %s ",
+								commands[command_index].name,
+								instance,
+								parameter_name_mappings[data_points[data_point_instance].parameter_id]);
+					printParameterValue( parameter,
+											&data_points[data_point_instance],
+											run_command_data->cliCtx );
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
+static int printUnsavedParameters( void *pv,
+					command_st const *commands,
+					unsigned int nb_commands,
+					void const * pcfg,
+					unsigned int const nb_configurations,
+					unsigned int const configuration_size,
+					void const * default_configuration,
+					config_data_point_st const * data_points,
+					unsigned int const nb_data_points,
+					char const * const * parameter_name_mappings
+					)
+{
+	show_config_data_st * show_config_data = pv;
+	run_command_data_st *run_command_data = show_config_data->run_command_data;
+	int result = poll_result_ok;
+	unsigned int command_index;
+
+	for (command_index = 0; command_index < nb_commands; command_index++)
+	{
+		unsigned int instance;
+
+		for (instance = 0; instance < nb_configurations; instance++)
+		{
+			unsigned int data_point_instance;
+			unsigned int offset_to_correct_configuration_data = (instance*configuration_size);
+
+			for (data_point_instance = 0; data_point_instance < nb_data_points; data_point_instance++)
+			{
+				void const * parameter = (char *)pcfg + offset_to_correct_configuration_data + data_points[data_point_instance].offset_to_data_point;
+				void const * psaved = findSavedParameter( commands[command_index].group_id, instance, data_points[data_point_instance].parameter_id );
+				bool printParameter = false;
+				/*
+					if in saved config and value doesn't match, or if non-default and not in saved config
+				*/
+				if ( psaved == NULL )
+				{
+					if (currentParameterValueMatchesDefaultValue(parameter, default_configuration, &data_points[data_point_instance] ) == false)
+						printParameter = true;
+				}
+				else if (savedParameterValueMatchesCurrentValue( psaved, parameter, &data_points[data_point_instance] ) == false)
+				{
+					printParameter = true;
+				}
+				if ( printParameter == true )
+				{
+					cliPrintf( run_command_data->cliCtx,
+								"\n%s %d %s ",
+								commands[command_index].name,
+								instance,
+								parameter_name_mappings[data_points[data_point_instance].parameter_id]);
+					printParameterValue( parameter,
+											&data_points[data_point_instance],
+											run_command_data->cliCtx );
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
+
+int printParametersHandler( void *pv,
+					command_st const *commands,
+					unsigned int nb_commands,
+					void const * pcfg,
+					unsigned int const nb_configurations,
+					unsigned int const configuration_size,
+					void const * default_configuration,
+					config_data_point_st const * data_points,
+					unsigned int const nb_data_points,
+					char const * const * parameter_name_mappings,
+					unsigned int const nb_parameter_name_mappings
+					)
+{
+	show_config_data_st * show_config_data = pv;
+	int result = poll_result_error;
+
+	switch (show_config_data->whatToPrint)
+	{
+		case print_saved:
+			result = printSavedParameters( pv,
+											commands,
+											nb_commands,
+											nb_configurations,
+											data_points,
+											nb_data_points,
+											parameter_name_mappings,
+											nb_parameter_name_mappings );
+			break;
+		case print_current:	/* anything that isn't default */
+			result = printCurrentParameters( pv,
+												commands,
+												nb_commands,
+												pcfg,
+												nb_configurations,
+												configuration_size,
+												default_configuration,
+												data_points,
+												nb_data_points,
+												parameter_name_mappings );
+			break;
+		case print_unsaved:	/* unsaved changes */
+			result = printUnsavedParameters( pv,
+												commands,
+												nb_commands,
+												pcfg,
+												nb_configurations,
+												configuration_size,
+												default_configuration,
+												data_points,
+												nb_data_points,
+												parameter_name_mappings );
+		default:
+			break;
 	}
 
 	return result;
