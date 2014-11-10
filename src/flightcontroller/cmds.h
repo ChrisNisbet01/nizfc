@@ -28,24 +28,24 @@ int handleStandardCommand( run_command_data_st const * command_context,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					parameterConfig_st const * data_points,
-					unsigned int const nb_data_points,
+					parameterConfig_st const * parameterConfigs,
+					unsigned int const nbParameterConfigs,
 					ParameterNameLookup ParameterNameLookupCB
 					);
 bool savedParameterValueMatchesCurrentValue( void const *psaved,
 												void const * pCurrentValue,
-												parameterConfig_st const * data_point );
+												parameterConfig_st const * parameterConfig );
 
 bool currentParameterValueMatchesDefaultValue( void const * pconfig_data,
 														void const * pdefault_data,
-														parameterConfig_st const * data_point );
+														parameterConfig_st const * parameterConfig );
 
 command_st const *findCommandFromID( command_st const *commands,
 										unsigned int nb_commands,
 										configuration_id_t command_id );
 
-parameterConfig_st const * findDataPointFromParameterID( parameterConfig_st const * data_points,
-																	unsigned int const nb_data_points,
+parameterConfig_st const * findDataPointFromParameterID( parameterConfig_st const * parameterConfigs,
+																	unsigned int const nbParameterConfigs,
 																	unsigned int parameterID );
 
 void printParameterValue( void const * pconfig_data,

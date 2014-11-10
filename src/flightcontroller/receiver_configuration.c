@@ -51,14 +51,14 @@ static char const * const receiver_parameter_name_mappings[] =
 	[receiver_parameter_id_mode] = "mode"
 };
 
-static const parameterConfig_st receiver_config_data_points[] =
+static const parameterConfig_st receiver_config_parameterConfigs[] =
 {
 	{
 	.parameter_id = receiver_parameter_id_mode,
 	.data_type = config_data_type_enum,
-	.offset_to_data_point = offsetof(receiver_configuration_st, mode),
-	.type_specific.enum_data.enum_mappings = receiver_mode_mappings,
-	.type_specific.enum_data.num_enum_mappings = ARRAY_SIZE(receiver_mode_mappings)
+	.offsetToData = offsetof(receiver_configuration_st, mode),
+	.type_specific.enum_data.mappings = receiver_mode_mappings,
+	.type_specific.enum_data.num_mappings = ARRAY_SIZE(receiver_mode_mappings)
 	}
 };
 
@@ -83,8 +83,8 @@ static int receiver_command( run_command_data_st *pcommand )
 							ARRAY_SIZE(receiver_configuration),
 							sizeof(receiver_configuration[0]),
 							&default_receiver_configuration,
-							receiver_config_data_points,
-							ARRAY_SIZE(receiver_config_data_points),
+							receiver_config_parameterConfigs,
+							ARRAY_SIZE(receiver_config_parameterConfigs),
 							receiverParameterNameLookup);
 }
 
@@ -121,8 +121,8 @@ int receiverPollHandler( poll_id_t poll_id, void *pv )
 								ARRAY_SIZE(receiver_configuration),
 								sizeof(receiver_configuration[0]),
 								&default_receiver_configuration,
-								receiver_config_data_points,
-								ARRAY_SIZE(receiver_config_data_points) );
+								receiver_config_parameterConfigs,
+								ARRAY_SIZE(receiver_config_parameterConfigs) );
 			break;
 		}
 		case poll_id_show_configuration:
@@ -133,8 +133,8 @@ int receiverPollHandler( poll_id_t poll_id, void *pv )
 								ARRAY_SIZE(receiver_configuration),
 								sizeof(receiver_configuration[0]),
 								&default_receiver_configuration,
-								receiver_config_data_points,
-								ARRAY_SIZE(receiver_config_data_points),
+								receiver_config_parameterConfigs,
+								ARRAY_SIZE(receiver_config_parameterConfigs),
 								receiver_parameter_name_mappings
 								);
 			break;
@@ -145,8 +145,8 @@ int receiverPollHandler( poll_id_t poll_id, void *pv )
 								receiver_configuration,
 								ARRAY_SIZE(receiver_configuration),
 								sizeof(receiver_configuration[0]),
-								receiver_config_data_points,
-								ARRAY_SIZE(receiver_config_data_points)
+								receiver_config_parameterConfigs,
+								ARRAY_SIZE(receiver_config_parameterConfigs)
 								);
 			break;
 		default:

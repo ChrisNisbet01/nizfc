@@ -45,21 +45,21 @@ typedef struct enum_mapping_st
 	int8_t		value;
 } enum_mapping_st;
 
-typedef struct enum_data_point_st
+typedef struct enumDataType_st
 {
-		enum_mapping_st         const * enum_mappings;			/* pointer to table of enums vs names */
-		uint_fast8_t			num_enum_mappings;
-} enum_data_point_st;
+		enum_mapping_st         const * mappings;			/* pointer to table of enums vs names */
+		uint_fast8_t			num_mappings;
+} enumDataType_st;
 
 typedef struct parameterConfig_st
 {
 	unsigned int			parameter_id;		/* configuration specific ID. Used to obtain name and when storing to FLASH */
 	config_data_types_t		data_type;
-	uint_fast8_t			offset_to_data_point;
+	uint_fast8_t			offsetToData;
 	union
 	{
 		uint_fast8_t		max_string_length;	/* used when data_type is string */
-		enum_data_point_st  enum_data;
+		enumDataType_st     enum_data;
 	} type_specific;
 
 } parameterConfig_st;

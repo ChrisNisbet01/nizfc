@@ -24,21 +24,21 @@ static command_st const * findCommand( command_st const * commands, uint32_t nb_
 	return NULL;
 }
 
-static void printParameterName( parameterConfig_st const * data_point, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
+static void printParameterName( parameterConfig_st const * parameterConfig, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
 {
-	cliPrintf( cliCtx, "%20s", ParameterNameLookupCB(data_point->parameter_id));
+	cliPrintf( cliCtx, "%20s", ParameterNameLookupCB(parameterConfig->parameter_id));
 }
 
-static void printParameterNames( parameterConfig_st const * data_points, unsigned int nb_data_points, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
+static void printParameterNames( parameterConfig_st const * parameterConfigs, unsigned int nbParameterConfigs, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
 {
 	unsigned int index;
 
 	cliPrintf( cliCtx, "\r\nparameters are:" );
 
-	for (index=0; index < nb_data_points; index++ )
+	for (index=0; index < nbParameterConfigs; index++ )
 	{
 		cliPrintf( cliCtx, "\n" );
-		printParameterName( &data_points[index], ParameterNameLookupCB, cliCtx );
+		printParameterName( &parameterConfigs[index], ParameterNameLookupCB, cliCtx );
 	}
 }
 
@@ -149,8 +149,8 @@ void printParameterValue( void const * pconfig_data,
 		{
 			int8_t value = *(int8_t *)pconfig_data;
 			char const * mapping = lookupEnumValue( value,
-												parameterConfig->type_specific.enum_data.enum_mappings,
-												parameterConfig->type_specific.enum_data.num_enum_mappings );
+												parameterConfig->type_specific.enum_data.mappings,
+												parameterConfig->type_specific.enum_data.num_mappings );
 
 			cliPrintf(cliCtx, "%s", (mapping != NULL) ? mapping : "???" );
 			break;
@@ -325,8 +325,8 @@ static bool assignParameterValue( void * const pdata,
 		}
 		else
 		{
-			pdefault_data = (char const *)pdefault_configuration + parameterConfig->offset_to_data_point;
-			default_float = (float *)((char const *)pdefault_configuration + parameterConfig->offset_to_data_point);
+			pdefault_data = (char const *)pdefault_configuration + parameterConfig->offsetToData;
+			default_float = (float *)((char const *)pdefault_configuration + parameterConfig->offsetToData);
 		}
 
 		switch( parameterConfig->data_type )
@@ -408,16 +408,16 @@ static bool assignParameterValue( void * const pdata,
 			{
 				uint8_t enum_value;
 				bool found_mapping = lookupEnumValueByName( value,
-														parameterConfig->type_specific.enum_data.enum_mappings,
-														parameterConfig->type_specific.enum_data.num_enum_mappings,
+														parameterConfig->type_specific.enum_data.mappings,
+														parameterConfig->type_specific.enum_data.num_mappings,
 														&enum_value );
 
 				if ( found_mapping == false )
 				{
 					/* see if we can find a matching enum by value */
 					if (lookupEnumValue( val,
-									parameterConfig->type_specific.enum_data.enum_mappings,
-									parameterConfig->type_specific.enum_data.num_enum_mappings ) != NULL)
+									parameterConfig->type_specific.enum_data.mappings,
+									parameterConfig->type_specific.enum_data.num_mappings ) != NULL)
 					{
 						enum_value = val;
 						found_mapping = true;
@@ -437,18 +437,18 @@ static bool assignParameterValue( void * const pdata,
 }
 
 
-static parameterConfig_st const * lookupParameterByName( parameterConfig_st const * const data_points,
-																uint32_t nb_data_points,
+static parameterConfig_st const * lookupParameterByName( parameterConfig_st const * const parameterConfigs,
+																uint32_t nbParameterConfigs,
 																ParameterNameLookup ParameterNameLookupCB,
 																char const * parameter_name)
 {
 	unsigned int index;
 
-	for (index = 0; index < nb_data_points; index++)
+	for (index = 0; index < nbParameterConfigs; index++)
 	{
-		if (strncasecmp( parameter_name, ParameterNameLookupCB(data_points[index].parameter_id), strlen(parameter_name) ) == 0 )
+		if (strncasecmp( parameter_name, ParameterNameLookupCB(parameterConfigs[index].parameter_id), strlen(parameter_name) ) == 0 )
 		{
-			return &data_points[index];
+			return &parameterConfigs[index];
 		}
 	}
 
@@ -456,20 +456,20 @@ static parameterConfig_st const * lookupParameterByName( parameterConfig_st cons
 }
 
 static bool lookupParameterPrintValue( void *pdata,
-						parameterConfig_st const * const data_points,
-						uint8_t nb_data_points,
+						parameterConfig_st const * const parameterConfigs,
+						uint8_t nbParameterConfigs,
 						ParameterNameLookup ParameterNameLookupCB,
 						char const * parameter_name,
 						void *cliCtx
 						)
 {
-	parameterConfig_st const *data_point;
+	parameterConfig_st const *parameterConfig;
 	bool printed_parameter = false;
 
-	data_point = lookupParameterByName( data_points, nb_data_points, ParameterNameLookupCB, parameter_name );
-	if (data_point != NULL)
+	parameterConfig = lookupParameterByName( parameterConfigs, nbParameterConfigs, ParameterNameLookupCB, parameter_name );
+	if (parameterConfig != NULL)
 	{
-		printParameterValue( (char *)pdata + data_point->offset_to_data_point, data_point, cliCtx );
+		printParameterValue( (char *)pdata + parameterConfig->offsetToData, parameterConfig, cliCtx );
 		printed_parameter = true;
 	}
 
@@ -478,19 +478,19 @@ static bool lookupParameterPrintValue( void *pdata,
 
 static bool lookupParameterAssignValue( void *pcfg,
 							void const * pdefault_configuration,
-							parameterConfig_st const * const data_points,
-							uint8_t nb_data_points,
+							parameterConfig_st const * const parameterConfigs,
+							uint8_t nbParameterConfigs,
 							ParameterNameLookup ParameterNameLookupCB,
 							char * parameter_name,
 							char *parameter_value)
 {
-	parameterConfig_st const *data_point;
+	parameterConfig_st const *parameterConfig;
 	bool wrote_parameter = false;
 
-	data_point = lookupParameterByName( data_points, nb_data_points, ParameterNameLookupCB, parameter_name );
-	if (data_point != NULL)
+	parameterConfig = lookupParameterByName( parameterConfigs, nbParameterConfigs, ParameterNameLookupCB, parameter_name );
+	if (parameterConfig != NULL)
 	{
-		wrote_parameter = assignParameterValue( (char *)pcfg + data_point->offset_to_data_point, pdefault_configuration, data_point, parameter_value );
+		wrote_parameter = assignParameterValue( (char *)pcfg + parameterConfig->offsetToData, pdefault_configuration, parameterConfig, parameter_value );
 	}
 
 	return wrote_parameter;
@@ -498,7 +498,7 @@ static bool lookupParameterAssignValue( void *pcfg,
 
 bool savedParameterValueMatchesCurrentValue( void const *psaved,
 												void const * pCurrentValue,
-												parameterConfig_st const * data_point )
+												parameterConfig_st const * parameterConfig )
 {
 	bool areSame = false;
 	config_data_types_t data_type;
@@ -507,7 +507,7 @@ bool savedParameterValueMatchesCurrentValue( void const *psaved,
 	data_type = GET_CONFIG_FIELD( *(uint32_t *)psaved, PARAMETER_TYPE );
 	savedValue = (char *)psaved + sizeof(uint32_t);
 
-	if (data_type != data_point->data_type)
+	if (data_type != parameterConfig->data_type)
 	{
 		goto done;
 	}
@@ -543,7 +543,7 @@ done:
 
 bool currentParameterValueMatchesDefaultValue( void const * pconfig_data,
 												void const * pdefault_data,
-												parameterConfig_st const * data_point )
+												parameterConfig_st const * parameterConfig )
 {
 	bool areSame = false;
 
@@ -564,11 +564,11 @@ bool currentParameterValueMatchesDefaultValue( void const * pconfig_data,
 	}
 	else
 	{
-		default_other = (char *)pdefault_data + data_point->offset_to_data_point;
-		default_float = (float *)((char *)pdefault_data + data_point->offset_to_data_point);
+		default_other = (char *)pdefault_data + parameterConfig->offsetToData;
+		default_float = (float *)((char *)pdefault_data + parameterConfig->offsetToData);
 	}
 
-	switch (data_point->data_type)
+	switch (parameterConfig->data_type)
 	{
 		case config_data_type_boolean:
 		case config_data_type_int8:
@@ -609,8 +609,8 @@ int handleStandardCommand( run_command_data_st const * command_context,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					parameterConfig_st const * data_points,
-					unsigned int const nb_data_points,
+					parameterConfig_st const * parameterConfigs,
+					unsigned int const nbParameterConfigs,
 					ParameterNameLookup ParameterNameLookupCB
 					)
 {
@@ -622,7 +622,7 @@ int handleStandardCommand( run_command_data_st const * command_context,
 	if ( argc == 2 && strcmp( argv[1], "?" ) == 0 )
 	{
 		/* display all parameter names */
-		printParameterNames( data_points, nb_data_points, ParameterNameLookupCB, cliCtx );
+		printParameterNames( parameterConfigs, nbParameterConfigs, ParameterNameLookupCB, cliCtx );
 		result = poll_result_ok;
 	}
 	else if (argc == 3 && strcmp( argv[2], "?" ) == 0 )
@@ -634,15 +634,15 @@ int handleStandardCommand( run_command_data_st const * command_context,
 		{
 			unsigned int index;
 
-			for (index=0; index < nb_data_points; index++)
+			for (index=0; index < nbParameterConfigs; index++)
 			{
-				char const * parameter_name = ParameterNameLookupCB(data_points[index].parameter_id);
+				char const * parameter_name = ParameterNameLookupCB(parameterConfigs[index].parameter_id);
 				unsigned int offset_to_correct_configuration_data = (instance*configuration_size);
 
 				cliPrintf( cliCtx, "\n%20s: ", parameter_name );
 				(void)lookupParameterPrintValue( (char *)pcfg + offset_to_correct_configuration_data,
-											data_points,
-											nb_data_points,
+											parameterConfigs,
+											nbParameterConfigs,
 											ParameterNameLookupCB,
 											parameter_name,
 											cliCtx );
@@ -664,8 +664,8 @@ int handleStandardCommand( run_command_data_st const * command_context,
 				{
 
 					if ( lookupParameterPrintValue( (char *)pcfg + offset_to_configuration_data,
-												data_points,
-												nb_data_points,
+												parameterConfigs,
+												nbParameterConfigs,
 												ParameterNameLookupCB,
 												argv[2],
 												cliCtx ) == true )
@@ -678,8 +678,8 @@ int handleStandardCommand( run_command_data_st const * command_context,
 					/* write the new value */
 					if ( lookupParameterAssignValue( (char *)pcfg + offset_to_configuration_data,
 												default_configuration,
-												data_points,
-												nb_data_points,
+												parameterConfigs,
+												nbParameterConfigs,
 												ParameterNameLookupCB,
 												argv[2],
 												argv[3] ) == true )
@@ -750,18 +750,18 @@ command_st const *findCommandFromID( command_st const *commands,
 	return NULL;
 }
 
-parameterConfig_st const * findDataPointFromParameterID( parameterConfig_st const * data_points,
-																	unsigned int const nb_data_points,
+parameterConfig_st const * findDataPointFromParameterID( parameterConfig_st const * parameterConfigs,
+																	unsigned int const nbParameterConfigs,
 																	unsigned int parameterID )
 {
-	unsigned int data_point_index;
+	unsigned int parameterConfig_index;
 
 	/* find the data point with the matching parameter ID */
-	for ( data_point_index = 0; data_point_index < nb_data_points; data_point_index++ )
+	for ( parameterConfig_index = 0; parameterConfig_index < nbParameterConfigs; parameterConfig_index++ )
 	{
-		if ( data_points[data_point_index].parameter_id == parameterID )
+		if ( parameterConfigs[parameterConfig_index].parameter_id == parameterID )
 		{
-			return &data_points[data_point_index];
+			return &parameterConfigs[parameterConfig_index];
 		}
 	}
 
