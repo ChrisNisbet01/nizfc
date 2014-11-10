@@ -491,7 +491,7 @@ int runCommandHandler( command_st const * commands, uint32_t nb_commands, void *
 	if ( (pcmd=findCommand(commands, nb_commands, pcmd_data->argv[0])) != NULL )
 		result = pcmd->handler( pcmd_data );
 	else
-		result = -1;
+		result = poll_result_error;
 
 	return result;
 }

@@ -69,7 +69,7 @@ static int show_command( run_command_data_st *pcommand )
 
 	if ( argc > 1 )
 	{
-		if ( strcasecmp( argv[1], "saved" ) == 0 )
+		if ( strncasecmp( argv[1], "saved", strlen(argv[1]) ) == 0 )
 		{
 			unsigned int configuration_data_size;
 			void const * pcfg = getConfigurationData( &configuration_data_size );
@@ -85,7 +85,6 @@ static int show_command( run_command_data_st *pcommand )
 				{
 					int data_length;
 
-					cliPrintf( pcommand->cliCtx, "\nsize %d", configuration_data_size );
 					show_config_data.configuration_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, GROUP );
 					show_config_data.instance = GET_CONFIG_FIELD( *(uint32_t *)pcfg, INSTANCE );
 					show_config_data.parameter_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_ID );
@@ -123,14 +122,19 @@ static int show_command( run_command_data_st *pcommand )
 			}
 			else
 				cliPrintf( pcommand->cliCtx, "\nSaved configuration is invalid" );
+
+			result = poll_result_ok;
 		}
 	}
 
-	result = poll_result_ok;
-
-done:
+	if ( result == poll_result_error )
+	{
+		cliPrintf( pcommand->cliCtx, "\nFormat: %s ?                                - print all parameter names", argv[0] );
+		cliPrintf( pcommand->cliCtx, "\nFormat: show <saved|running>                - print all parameter names", argv[0] );
+	}
 	return result;
 }
+
 /*
 	save_command:
 	A command to save all configuration.
@@ -339,10 +343,6 @@ int show_configuration( void *pv,
 {
 	show_config_data_st * show_config_data = pv;
 	run_command_data_st *run_command_data = show_config_data->run_command_data;
-	/*
-		For each data point in each configuration, we write out the current value,
-		but only if it differs from the default value.
-	*/
 	int result = poll_result_error;
 	command_st const *command;
 
@@ -382,8 +382,6 @@ int show_configuration( void *pv,
 			}
 		}
 	}
-
-done:
 
 	return result;
 }
