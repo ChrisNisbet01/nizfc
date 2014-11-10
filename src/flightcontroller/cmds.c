@@ -187,7 +187,6 @@ static bool assign_configuration_data_point( void * const pdata,
 {
 	bool wrote_parameter_value = false;
 	void *pconfig_data = (char *)pdata + pconfig->offset_to_data_point;
-	long val = strtol(value, NULL, 0);
 	static uint32_t const zero = 0;
 
 	if ( strcmp( value, "!" ) == 0 )	/* write default value to current value */
@@ -228,6 +227,8 @@ static bool assign_configuration_data_point( void * const pdata,
 	}
 	else
 	{
+		long val = strtol(value, NULL, 0);
+
 		switch( pconfig->data_type )
 		{
 			case config_data_type_boolean:
@@ -259,7 +260,7 @@ static bool assign_configuration_data_point( void * const pdata,
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_uint32:
-				*(uint32_t *)pconfig_data = val;
+				*(uint32_t *)pconfig_data = strtoul(value, NULL, 0);
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_float:
@@ -384,13 +385,13 @@ int handleStandardCommand( run_command_data_st const * command_context,
 	void * const cliCtx = command_context->cliCtx;
 	int const argc = command_context->argc;
 	char * * const argv = command_context->argv;
-	int result = -1;
+	int result = poll_result_error;
 
 	if ( argc == 2 && strcmp( argv[1], "?" ) == 0 )
 	{
 		/* display all parameter names */
 		print_parameter_names( data_points, nb_data_points, ParameterNameLookupCB, cliCtx );
-		result = 0;
+		result = poll_result_ok;
 	}
 	else if (argc == 3 && strcmp( argv[2], "?" ) == 0 )
 	{
@@ -414,7 +415,7 @@ int handleStandardCommand( run_command_data_st const * command_context,
 											parameter_name,
 											cliCtx );
 			}
-			result = 0;
+			result = poll_result_ok;
 		}
 	}
 	else if ( argc > 3 )
@@ -436,7 +437,7 @@ int handleStandardCommand( run_command_data_st const * command_context,
 												argv[2],
 												cliCtx ) == true )
 					{
-						result = 0;
+						result = poll_result_ok;
 					}
 				}
 				else
@@ -450,7 +451,7 @@ int handleStandardCommand( run_command_data_st const * command_context,
 												argv[2],
 												argv[3] ) == true )
 					{
-						result = 0;
+						result = poll_result_ok;
 					}
 				}
 			}

@@ -67,7 +67,7 @@ typedef enum receiver_parameter_id_t
 } receiver_parameter_id_t;
 
 
-static const char * receiver_parameter_name_mappings[] =
+static char const * const receiver_parameter_name_mappings[] =
 {
 	[receiver_parameter_id_mode] = "mode"
 };
@@ -145,7 +145,7 @@ int receiver_poll_handler( poll_id_t poll_id, void *pv )
 								receiver_config_data_points,
 								ARRAY_SIZE(receiver_config_data_points),
 								receiver_parameter_name_mappings,
-								ARRAY_SIZE(receiver_parameter_name_mappings),
+								ARRAY_SIZE(receiver_parameter_name_mappings)
 								);
 			break;
 		default:

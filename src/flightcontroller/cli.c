@@ -184,7 +184,7 @@ void cliHandleNewChar( void *pv, char const ch )
 			command_result = runCommand( argc, pctx->commandArgs, pctx );
 			switch (command_result)
 			{
-				case 0:
+				case poll_result_ok:
 					cliPrintf( pctx, "\n%s", cliOK );
 					break;
 				default:

@@ -243,7 +243,7 @@ int getConfigurationSize( void )
 		goto done;
 
 	config_header_st *header = (config_header_st *)CONFIG_START_ADDRESS;
-	configurationSize = header->length;
+	configurationSize = header->length - sizeof *header;
 
 done:
 
@@ -259,7 +259,7 @@ void const * getConfigurationData( unsigned int *data_size )
 		goto done;
 
 	configuration_data = header + 1;
-	*data_size = header->length;
+	*data_size = header->length - sizeof *header;
 
 	/*
 		Note that configuration data length may be 0.

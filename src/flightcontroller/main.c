@@ -470,6 +470,30 @@ void main_task( void *pv )
 	}
 }
 
+void cli_task( void *pv )
+{
+	UNUSED(pv);
+
+	debug_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx );
+	if ( debug_uart != NULL )
+		pcli = initCli( uartPutChar );
+
+	while (1)
+	{
+		if ( debug_uart != NULL )
+		{
+			// TODO: pend on new data
+			while ( uartRxReady( debug_uart ) )
+			{
+				uint8_t ch;
+
+				ch = uartReadChar( debug_uart );
+				cliHandleNewChar( pcli, ch );
+			}
+		}
+	}
+}
+
 int main(void)
 {
 	WWDG_DeInit();
