@@ -235,7 +235,7 @@ done:
 static bool writeParameterToFlash( configuration_id_t configuration_id,
 								unsigned int instance,
 								void const * pcfg,
-								config_data_point_st const * data_point )
+								parameterConfig_st const * data_point )
 {
 	bool saved_data_point = false;
 	int data_length;
@@ -268,7 +268,7 @@ int saveParameterValues( run_command_data_st const * command_context,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points
 					)
 {
@@ -312,7 +312,7 @@ static int printSavedParameters( void *pv,
 					command_st const *commands,
 					unsigned int nb_commands,
 					unsigned int const nb_configurations,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points,
 					char const * const * parameter_name_mappings
 					)
@@ -328,7 +328,7 @@ static int printSavedParameters( void *pv,
 	{
 		if ( show_config_data->instance < nb_configurations )
 		{
-			config_data_point_st const * data_point;
+			parameterConfig_st const * data_point;
 
 			if ( (data_point=findDataPointFromParameterID( data_points,
 															nb_data_points,
@@ -361,7 +361,7 @@ static int printCurrentParameters( void *pv,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points,
 					char const * const * parameter_name_mappings
 					)
@@ -409,7 +409,7 @@ static int printUnsavedParameters( void *pv,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points,
 					char const * const * parameter_name_mappings
 					)
@@ -471,7 +471,7 @@ int printParametersHandler( void *pv,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points,
 					char const * const * parameter_name_mappings)
 {
@@ -534,7 +534,7 @@ int loadParametersHandler( void *pv,
 					void const * pcfg,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points
 					)
 {
@@ -548,7 +548,7 @@ int loadParametersHandler( void *pv,
 	{
 		if ( load_config_data->instance < nb_configurations )
 		{
-			config_data_point_st const * data_point;
+			parameterConfig_st const * data_point;
 
 			if ( (data_point=findDataPointFromParameterID( data_points,
 															nb_data_points,

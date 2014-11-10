@@ -51,7 +51,7 @@ static char const * const receiver_parameter_name_mappings[] =
 	[receiver_parameter_id_mode] = "mode"
 };
 
-static const config_data_point_st receiver_config_data_points[] =
+static const parameterConfig_st receiver_config_data_points[] =
 {
 	{
 	.parameter_id = receiver_parameter_id_mode,

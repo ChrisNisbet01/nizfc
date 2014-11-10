@@ -51,7 +51,7 @@ typedef struct enum_data_point_st
 		uint_fast8_t			num_enum_mappings;
 } enum_data_point_st;
 
-typedef struct config_data_point_st
+typedef struct parameterConfig_st
 {
 	unsigned int			parameter_id;		/* configuration specific ID. Used to obtain name and when storing to FLASH */
 	config_data_types_t		data_type;
@@ -62,7 +62,7 @@ typedef struct config_data_point_st
 		enum_data_point_st  enum_data;
 	} type_specific;
 
-} config_data_point_st;
+} parameterConfig_st;
 
 /* definitions for extracting fields out of the config header */
 #define CONFIG_GROUP_MASK				0x0fe00000	/* 7 bits */

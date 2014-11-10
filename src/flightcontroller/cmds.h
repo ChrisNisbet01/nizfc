@@ -28,30 +28,30 @@ int handleStandardCommand( run_command_data_st const * command_context,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points,
 					ParameterNameLookup ParameterNameLookupCB
 					);
 bool savedParameterValueMatchesCurrentValue( void const *psaved,
 												void const * pCurrentValue,
-												config_data_point_st const * data_point );
+												parameterConfig_st const * data_point );
 
 bool currentParameterValueMatchesDefaultValue( void const * pconfig_data,
 														void const * pdefault_data,
-														config_data_point_st const * data_point );
+														parameterConfig_st const * data_point );
 
 command_st const *findCommandFromID( command_st const *commands,
 										unsigned int nb_commands,
 										configuration_id_t command_id );
 
-config_data_point_st const * findDataPointFromParameterID( config_data_point_st const * data_points,
+parameterConfig_st const * findDataPointFromParameterID( parameterConfig_st const * data_points,
 																	unsigned int const nb_data_points,
 																	unsigned int parameterID );
 
 void printParameterValue( void const * pconfig_data,
-											config_data_point_st const * pconfig,
+											parameterConfig_st const * parameterConfig,
 											void *printfpv );
 
-bool assignSavedParameterValue( void const * const saved_data, config_data_types_t saved_data_type, void * const parameter, config_data_point_st const * const pconfig );
+bool assignSavedParameterValue( void const * const saved_data, config_data_types_t saved_data_type, void * const parameter, parameterConfig_st const * const parameterConfig );
 
 #endif /* __CMDS_H__ */

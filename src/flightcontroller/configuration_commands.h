@@ -7,7 +7,7 @@ int saveParameterValues( run_command_data_st const * command_context,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points
 					);
 
@@ -18,7 +18,7 @@ int printParametersHandler( void * pv,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points,
 					char const * const * parameter_name_mappings
 					);
@@ -29,7 +29,7 @@ int loadParametersHandler( void *pv,
 					void const * pcfg,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points
 					);
 

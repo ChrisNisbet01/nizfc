@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include <utils.h>
 #include <configuration.h>
 #include <cmds.h>
@@ -23,12 +24,12 @@ static command_st const * findCommand( command_st const * commands, uint32_t nb_
 	return NULL;
 }
 
-static void printParameterName( config_data_point_st const * data_point, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
+static void printParameterName( parameterConfig_st const * data_point, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
 {
 	cliPrintf( cliCtx, "%20s", ParameterNameLookupCB(data_point->parameter_id));
 }
 
-static void printParameterNames( config_data_point_st const * data_points, unsigned int nb_data_points, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
+static void printParameterNames( parameterConfig_st const * data_points, unsigned int nb_data_points, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
 {
 	unsigned int index;
 
@@ -74,11 +75,11 @@ static bool lookupEnumValueByName( char const * const name, enum_mapping_st cons
 
 
 void printParameterValue( void const * pconfig_data,
-											config_data_point_st const * pconfig,
+											parameterConfig_st const * parameterConfig,
 											void *cliCtx )
 {
 
-	switch( pconfig->data_type )
+	switch( parameterConfig->data_type )
 	{
 		case config_data_type_boolean:
 		{
@@ -148,8 +149,8 @@ void printParameterValue( void const * pconfig_data,
 		{
 			int8_t value = *(int8_t *)pconfig_data;
 			char const * mapping = lookupEnumValue( value,
-												pconfig->type_specific.enum_data.enum_mappings,
-												pconfig->type_specific.enum_data.num_enum_mappings );
+												parameterConfig->type_specific.enum_data.enum_mappings,
+												parameterConfig->type_specific.enum_data.num_enum_mappings );
 
 			cliPrintf(cliCtx, "%s", (mapping != NULL) ? mapping : "???" );
 			break;
@@ -182,7 +183,10 @@ static bool isValueTrue( char const * const value )
 	return false;
 }
 
-bool assignSavedParameterValue( void const * const saved_data, config_data_types_t saved_data_type, void * const parameter, config_data_point_st const * const pconfig )
+bool assignSavedParameterValue( void const * const saved_data,
+								config_data_types_t saved_data_type,
+								void * const parameter,
+								parameterConfig_st const * const parameterConfig )
 {
 	bool assigned = true;
 	/*
@@ -219,7 +223,7 @@ bool assignSavedParameterValue( void const * const saved_data, config_data_types
 		default:
 			break;
 	}
-	switch( pconfig->data_type )
+	switch( parameterConfig->data_type )
 	{
 		case config_data_type_boolean:
 		case config_data_type_int8:
@@ -288,7 +292,7 @@ bool assignSavedParameterValue( void const * const saved_data, config_data_types
 			break;
 		case config_data_type_string:
 			if (saved_data_type == config_data_type_string)
-				strlcpy( (char *)parameter, saved_data, pconfig->type_specific.max_string_length );
+				strlcpy( (char *)parameter, saved_data, parameterConfig->type_specific.max_string_length );
 			else	/* string */
 			{
 				/* do itoa() or something? */
@@ -301,7 +305,7 @@ bool assignSavedParameterValue( void const * const saved_data, config_data_types
 
 static bool assignParameterValue( void * const pdata,
 												void const * const pdefault_configuration,
-												config_data_point_st const * const pconfig,
+												parameterConfig_st const * const parameterConfig,
 												char const * const value )
 {
 	bool wrote_parameter_value = false;
@@ -321,11 +325,11 @@ static bool assignParameterValue( void * const pdata,
 		}
 		else
 		{
-			pdefault_data = (char const *)pdefault_configuration + pconfig->offset_to_data_point;
-			default_float = (float *)((char const *)pdefault_configuration + pconfig->offset_to_data_point);
+			pdefault_data = (char const *)pdefault_configuration + parameterConfig->offset_to_data_point;
+			default_float = (float *)((char const *)pdefault_configuration + parameterConfig->offset_to_data_point);
 		}
 
-		switch( pconfig->data_type )
+		switch( parameterConfig->data_type )
 		{
 			case config_data_type_boolean:
 			case config_data_type_int8:
@@ -349,7 +353,7 @@ static bool assignParameterValue( void * const pdata,
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_string:
-				strlcpy( (char *)pconfig_data, (char *)pdefault_data, pconfig->type_specific.max_string_length );
+				strlcpy( (char *)pconfig_data, (char *)pdefault_data, parameterConfig->type_specific.max_string_length );
 				wrote_parameter_value = true;
 				break;
 		}
@@ -358,7 +362,7 @@ static bool assignParameterValue( void * const pdata,
 	{
 		long val = strtol(value, NULL, 0);
 
-		switch( pconfig->data_type )
+		switch( parameterConfig->data_type )
 		{
 			case config_data_type_boolean:
 			{
@@ -397,23 +401,23 @@ static bool assignParameterValue( void * const pdata,
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_string:
-				strlcpy( (char *)pconfig_data, value, pconfig->type_specific.max_string_length );
+				strlcpy( (char *)pconfig_data, value, parameterConfig->type_specific.max_string_length );
 				wrote_parameter_value = true;
 				break;
 			case config_data_type_enum:
 			{
 				uint8_t enum_value;
 				bool found_mapping = lookupEnumValueByName( value,
-														pconfig->type_specific.enum_data.enum_mappings,
-														pconfig->type_specific.enum_data.num_enum_mappings,
+														parameterConfig->type_specific.enum_data.enum_mappings,
+														parameterConfig->type_specific.enum_data.num_enum_mappings,
 														&enum_value );
 
 				if ( found_mapping == false )
 				{
 					/* see if we can find a matching enum by value */
 					if (lookupEnumValue( val,
-									pconfig->type_specific.enum_data.enum_mappings,
-									pconfig->type_specific.enum_data.num_enum_mappings ) != NULL)
+									parameterConfig->type_specific.enum_data.enum_mappings,
+									parameterConfig->type_specific.enum_data.num_enum_mappings ) != NULL)
 					{
 						enum_value = val;
 						found_mapping = true;
@@ -433,7 +437,7 @@ static bool assignParameterValue( void * const pdata,
 }
 
 
-static config_data_point_st const * lookupParameterByName( config_data_point_st const * const data_points,
+static parameterConfig_st const * lookupParameterByName( parameterConfig_st const * const data_points,
 																uint32_t nb_data_points,
 																ParameterNameLookup ParameterNameLookupCB,
 																char const * parameter_name)
@@ -452,14 +456,14 @@ static config_data_point_st const * lookupParameterByName( config_data_point_st 
 }
 
 static bool lookupParameterPrintValue( void *pdata,
-						config_data_point_st const * const data_points,
+						parameterConfig_st const * const data_points,
 						uint8_t nb_data_points,
 						ParameterNameLookup ParameterNameLookupCB,
 						char const * parameter_name,
 						void *cliCtx
 						)
 {
-	config_data_point_st const *data_point;
+	parameterConfig_st const *data_point;
 	bool printed_parameter = false;
 
 	data_point = lookupParameterByName( data_points, nb_data_points, ParameterNameLookupCB, parameter_name );
@@ -474,13 +478,13 @@ static bool lookupParameterPrintValue( void *pdata,
 
 static bool lookupParameterAssignValue( void *pcfg,
 							void const * pdefault_configuration,
-							config_data_point_st const * const data_points,
+							parameterConfig_st const * const data_points,
 							uint8_t nb_data_points,
 							ParameterNameLookup ParameterNameLookupCB,
 							char * parameter_name,
 							char *parameter_value)
 {
-	config_data_point_st const *data_point;
+	parameterConfig_st const *data_point;
 	bool wrote_parameter = false;
 
 	data_point = lookupParameterByName( data_points, nb_data_points, ParameterNameLookupCB, parameter_name );
@@ -494,7 +498,7 @@ static bool lookupParameterAssignValue( void *pcfg,
 
 bool savedParameterValueMatchesCurrentValue( void const *psaved,
 												void const * pCurrentValue,
-												config_data_point_st const * data_point )
+												parameterConfig_st const * data_point )
 {
 	bool areSame = false;
 	config_data_types_t data_type;
@@ -539,7 +543,7 @@ done:
 
 bool currentParameterValueMatchesDefaultValue( void const * pconfig_data,
 												void const * pdefault_data,
-												config_data_point_st const * data_point )
+												parameterConfig_st const * data_point )
 {
 	bool areSame = false;
 
@@ -605,7 +609,7 @@ int handleStandardCommand( run_command_data_st const * command_context,
 					unsigned int const nb_configurations,
 					unsigned int const configuration_size,
 					void const * default_configuration,
-					config_data_point_st const * data_points,
+					parameterConfig_st const * data_points,
 					unsigned int const nb_data_points,
 					ParameterNameLookup ParameterNameLookupCB
 					)
@@ -746,7 +750,7 @@ command_st const *findCommandFromID( command_st const *commands,
 	return NULL;
 }
 
-config_data_point_st const * findDataPointFromParameterID( config_data_point_st const * data_points,
+parameterConfig_st const * findDataPointFromParameterID( parameterConfig_st const * data_points,
 																	unsigned int const nb_data_points,
 																	unsigned int parameterID )
 {
