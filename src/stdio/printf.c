@@ -17,7 +17,7 @@
  * @param  pStr	Storage string.
  * @param  c    Character to write.
  */
-extern void *debug_uart;
+extern void *cli_uart;
 
 void PrintChar(char c)
 {
@@ -25,9 +25,9 @@ void PrintChar(char c)
 	   while(Transfer not completed);
 	   Transmit a char;
 	*/
-	if (debug_uart != NULL)
+	if (cli_uart != NULL)
 	{
-		uartWriteCharBlockingWithTimeout( debug_uart, (uint8_t)c, 2 );
+		uartWriteCharBlockingWithTimeout( cli_uart, (uint8_t)c, 2 );
 	}
 }
 

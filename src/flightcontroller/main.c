@@ -16,8 +16,13 @@
 #include <stm32f3_discovery_lsm303dlhc.h>
 
 #define MAIN_TASK_STACK_SIZE 0x200
-static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE] = {0};
-void *debug_uart;
+#define CLI_TASK_STACK_SIZE 0x200
+static OS_STK cli_task_stack[CLI_TASK_STACK_SIZE];
+static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE];
+
+void *cli_uart;
+OS_FlagID cliUartFlag;
+
 void *i2c_port;
 void *pcli;
 
@@ -426,10 +431,10 @@ void demoCompass( void )
 
 static int uartPutChar( int ch )
 {
-	return uartWriteCharBlockingWithTimeout( debug_uart, ch, 2 );
+	return uartWriteCharBlockingWithTimeout( cli_uart, ch, 10 );
 }
 
-void main_task( void *pv )
+static void main_task( void *pv )
 {
 	UNUSED(pv);
 
@@ -445,10 +450,6 @@ void main_task( void *pv )
 	initialiseCodeGroups();
 	loadSavedConfiguration();
 
-	debug_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx );
-	if ( debug_uart != NULL )
-		pcli = initCli( uartPutChar );
-
 	i2c_port = i2cInit( I2C_PORT_1 );
 
 	openReceiver();
@@ -458,40 +459,32 @@ void main_task( void *pv )
 		CoTimeDelay(0, 0, 1, 0);
         STM_EVAL_LEDToggle(LED3);
 
-		if ( debug_uart != NULL )
-		{
-			while ( uartRxReady( debug_uart ) )
-			{
-				uint8_t ch;
-
-				ch = uartReadChar( debug_uart );
-				cliHandleNewChar( pcli, ch );
-			}
-		}
 		//printf("\r\nc1 %d", readReceiverChannel(0) );
 		//printf("\r\nc2 %d", readReceiverChannel(1) );
 		//demoCompass();
 	}
 }
 
-void cli_task( void *pv )
+static void cli_task( void *pv )
 {
 	UNUSED(pv);
 
-	debug_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx );
-	if ( debug_uart != NULL )
+	cliUartFlag = CoCreateFlag( Co_TRUE, 0 );
+
+	cli_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx );
+	if ( cli_uart != NULL )
 		pcli = initCli( uartPutChar );
 
 	while (1)
 	{
-		if ( debug_uart != NULL )
+		if ( cli_uart != NULL )
 		{
-			// TODO: pend on new data
-			while ( uartRxReady( debug_uart ) )
+			CoWaitForSingleFlag( cliUartFlag, 0 );
+			while ( uartRxReady( cli_uart ) )
 			{
 				uint8_t ch;
 
-				ch = uartReadChar( debug_uart );
+				ch = uartReadChar( cli_uart );
 				cliHandleNewChar( pcli, ch );
 			}
 		}
@@ -502,6 +495,7 @@ int main(void)
 {
 	CoInitOS();
 	// TODO: CLI/UART task
+	CoCreateTask(cli_task, Co_NULL, 1, &cli_task_stack[CLI_TASK_STACK_SIZE-1], CLI_TASK_STACK_SIZE);
 	CoCreateTask(main_task, Co_NULL, 0, &main_task_stack[MAIN_TASK_STACK_SIZE-1], MAIN_TASK_STACK_SIZE);
 	CoStartOS();
 

@@ -36,10 +36,10 @@ typedef struct uart_ctx_st
 	uint_fast16_t				rxBufferSize;
 	volatile uint8_t 			*txBuffer;
 	uint_fast16_t				txBufferSize;
-	uint_fast16_t				rxBufferHead;
-	uint_fast16_t				rxBufferTail;
-	uint_fast16_t				txBufferHead;
-	uint_fast16_t				txBufferTail;
+	volatile uint_fast16_t		rxBufferHead;
+	volatile uint_fast16_t		rxBufferTail;
+	volatile uint_fast16_t		txBufferHead;
+	volatile uint_fast16_t		txBufferTail;
 } uart_ctx_st;
 
 static const uart_ports_config_t uart_ports[] =
@@ -76,10 +76,16 @@ static int getTxChar( void *pv )
 
 static void putRxChar( void *pv, uint8_t ch )
 {
+	extern OS_FlagID cliUartFlag;
+
 	uart_ctx_st *pctx = (uart_ctx_st *)pv;
 
     pctx->rxBuffer[pctx->rxBufferHead] = ch;
     pctx->rxBufferHead = (pctx->rxBufferHead + 1) % pctx->rxBufferSize;
+
+	CoEnterISR();
+	CoSetFlag(cliUartFlag);
+	CoExitISR();
 }
 
 
@@ -224,8 +230,8 @@ int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fas
 			timed_out = 1;
 			break;
 		}
-		millisecs_counter++;
-		CoTimeDelay( 0, 0, 0, 1 );
+		CoTimeDelay( 0, 0, 0, 1000/CFG_SYSTICK_FREQ );
+		millisecs_counter += 1000/CFG_SYSTICK_FREQ;
 	}
 	if ( timed_out == 0 )
 	{
