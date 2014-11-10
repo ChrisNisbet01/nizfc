@@ -189,12 +189,7 @@ static int showCommand( run_command_data_st *pcommand )
 			result = printCurrentConfig( pcommand );
 		else if ( strncasecmp( argv[1], "unsaved", strlen(argv[1]) ) == 0 )
 			result = printUnsavedConfig( pcommand );
-		else
-			goto done;
-
 	}
-
-done:
 
 	if ( result == poll_result_error )
 	{
@@ -287,17 +282,17 @@ int saveParameterValues( run_command_data_st const * command_context,
 
 	for ( configuration_index = 0; configuration_index < nb_configurations; configuration_index++ )
 	{
-		unsigned int offset_to_correct_configuration_data = (configuration_index*configuration_size);
+		unsigned int offset_to_configuration_data = (configuration_index*configuration_size);
 
 		for ( data_point_index = 0; data_point_index < nb_data_points; data_point_index++ )
 		{
-			if (currentParameterValueMatchesDefaultValue( (char *)pcfg + offset_to_correct_configuration_data + data_points[data_point_index].offset_to_data_point,
+			if (currentParameterValueMatchesDefaultValue( (char *)pcfg + offset_to_configuration_data + data_points[data_point_index].offset_to_data_point,
 															default_configuration,
 															&data_points[data_point_index] ) == false )
 			{
 				if (writeParameterToFlash( configuration_id,
 									configuration_index,
-									(char *)pcfg + offset_to_correct_configuration_data,
+									(char *)pcfg + offset_to_configuration_data,
 									&data_points[data_point_index] ) == false)
 				{
 					goto done;
@@ -319,8 +314,7 @@ static int printSavedParameters( void *pv,
 					unsigned int const nb_configurations,
 					config_data_point_st const * data_points,
 					unsigned int const nb_data_points,
-					char const * const * parameter_name_mappings,
-					unsigned int const nb_parameter_name_mappings
+					char const * const * parameter_name_mappings
 					)
 {
 	show_config_data_st * show_config_data = pv;
@@ -334,33 +328,25 @@ static int printSavedParameters( void *pv,
 	{
 		if ( show_config_data->instance < nb_configurations )
 		{
-			if ( show_config_data->parameter_id < nb_parameter_name_mappings )
-			{
-				config_data_point_st const * data_point;
+			config_data_point_st const * data_point;
 
-				if ( (data_point=findDataPointFromParameterID( data_points,
-																nb_data_points,
-																show_config_data->parameter_id )) != NULL )
+			if ( (data_point=findDataPointFromParameterID( data_points,
+															nb_data_points,
+															show_config_data->parameter_id )) != NULL )
+			{
+				/* check that the data types match */
+				if ( data_point->data_type == show_config_data->data_type )
 				{
-					/* check that the data types match */
-					if ( data_point->data_type == show_config_data->data_type )
-					{
-						cliPrintf( run_command_data->cliCtx,
-									"\n%s %d %s ",
-									command->name,
-									show_config_data->instance,
-									parameter_name_mappings[show_config_data->parameter_id]);
-						printParameterValue( show_config_data->pcfg,
-														data_point,
-														run_command_data->cliCtx );
-					}
-					else
-					{
-						/* we can coerce one data type to another */
-						// TODO:
-					}
-					result = poll_result_ok;
+					cliPrintf( run_command_data->cliCtx,
+								"\n%s %d %s ",
+								command->name,
+								show_config_data->instance,
+								parameter_name_mappings[show_config_data->parameter_id]);
+					printParameterValue( show_config_data->pcfg,
+													data_point,
+													run_command_data->cliCtx );
 				}
+				result = poll_result_ok;
 			}
 		}
 	}
@@ -487,9 +473,7 @@ int printParametersHandler( void *pv,
 					void const * default_configuration,
 					config_data_point_st const * data_points,
 					unsigned int const nb_data_points,
-					char const * const * parameter_name_mappings,
-					unsigned int const nb_parameter_name_mappings
-					)
+					char const * const * parameter_name_mappings)
 {
 	show_config_data_st * show_config_data = pv;
 	int result = poll_result_error;
@@ -503,8 +487,7 @@ int printParametersHandler( void *pv,
 											nb_configurations,
 											data_points,
 											nb_data_points,
-											parameter_name_mappings,
-											nb_parameter_name_mappings );
+											parameter_name_mappings );
 			break;
 		case print_current:	/* anything that isn't default */
 			result = printCurrentParameters( pv,
@@ -535,6 +518,105 @@ int printParametersHandler( void *pv,
 
 	return result;
 }
+
+typedef struct load_config_data_st
+{
+	configuration_id_t configuration_id;
+	unsigned int instance;
+	unsigned int parameter_id;
+	config_data_types_t data_type;
+	void const * pcfg;				/* pointer to the data available after the current header */
+} load_config_data_st;
+
+int loadParametersHandler( void *pv,
+					command_st const *commands,
+					unsigned int nb_commands,
+					void const * pcfg,
+					unsigned int const nb_configurations,
+					unsigned int const configuration_size,
+					config_data_point_st const * data_points,
+					unsigned int const nb_data_points
+					)
+{
+	load_config_data_st * load_config_data = pv;
+	int result = poll_result_error;
+	command_st const *command;
+
+	if (  (command = findCommandFromID( commands,
+										nb_commands,
+										load_config_data->configuration_id )) != NULL )
+	{
+		if ( load_config_data->instance < nb_configurations )
+		{
+			config_data_point_st const * data_point;
+
+			if ( (data_point=findDataPointFromParameterID( data_points,
+															nb_data_points,
+															load_config_data->parameter_id )) != NULL )
+			{
+				unsigned int offset_to_configuration_data = (load_config_data->instance*configuration_size);
+				void * const config_instance = (char *)pcfg + offset_to_configuration_data;
+
+				assignSavedParameterValue( load_config_data->pcfg,
+											load_config_data->data_type,
+											config_instance + data_point->offset_to_data_point,
+											data_point );
+				result = poll_result_ok;
+			}
+		}
+	}
+
+	return result;
+}
+
+void loadSavedConfiguration( void )
+{
+	unsigned int configuration_data_size;
+	void const * pcfg = getConfigurationData( &configuration_data_size );
+
+	if ( pcfg != NULL )
+	{
+		load_config_data_st load_config_data;
+
+		load_config_data.pcfg = pcfg;
+		while( configuration_data_size >= sizeof(uint32_t) )
+		{
+			int data_length;
+
+			load_config_data.configuration_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, GROUP );
+			load_config_data.instance = GET_CONFIG_FIELD( *(uint32_t *)pcfg, INSTANCE );
+			load_config_data.parameter_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_ID );
+			load_config_data.data_type = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_TYPE );
+
+			if ( load_config_data.configuration_id == configuration_id_reserved ) /* indicates end of config */
+				break;
+
+			load_config_data.pcfg = (char *)load_config_data.pcfg + sizeof(uint32_t);
+			configuration_data_size -= sizeof(uint32_t);
+
+			if ( (data_length = getLengthOfData( load_config_data.data_type, pcfg )) < 0 || (unsigned)data_length > configuration_data_size )
+			{
+				break;
+			}
+
+			if ( pollCodeGroups( poll_id_load_configuration, &load_config_data, false ) != poll_result_ok )
+			{
+				/* unprocessed saved value. */
+			}
+
+			/* move to next item */
+			load_config_data.pcfg = (char *)load_config_data.pcfg + data_length;
+			configuration_data_size -= data_length;
+
+		}
+	}
+}
+
+void initialiseCodeGroups( void )
+{
+	pollCodeGroups( poll_id_initialise, NULL, 1 );
+}
+
 
 int configPollHandler( poll_id_t poll_id, void *pv )
 {

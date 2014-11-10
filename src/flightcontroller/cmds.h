@@ -52,4 +52,6 @@ void printParameterValue( void const * pconfig_data,
 											config_data_point_st const * pconfig,
 											void *printfpv );
 
+bool assignSavedParameterValue( void const * const saved_data, config_data_types_t saved_data_type, void * const parameter, config_data_point_st const * const pconfig );
+
 #endif /* __CMDS_H__ */

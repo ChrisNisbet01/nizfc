@@ -182,6 +182,123 @@ static bool isValueTrue( char const * const value )
 	return false;
 }
 
+bool assignSavedParameterValue( void const * const saved_data, config_data_types_t saved_data_type, void * const parameter, config_data_point_st const * const pconfig )
+{
+	bool assigned = true;
+	/*
+		To allow for the case where the saved type doesn't match the current type, we attempt to convert between the types.
+	*/
+	uint32_t savedValue = 0;
+	float savedFloatValue = 0.0f;
+
+	switch ( saved_data_type )
+	{
+		case config_data_type_boolean:
+		case config_data_type_int8:
+		case config_data_type_enum:
+			savedValue = (uint32_t)*(int8_t *)saved_data;
+			break;
+		case config_data_type_int16:
+			savedValue = (uint32_t)*(int16_t *)saved_data;
+			break;
+		case config_data_type_int32:
+			savedValue = (uint32_t)*(int32_t *)saved_data;
+			break;
+		case config_data_type_uint8:
+			savedValue = (uint32_t)*(uint8_t *)saved_data;
+			break;
+		case config_data_type_uint16:
+			savedValue = (uint32_t)*(uint16_t *)saved_data;
+			break;
+		case config_data_type_uint32:
+			savedValue = (uint32_t)*(uint32_t *)saved_data;
+			break;
+		case config_data_type_float:
+			savedFloatValue = *(float *)saved_data;
+			break;
+		default:
+			break;
+	}
+	switch( pconfig->data_type )
+	{
+		case config_data_type_boolean:
+		case config_data_type_int8:
+		case config_data_type_enum:
+			if ( saved_data_type == config_data_type_float )
+				*(int8_t *)parameter = lrintf(savedFloatValue);
+			else if ( saved_data_type != config_data_type_string )
+				*(int8_t *)parameter = savedValue;
+			else	/* string */
+			{
+			}
+			break;
+		case config_data_type_int16:
+			if ( saved_data_type == config_data_type_float )
+				*(int16_t *)parameter = lrintf(savedFloatValue);
+			else if ( saved_data_type != config_data_type_string )
+				*(int16_t *)parameter = savedValue;
+			else	/* string */
+			{
+			}
+			break;
+		case config_data_type_int32:
+			if ( saved_data_type == config_data_type_float )
+				*(int32_t *)parameter = lrintf(savedFloatValue);
+			else if ( saved_data_type != config_data_type_string )
+				*(int32_t *)parameter = savedValue;
+			else	/* string */
+			{
+			}
+			break;
+		case config_data_type_uint8:
+			if ( saved_data_type == config_data_type_float )
+				*(uint8_t *)parameter = lrintf(savedFloatValue);
+			else if ( saved_data_type != config_data_type_string )
+				*(uint8_t *)parameter = savedValue;
+			else	/* string */
+			{
+			}
+			break;
+		case config_data_type_uint16:
+			if ( saved_data_type == config_data_type_float )
+				*(uint16_t *)parameter = lrintf(savedFloatValue);
+			else if ( saved_data_type != config_data_type_string )
+				*(uint16_t *)parameter = savedValue;
+			else	/* string */
+			{
+			}
+			break;
+		case config_data_type_uint32:
+			if ( saved_data_type == config_data_type_float )
+				*(uint32_t *)parameter = lrintf(savedFloatValue);
+			else if ( saved_data_type != config_data_type_string )
+				*(uint32_t *)parameter = savedValue;
+			else	/* string */
+			{
+			}
+			break;
+		case config_data_type_float:
+			if ( saved_data_type == config_data_type_float )
+				*(float *)parameter = savedFloatValue;
+			else if ( saved_data_type != config_data_type_string )
+				*(float *)parameter = (float)savedValue;
+			else	/* string */
+			{
+			}
+			break;
+		case config_data_type_string:
+			if (saved_data_type == config_data_type_string)
+				strlcpy( (char *)parameter, saved_data, pconfig->type_specific.max_string_length );
+			else	/* string */
+			{
+				/* do itoa() or something? */
+			}
+			break;
+	}
+
+	return assigned;
+}
+
 static bool assignParameterValue( void * const pdata,
 												void const * const pdefault_configuration,
 												config_data_point_st const * const pconfig,

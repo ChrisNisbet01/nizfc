@@ -15,17 +15,11 @@
 #include <configuration_commands.h>
 #include <cli.h>
 #include <receiver.h>
+#include <receiver_configuration.h>
 #include <pwm.h>
 #include <ppm.h>
 
 #define MAX_RX_SIGNALS	12u
-#define NB_RECEIVER_CONFIGURATIONS	1u
-
-typedef enum receiver_mode_type
-{
-	receiver_mode_pwm = 0,
-	receiver_mode_ppm = 1
-} receiver_mode_type;
 
 typedef struct rx_signals_st
 {
@@ -35,126 +29,6 @@ typedef struct rx_signals_st
 } rx_signals_st;
 
 static rx_signals_st	rx_signals;
-
-typedef struct receiver_configuration_st
-{
-	int8_t mode;	/* note that as this is mapped to an enum data type, its size must be 8 bits */
-}receiver_configuration_st;
-
-static int receiver_command( run_command_data_st *pcommand );
-
-static const enum_mapping_st receiver_mode_mappings[] =
-{
-	{
-		.name = "ppm",
-		.value = (int8_t)receiver_mode_ppm
-	},
-	{
-		.name = "pwm",
-		.value = (int8_t)receiver_mode_pwm
-	}
-};
-
-static receiver_configuration_st receiver_configuration[NB_RECEIVER_CONFIGURATIONS];
-static const receiver_configuration_st default_receiver_configuration =
-{
-	.mode = (int8_t)receiver_mode_pwm
-};
-
-typedef enum receiver_parameter_id_t
-{
-	receiver_parameter_id_mode = 0
-} receiver_parameter_id_t;
-
-
-static char const * const receiver_parameter_name_mappings[] =
-{
-	[receiver_parameter_id_mode] = "mode"
-};
-
-static const config_data_point_st receiver_config_data_points[] =
-{
-	{
-	.parameter_id = receiver_parameter_id_mode,
-	.data_type = config_data_type_enum,
-	.offset_to_data_point = offsetof(receiver_configuration_st, mode),
-	.type_specific.enum_data.enum_mappings = receiver_mode_mappings,
-	.type_specific.enum_data.num_enum_mappings = ARRAY_SIZE(receiver_mode_mappings)
-	}
-};
-
-static const command_st receiver_commands[] =
-{
-	{ .group_id = configuration_id_receiver, .name = "rx", .handler = receiver_command	}
-};
-
-static char const * receiverParameterNameLookup( unsigned int parameterID )
-{
-	if (parameterID < ARRAY_SIZE(receiver_parameter_name_mappings) )
-		return receiver_parameter_name_mappings[parameterID];
-
-	/* shouldn't happen */
-	return "";
-}
-
-static int receiver_command( run_command_data_st *pcommand )
-{
-	return handleStandardCommand( pcommand,
-							receiver_configuration,
-							ARRAY_SIZE(receiver_configuration),
-							sizeof(receiver_configuration[0]),
-							&default_receiver_configuration,
-							receiver_config_data_points,
-							ARRAY_SIZE(receiver_config_data_points),
-							receiverParameterNameLookup);
-}
-
-int receiverPollHandler( poll_id_t poll_id, void *pv )
-{
-	int result = poll_result_error;
-
-	switch( poll_id )
-	{
-		case poll_id_run_command:
-		{
-			result = runCommandHandler( receiver_commands, ARRAY_SIZE(receiver_commands), pv );
-			break;
-		}
-		// TODO: handle new config event after parameter written
-		// TODO: apply current config into running config
-		case poll_id_save_configuration:
-		{
-			result = saveParameterValues( pv,
-								configuration_id_receiver,
-								receiver_configuration,
-								ARRAY_SIZE(receiver_configuration),
-								sizeof(receiver_configuration[0]),
-								&default_receiver_configuration,
-								receiver_config_data_points,
-								ARRAY_SIZE(receiver_config_data_points) );
-			break;
-		}
-		case poll_id_show_configuration:
-			result = printParametersHandler( pv,
-								receiver_commands,
-								ARRAY_SIZE(receiver_commands),
-								receiver_configuration,
-								ARRAY_SIZE(receiver_configuration),
-								sizeof(receiver_configuration[0]),
-								&default_receiver_configuration,
-								receiver_config_data_points,
-								ARRAY_SIZE(receiver_config_data_points),
-								receiver_parameter_name_mappings,
-								ARRAY_SIZE(receiver_parameter_name_mappings)
-								);
-			break;
-		default:
-			break;
-	}
-
-	return result;
-}
-
 
 static void NewReceiverChannelData( uint32_t *channels, uint_fast8_t first_index, uint_fast8_t nb_channels )
 {
@@ -174,12 +48,8 @@ static void NewReceiverChannelData( uint32_t *channels, uint_fast8_t first_index
 
 void initReceiver( void )
 {
-	unsigned int index;
-
 	/* called at startup time. Create mutex for rx_signals */
 	rx_signals.rx_signals_mutex = CoCreateMutex();
-	for (index = 0; index < ARRAY_SIZE(receiver_configuration); index++ )
-		memcpy( &receiver_configuration[index], &default_receiver_configuration, sizeof receiver_configuration[index] );
 }
 
 uint_fast16_t readReceiverChannel(uint_fast8_t channel)
