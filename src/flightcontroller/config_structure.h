@@ -9,25 +9,6 @@ typedef enum configuration_id_t
 	configuration_id_show = 3
 } configuration_id_t;
 
-typedef enum poll_id_t
-{
-	poll_id_run_command,			/* a CLI command to be processed */
-	poll_id_save_configuration,		/* saving configuration */
-	poll_id_show_configuration		/* show configuration (all, non-default) */
-} poll_id_t;
-
-typedef struct code_group_mappings_st
-{
-	int          	(*poll_handler)(poll_id_t poll_id, void *pv);
-} code_group_mappings_st;
-
-typedef enum poll_result_t
-{
-	poll_result_ok,
-	poll_result_pending,
-	poll_result_error
-} poll_result_t;
-
 /*
 	These values are used to identify the data types stored in FLASH.
 	It is important that they retain their values over time.
@@ -98,8 +79,6 @@ typedef struct config_data_point_st
 
 #define GET_CONFIG_FIELD( value, field )	(((uint32_t)(value) & CONFIG_ ## field ## _MASK) >> CONFIG_ ## field ## _SHIFT)
 #define MAKE_CONFIG_FIELD_VALUE( value, field )	((value << CONFIG_ ## field ## _SHIFT) & CONFIG_ ## field ## _MASK)
-
-poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups );
 
 
 #endif /*  __CONFIG_STRUCTURE_H__ */

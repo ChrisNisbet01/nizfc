@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <utils.h>
+#include <polling.h>
 #include <cmds.h>
 
 #define CLI_LINEBUFFER_SIZE 	64

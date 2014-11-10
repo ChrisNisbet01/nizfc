@@ -10,10 +10,10 @@
 #include <stm32f3_discovery.h>
 #include <coos.h>
 #include <utils.h>
+#include <polling.h>
 #include <cmds.h>
+#include <configuration_commands.h>
 #include <cli.h>
-#include <config_structure.h>
-#include <save_configuration.h>
 #include <receiver.h>
 #include <pwm.h>
 #include <ppm.h>
@@ -109,7 +109,7 @@ static int receiver_command( run_command_data_st *pcommand )
 							receiverParameterNameLookup);
 }
 
-int receiver_poll_handler( poll_id_t poll_id, void *pv )
+int receiverPollHandler( poll_id_t poll_id, void *pv )
 {
 	int result = poll_result_error;
 
@@ -124,7 +124,7 @@ int receiver_poll_handler( poll_id_t poll_id, void *pv )
 		// TODO: apply current config into running config
 		case poll_id_save_configuration:
 		{
-			result = save_configuration( pv,
+			result = saveParameterValues( pv,
 								configuration_id_receiver,
 								receiver_configuration,
 								ARRAY_SIZE(receiver_configuration),
@@ -135,7 +135,7 @@ int receiver_poll_handler( poll_id_t poll_id, void *pv )
 			break;
 		}
 		case poll_id_show_configuration:
-			result = show_configuration( pv,
+			result = printSavedParameters( pv,
 								receiver_commands,
 								ARRAY_SIZE(receiver_commands),
 								receiver_configuration,

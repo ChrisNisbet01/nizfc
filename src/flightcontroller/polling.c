@@ -4,17 +4,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <utils.h>
-#include <config_structure.h>
-#include <cli.h>
-#include <receiver.h>
+#include <polling.h>
 
-extern int receiver_poll_handler( poll_id_t poll_id, void *pv );
-extern int config_poll_handler( poll_id_t poll_id, void *pv );
+extern int receiverPollHandler( poll_id_t poll_id, void *pv );
+extern int configPollHandler( poll_id_t poll_id, void *pv );
 
 static const code_group_mappings_st config_groups[] =
 {
-	{ .poll_handler = receiver_poll_handler },
-	{ .poll_handler = config_poll_handler }
+	{ .poll_handler = receiverPollHandler },
+	{ .poll_handler = configPollHandler }
 };
 
 poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups )
