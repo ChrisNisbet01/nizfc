@@ -4,13 +4,13 @@
 typedef enum poll_id_t
 {
 	poll_id_run_command,			/* a CLI command to be processed */
-	poll_id_save_configuration,		/* saving configuration */
-	poll_id_show_configuration		/* show configuration (all, non-default) */
+	poll_id_save_configuration,		/* called from 'save' command. saving configuration */
+	poll_id_show_configuration		/* called from 'show' command. show configuration (all, non-default) */
 } poll_id_t;
 
 typedef struct code_group_mappings_st
 {
-	int          	(*poll_handler)(poll_id_t poll_id, void *pv);
+	int          	(*pollHandler)(poll_id_t poll_id, void *pv);
 } code_group_mappings_st;
 
 typedef enum poll_result_t
@@ -20,6 +20,6 @@ typedef enum poll_result_t
 	poll_result_error
 } poll_result_t;
 
-poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups );
+poll_result_t pollCodeGroups( poll_id_t poll_id, void *pv, bool poll_all_groups );
 
 #endif /*  __POLLING_H__ */

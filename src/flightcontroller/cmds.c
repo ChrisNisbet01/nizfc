@@ -75,7 +75,7 @@ static bool lookupEnumValueByName( char const * const name, enum_mapping_st cons
 
 void printParameterValue( void const * pconfig_data,
 											config_data_point_st const * pconfig,
-											void *printfpv )
+											void *cliCtx )
 {
 
 	switch( pconfig->data_type )
@@ -84,49 +84,49 @@ void printParameterValue( void const * pconfig_data,
 		{
 			int8_t value = *(int8_t *)pconfig_data;
 
-			cliPrintf(printfpv, "%s", (value != 0) ? "on" : "off");
+			cliPrintf(cliCtx, "%s", (value != 0) ? "on" : "off");
 			break;
 		}
 		case config_data_type_int8:
 		{
 			int value = *(int8_t *)pconfig_data;
 
-			cliPrintf(printfpv, "%d", value);
+			cliPrintf(cliCtx, "%d", value);
 			break;
 		}
 		case config_data_type_int16:
 		{
 			int value = *(int16_t *)pconfig_data;
 
-			cliPrintf(printfpv, "%d", value);
+			cliPrintf(cliCtx, "%d", value);
 			break;
 		}
 		case config_data_type_int32:
 		{
 			int value = *(int32_t *)pconfig_data;
 
-			cliPrintf(printfpv, "%d", value);
+			cliPrintf(cliCtx, "%d", value);
 			break;
 		}
 		case config_data_type_uint8:
 		{
 			unsigned int value = *(int8_t *)pconfig_data;
 
-			cliPrintf(printfpv, "%u", value);
+			cliPrintf(cliCtx, "%u", value);
 			break;
 		}
 		case config_data_type_uint16:
 		{
 			uint16_t value = *(int16_t *)pconfig_data;
 
-			cliPrintf(printfpv, "%u", value);
+			cliPrintf(cliCtx, "%u", value);
 			break;
 		}
 		case config_data_type_uint32:
 		{
 			uint16_t value = *(int32_t *)pconfig_data;
 
-			cliPrintf(printfpv, "%u", value);
+			cliPrintf(cliCtx, "%u", value);
 			break;
 		}
 		case config_data_type_float:
@@ -134,14 +134,14 @@ void printParameterValue( void const * pconfig_data,
 			float value = *(float *)pconfig_data;
 
 			// TODO: printf floating point
-			cliPrintf(printfpv, "%f", value);
+			cliPrintf(cliCtx, "%f", value);
 			break;
 		}
 		case config_data_type_string:
 		{
 			char * value = (char *)pconfig_data;
 
-			cliPrintf(printfpv, "%s", value);
+			cliPrintf(cliCtx, "%s", value);
 			break;
 		}
 		case config_data_type_enum:
@@ -151,7 +151,7 @@ void printParameterValue( void const * pconfig_data,
 												pconfig->type_specific.enum_data.enum_mappings,
 												pconfig->type_specific.enum_data.num_enum_mappings );
 
-			cliPrintf(printfpv, "%s", (mapping != NULL) ? mapping : "???" );
+			cliPrintf(cliCtx, "%s", (mapping != NULL) ? mapping : "???" );
 			break;
 		}
 	}
@@ -329,7 +329,7 @@ static bool lookupParameterPrintValue( void *pdata,
 						uint8_t nb_data_points,
 						ParameterNameLookup ParameterNameLookupCB,
 						char const * parameter_name,
-						void *printfpv
+						void *cliCtx
 						)
 {
 	config_data_point_st const *data_point;
@@ -338,7 +338,7 @@ static bool lookupParameterPrintValue( void *pdata,
 	data_point = lookupParameterByName( data_points, nb_data_points, ParameterNameLookupCB, parameter_name );
 	if (data_point != NULL)
 	{
-		printParameterValue( (char *)pdata + data_point->offset_to_data_point, data_point, printfpv );
+		printParameterValue( (char *)pdata + data_point->offset_to_data_point, data_point, cliCtx );
 		printed_parameter = true;
 	}
 
@@ -518,14 +518,14 @@ int getLengthOfData( config_data_types_t data_type, void const * pcfg )
 			break;
 		case config_data_type_int16:
 		case config_data_type_uint16:
-			data_length = sizeof(int8_t);
+			data_length = sizeof(int16_t);
 			break;
 		case config_data_type_int32:
 		case config_data_type_uint32:
-			data_length = sizeof(int8_t);
+			data_length = sizeof(int32_t);
 			break;
 		case config_data_type_float:
-			data_length = sizeof(int8_t);
+			data_length = sizeof(float);
 			break;
 		case config_data_type_string:
 			data_length = strlen( (char *)pcfg ) + 1;	/* include NUL terminator */
@@ -579,10 +579,10 @@ int runCommand( int argc, char **argv, void *cliCtx )
 	command_data.argv = argv;
 	command_data.cliCtx = cliCtx;
 
-	return poll_groups( poll_id_run_command, &command_data, 0 );
+	return pollCodeGroups( poll_id_run_command, &command_data, 0 );
 }
 
-/* called from the code repsonsible for the various commands from within the poll_id_run_command poll_groups() call. */
+/* called from the code repsonsible for the various commands from within the poll_id_run_command pollCodeGroups() call. */
 int runCommandHandler( command_st const * commands, uint32_t nb_commands, void *pv )
 {
 	command_st const * pcmd;

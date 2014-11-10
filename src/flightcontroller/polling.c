@@ -9,20 +9,20 @@
 extern int receiverPollHandler( poll_id_t poll_id, void *pv );
 extern int configPollHandler( poll_id_t poll_id, void *pv );
 
-static const code_group_mappings_st config_groups[] =
+static const code_group_mappings_st code_groups[] =
 {
-	{ .poll_handler = receiverPollHandler },
-	{ .poll_handler = configPollHandler }
+	{ .pollHandler = receiverPollHandler },
+	{ .pollHandler = configPollHandler }
 };
 
-poll_result_t poll_groups( poll_id_t poll_id, void *pv, bool poll_all_groups )
+poll_result_t pollCodeGroups( poll_id_t poll_id, void *pv, bool poll_all_groups )
 {
 	uint_fast32_t index;
 	poll_result_t result = poll_result_error;
 
-	for (index=0; index < ARRAY_SIZE(config_groups); index++)
+	for (index=0; index < ARRAY_SIZE(code_groups); index++)
 	{
-		result = config_groups[index].poll_handler(poll_id, pv);
+		result = code_groups[index].pollHandler(poll_id, pv);
 		if( poll_all_groups != true && result == poll_result_ok )
 			break;
 	}

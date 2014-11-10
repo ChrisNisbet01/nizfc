@@ -64,7 +64,7 @@ static int showCommand( run_command_data_st *pcommand )
 						break;
 					}
 
-					if ( poll_groups( poll_id_show_configuration, &show_config_data, false ) != poll_result_ok )
+					if ( pollCodeGroups( poll_id_show_configuration, &show_config_data, false ) != poll_result_ok )
 					{
 						cliPrintf( pcommand->cliCtx, "\nUnprocessed configuration item" );
 						cliPrintf( pcommand->cliCtx, "\ng:%d i:%d p:%d",
@@ -110,7 +110,7 @@ static int saveCommand( run_command_data_st *pcommand )
 		goto done;
 	}
 
-	poll_groups( poll_id_save_configuration, pcommand, 1 );
+	pollCodeGroups( poll_id_save_configuration, pcommand, 1 );
 
 	if ( completeConfigurationSave() == false )
 	{
