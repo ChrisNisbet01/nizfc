@@ -252,6 +252,13 @@ static pwm_timer_config_st const *pwmTimerConfigLookup( pin_st const * pin )
 	return NULL;
 }
 
+void setPWMTXWidth( void const * const pv, unsigned int pulseWidthMillsecs )
+{
+	pwm_timer_st const * const pctx = pv;
+
+	*pctx->capture_register = pulseWidthMillsecs;
+}
+
 void * openPwmTxTimer( pin_st const * const pin, unsigned int pulseRateHz, unsigned int initialValue )
 {
 	pwm_timer_st *pctx = NULL;

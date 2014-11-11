@@ -6,11 +6,13 @@
 #include <utils.h>
 #include <polling.h>
 
+extern int outputPollHandler( poll_id_t poll_id, void *pv );
 extern int receiverPollHandler( poll_id_t poll_id, void *pv );
 extern int configPollHandler( poll_id_t poll_id, void *pv );
 
 static const code_group_mappings_st code_groups[] =
 {
+	{ .pollHandler = outputPollHandler },
 	{ .pollHandler = receiverPollHandler },
 	{ .pollHandler = configPollHandler }
 };

@@ -10,10 +10,6 @@
 #include <stm32f3_discovery.h>
 #include <coos.h>
 #include <utils.h>
-#include <polling.h>
-#include <cmds.h>
-#include <configuration_commands.h>
-#include <cli.h>
 #include <receiver.h>
 #include <receiver_configuration.h>
 #include <pwm.h>
