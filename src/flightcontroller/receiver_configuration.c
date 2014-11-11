@@ -102,15 +102,16 @@ int receiverPollHandler( poll_id_t poll_id, void *pv )
 
 	switch( poll_id )
 	{
+		case poll_id_identify:
+			result = idCommandHandler( receiver_commands, ARRAY_SIZE(receiver_commands), pv );
+			break;
 		case poll_id_initialise:
 			initReceiverConfiguration();
 			initReceiver();
 			break;
 		case poll_id_run_command:
-		{
 			result = runCommandHandler( receiver_commands, ARRAY_SIZE(receiver_commands), pv );
 			break;
-		}
 		// TODO: handle new config event after parameter written
 		// TODO: apply current config into running config
 		case poll_id_save_configuration:

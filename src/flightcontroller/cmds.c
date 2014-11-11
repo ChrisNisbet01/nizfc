@@ -780,7 +780,7 @@ int runCommand( int argc, char **argv, void *cliCtx )
 	return pollCodeGroups( poll_id_run_command, &command_data, 0 );
 }
 
-/* called from the code repsonsible for the various commands from within the poll_id_run_command pollCodeGroups() call. */
+/* called from the code responsible for the various commands from within the poll_id_run_command pollCodeGroups() call. */
 int runCommandHandler( command_st const * commands, uint32_t nb_commands, void *pv )
 {
 	command_st const * pcmd;
@@ -795,4 +795,16 @@ int runCommandHandler( command_st const * commands, uint32_t nb_commands, void *
 	return result;
 }
 
+int idCommandHandler( command_st const * commands, uint32_t nb_commands, void *pv )
+{
+	run_command_data_st *pcmd_data = pv;
+	unsigned int command_index;
+
+	for ( command_index = 0; command_index < nb_commands; command_index++ )
+	{
+		cliPrintf( pcmd_data->cliCtx, "\n%s", commands[command_index].name );
+	}
+
+	return poll_result_ok;
+}
 

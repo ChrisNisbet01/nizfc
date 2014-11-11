@@ -23,6 +23,8 @@ int getLengthOfData( config_data_types_t data_type, void const * pcfg );
 
 int runCommand( int argc, char **argv, void *cliCtx );
 int runCommandHandler( command_st const * const commands, uint32_t nb_commands, void *pv );
+int idCommandHandler( command_st const * commands, uint32_t nb_commands, void *pv );
+
 int handleStandardCommand( run_command_data_st const * command_context,
 					void const * pcfg,
 					unsigned int const nb_configurations,

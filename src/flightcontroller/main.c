@@ -447,9 +447,6 @@ static void main_task( void *pv )
 	STM_EVAL_LEDInit(LED9);
 	STM_EVAL_LEDInit(LED10);
 
-	initialiseCodeGroups();
-	loadSavedConfiguration();
-
 	i2c_port = i2cInit( I2C_PORT_1 );
 
 	openReceiver();
@@ -494,9 +491,13 @@ static void cli_task( void *pv )
 int main(void)
 {
 	CoInitOS();
-	// TODO: CLI/UART task
+
+	initialiseCodeGroups();
+	loadSavedConfiguration();
+
 	CoCreateTask(cli_task, Co_NULL, 1, &cli_task_stack[CLI_TASK_STACK_SIZE-1], CLI_TASK_STACK_SIZE);
 	CoCreateTask(main_task, Co_NULL, 0, &main_task_stack[MAIN_TASK_STACK_SIZE-1], MAIN_TASK_STACK_SIZE);
+
 	CoStartOS();
 
 	while (1);

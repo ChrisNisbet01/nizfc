@@ -3,6 +3,7 @@
 
 typedef enum poll_id_t
 {
+	poll_id_identify,				/* identify all commands */
 	poll_id_initialise,				/* load default configurations etc */
 	poll_id_load_configuration,		/* load saved parameter values */
 	poll_id_run_command,			/* a CLI command to be processed */

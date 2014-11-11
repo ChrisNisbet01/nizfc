@@ -13,11 +13,14 @@
 
 static int saveCommand( run_command_data_st *pcommand );
 static int showCommand( run_command_data_st *pcommand );
+static int helpCommand( run_command_data_st *pcommand );
 
 static const command_st config_commands[] =
 {
 	{ .group_id = configuration_id_save, .name = "save",    .handler = saveCommand	},
-	{ .group_id = configuration_id_show, .name = "show",    .handler = showCommand	}
+	{ .group_id = configuration_id_show, .name = "show",    .handler = showCommand	},
+	{ .group_id = configuration_id_show, .name = "?",       .handler = helpCommand	},
+	{ .group_id = configuration_id_show, .name = "help",    .handler = helpCommand	}
 };
 
 typedef enum printConfig_t
@@ -173,6 +176,12 @@ static int printSavedConfig( run_command_data_st *pcommand )
 		cliPrintf( pcommand->cliCtx, "\nSaved configuration is invalid" );
 
 	return result;
+}
+
+static int helpCommand( run_command_data_st *pcommand )
+{
+	pollCodeGroups( poll_id_identify, pcommand, 1 );
+	return poll_result_ok;
 }
 
 static int showCommand( run_command_data_st *pcommand )
@@ -624,6 +633,11 @@ int configPollHandler( poll_id_t poll_id, void *pv )
 
 	switch( poll_id )
 	{
+		case poll_id_identify:
+		{
+			result = idCommandHandler( config_commands, ARRAY_SIZE(config_commands), pv );
+			break;
+		}
 		case poll_id_run_command:
 		{
 			result = runCommandHandler( config_commands, ARRAY_SIZE(config_commands), pv );
