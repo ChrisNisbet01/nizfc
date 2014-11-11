@@ -12,7 +12,7 @@ typedef enum uart_modes_t
 	uart_mode_rx = (1<<1),
 } uart_modes_t;
 
-void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode );
+void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*newRxDataCb)( void *pv ) );
 
 int uartReadChar( void *pv );
 int uartTxBusy( void *pv );

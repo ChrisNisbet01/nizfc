@@ -462,13 +462,25 @@ static void main_task( void *pv )
 	}
 }
 
+void newUartData( void *pv )
+{
+	if ( pv == cli_uart )
+	{
+		CoEnterISR();
+
+		CoSetFlag(cliUartFlag);
+
+		CoExitISR();
+	}
+}
+
 static void cli_task( void *pv )
 {
 	UNUSED(pv);
 
 	cliUartFlag = CoCreateFlag( Co_TRUE, 0 );
 
-	cli_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx );
+	cli_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart != NULL )
 		pcli = initCli( uartPutChar );
 

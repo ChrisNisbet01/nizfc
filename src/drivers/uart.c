@@ -40,6 +40,8 @@ typedef struct uart_ctx_st
 	volatile uint_fast16_t		rxBufferTail;
 	volatile uint_fast16_t		txBufferHead;
 	volatile uint_fast16_t		txBufferTail;
+
+	void 						(*newRxDataCb)( void *pv );
 } uart_ctx_st;
 
 static const uart_ports_config_t uart_ports[] =
@@ -76,16 +78,15 @@ static int getTxChar( void *pv )
 
 static void putRxChar( void *pv, uint8_t ch )
 {
-	extern OS_FlagID cliUartFlag;
-
 	uart_ctx_st *pctx = (uart_ctx_st *)pv;
 
     pctx->rxBuffer[pctx->rxBufferHead] = ch;
     pctx->rxBufferHead = (pctx->rxBufferHead + 1) % pctx->rxBufferSize;
 
-	CoEnterISR();
-	CoSetFlag(cliUartFlag);
-	CoExitISR();
+	if (pctx->newRxDataCb != NULL)
+	{
+		pctx->newRxDataCb(pctx);
+	}
 }
 
 
@@ -120,7 +121,7 @@ static uart_ports_config_t const * uartPortLookup( uart_ports_t port )
 	return NULL;
 }
 
-void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode )
+void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*newRxDataCb)( void *pv ) )
 {
 	uart_ports_config_t const * uart_config;
 	uart_ctx_st *pctx;
@@ -159,6 +160,7 @@ void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode )
     pctx->port = uart_config;
     pctx->mode = mode;
     pctx->baudRate = baudrate;
+    pctx->newRxDataCb = newRxDataCb;
 
     uartConfigure(pctx);
 
