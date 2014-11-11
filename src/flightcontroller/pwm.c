@@ -66,6 +66,7 @@ void initPWMRx( NewReceiverChannelDataCB newReceiverChannelDataCb )
 	*/
 	uint_fast8_t pwm_idx;
 
+	// TODO: number of pins to init from config
 	NewReceiverChannelDataCallback = newReceiverChannelDataCb;
 	for( pwm_idx = 0; pwm_idx < NB_PWM_PINS; pwm_idx++ )
 	{
