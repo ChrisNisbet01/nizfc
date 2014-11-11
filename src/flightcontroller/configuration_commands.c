@@ -26,8 +26,9 @@ static const command_st config_commands[] =
 typedef enum printConfig_t
 {
 	print_saved,		/* print anything in the saved config */
-	print_current,	/* print anythnig that differs from default */
-	print_unsaved,	/* print anything that differs from what we have saved. */
+	print_current,		/* print anything that differs from default */
+	print_all,			/* print all parameters */
+	print_unsaved,		/* print anything that differs from what we have saved. */
 } printConfig_t;
 
 typedef struct show_config_data_st
@@ -103,14 +104,14 @@ static int printUnsavedConfig( run_command_data_st *pcommand )
 	return result;
 }
 
-static int printCurrentConfig( run_command_data_st *pcommand )
+static int printCurrentConfig( run_command_data_st *pcommand, printConfig_t whatToPrint )
 {
 	int result = poll_result_error;
 	show_config_data_st show_config_data;
 
 	memset( &show_config_data, 0, sizeof show_config_data );
 	show_config_data.run_command_data = pcommand;
-	show_config_data.whatToPrint = print_current;
+	show_config_data.whatToPrint = whatToPrint;
 
 	result = pollCodeGroups( poll_id_show_configuration, &show_config_data, false );
 
@@ -195,7 +196,9 @@ static int showCommand( run_command_data_st *pcommand )
 		if ( strncasecmp( argv[1], "saved", strlen(argv[1]) ) == 0 )
 			result = printSavedConfig( pcommand );
 		else if ( strncasecmp( argv[1], "current", strlen(argv[1]) ) == 0 )
-			result = printCurrentConfig( pcommand );
+			result = printCurrentConfig( pcommand, print_current );
+		else if ( strncasecmp( argv[1], "all", strlen(argv[1]) ) == 0 )
+			result = printCurrentConfig( pcommand, print_all );
 		else if ( strncasecmp( argv[1], "unsaved", strlen(argv[1]) ) == 0 )
 			result = printUnsavedConfig( pcommand );
 	}
@@ -203,7 +206,7 @@ static int showCommand( run_command_data_st *pcommand )
 	if ( result == poll_result_error )
 	{
 		cliPrintf( pcommand->cliCtx, "\nFormat: %s ?                                - show help for this command", argv[0] );
-		cliPrintf( pcommand->cliCtx, "\nFormat: %s <saved|current|unsaved>          - show configuration", argv[0] );
+		cliPrintf( pcommand->cliCtx, "\nFormat: %s <saved|current|unsaved|all>      - show configuration", argv[0] );
 	}
 	return result;
 }
@@ -372,7 +375,8 @@ static int printCurrentParameters( void *pv,
 					void const * default_configuration,
 					parameterConfig_st const * parameterConfigs,
 					unsigned int const nbParameterConfigs,
-					char const * const * parameter_name_mappings
+					char const * const * parameter_name_mappings,
+					printConfig_t whatToPrint
 					)
 {
 	show_config_data_st * show_config_data = pv;
@@ -393,7 +397,8 @@ static int printCurrentParameters( void *pv,
 			{
 				void *parameter = (char *)pcfg + offset_to_configuration_data + parameterConfigs[parameterConfig_instance].offsetToData;
 
-				if (currentParameterValueMatchesDefaultValue(parameter, default_configuration, &parameterConfigs[parameterConfig_instance] ) == false)
+				if ( whatToPrint == print_all
+					|| currentParameterValueMatchesDefaultValue(parameter, default_configuration, &parameterConfigs[parameterConfig_instance] ) == false)
 				{
 					cliPrintf( run_command_data->cliCtx,
 								"\n%s %d %s ",
@@ -498,7 +503,8 @@ int printParametersHandler( void *pv,
 											nbParameterConfigs,
 											parameter_name_mappings );
 			break;
-		case print_current:	/* anything that isn't default */
+		case print_current:
+		case print_all:
 			result = printCurrentParameters( pv,
 												commands,
 												nb_commands,
@@ -508,7 +514,8 @@ int printParametersHandler( void *pv,
 												default_configuration,
 												parameterConfigs,
 												nbParameterConfigs,
-												parameter_name_mappings );
+												parameter_name_mappings,
+												show_config_data->whatToPrint );
 			break;
 		case print_unsaved:	/* unsaved changes */
 			result = printUnsavedParameters( pv,
