@@ -111,7 +111,7 @@ static bool cliGetCommand( cliCtx_st *pctx, char const ch )
 			pctx->linebuffer_cursor_position--;
 		}
 	}
-	else if ( ch7bit != '\r' && ch != ','/* temp debug */ )    /* not return */
+	else if ( ch7bit != '\r' )
 	{
 		if ( pctx->linebuffer_cursor_position < CLI_LINEBUFFER_SIZE )     /* Not exceeded max input length */
         {
