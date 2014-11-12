@@ -277,13 +277,13 @@ void * openPwmTxTimer( pin_st const * const pin, unsigned int pulseRateHz, unsig
 			pctx->capture_register = &timer_config->tim->CCR1;
 			break;
 		case TIM_Channel_2:
-			pctx->capture_register = &timer_config->tim->CCR1;
+			pctx->capture_register = &timer_config->tim->CCR2;
 			break;
 		case TIM_Channel_3:
-			pctx->capture_register = &timer_config->tim->CCR1;
+			pctx->capture_register = &timer_config->tim->CCR3;
 			break;
 		case TIM_Channel_4:
-			pctx->capture_register = &timer_config->tim->CCR1;
+			pctx->capture_register = &timer_config->tim->CCR4;
 			break;
 	}
 	enablePWMTx( timer_config, PWM_FREQUENCY_HZ/pulseRateHz, initialValue );

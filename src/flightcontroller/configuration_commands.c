@@ -10,17 +10,19 @@
 #include <cli.h>
 #include <configuration.h>
 #include <configuration_commands.h>
-
+#include "stm32f30x_misc.h"
 static int saveCommand( run_command_data_st *pcommand );
 static int showCommand( run_command_data_st *pcommand );
 static int helpCommand( run_command_data_st *pcommand );
+static int rebootCommand( run_command_data_st *pcommand );
 
 static const command_st config_commands[] =
 {
-	{ .group_id = configuration_id_save, .name = "save",    .handler = saveCommand	},
-	{ .group_id = configuration_id_show, .name = "show",    .handler = showCommand	},
-	{ .group_id = configuration_id_show, .name = "?",       .handler = helpCommand	},
-	{ .group_id = configuration_id_show, .name = "help",    .handler = helpCommand	}
+	{ .group_id = configuration_id_save, 		.name = "save",    .handler = saveCommand	},
+	{ .group_id = configuration_id_show, 		.name = "show",    .handler = showCommand	},
+	{ .group_id = configuration_id_show, 		.name = "?",       .handler = helpCommand	},
+	{ .group_id = configuration_id_show, 		.name = "help",    .handler = helpCommand	},
+	{ .group_id = configuration_id_reserved, 	.name = "reboot",  .handler = rebootCommand	}
 };
 
 typedef enum printConfig_t
@@ -177,6 +179,20 @@ static int printSavedConfig( run_command_data_st *pcommand )
 		cliPrintf( pcommand->cliCtx, "\nSaved configuration is invalid" );
 
 	return result;
+}
+
+void systemReset(void)
+{
+	NVIC_SystemReset();
+}
+
+static int rebootCommand( run_command_data_st *pcommand )
+{
+	UNUSED(pcommand);
+
+	systemReset();
+
+	return poll_result_ok;
 }
 
 static int helpCommand( run_command_data_st *pcommand )
@@ -598,11 +614,12 @@ void loadSavedConfiguration( void )
 		while( configuration_data_size >= sizeof(uint32_t) )
 		{
 			int data_length;
+			uint32_t hdr = *(uint32_t *)load_config_data.pcfg;
 
-			load_config_data.configuration_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, GROUP );
-			load_config_data.instance = GET_CONFIG_FIELD( *(uint32_t *)pcfg, INSTANCE );
-			load_config_data.parameter_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_ID );
-			load_config_data.data_type = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_TYPE );
+			load_config_data.configuration_id = GET_CONFIG_FIELD( hdr, GROUP );
+			load_config_data.instance = GET_CONFIG_FIELD( hdr, INSTANCE );
+			load_config_data.parameter_id = GET_CONFIG_FIELD( hdr, PARAMETER_ID );
+			load_config_data.data_type = GET_CONFIG_FIELD( hdr, PARAMETER_TYPE );
 
 			if ( load_config_data.configuration_id == configuration_id_reserved ) /* indicates end of config */
 				break;

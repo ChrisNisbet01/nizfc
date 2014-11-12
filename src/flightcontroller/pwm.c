@@ -45,7 +45,7 @@ typedef struct pwm_channel_ctx_st
 } pwm_channel_ctx_st;
 
 static pwm_channel_ctx_st 		pwm_channel_ctxs[NB_PWM_PINS];
-#define PWM_CONTEXT_INDEX(p)	((p)-&pwm_channel_ctxs[0])
+#define PWM_CONTEXT_INDEX(p)	((p)-pwm_channel_ctxs)
 
 static void (*NewReceiverChannelDataCallback)( uint32_t *channels, uint_fast8_t first_index, uint_fast8_t nb_channels );
 

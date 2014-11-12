@@ -460,8 +460,7 @@ static void main_task( void *pv )
 
 		setMotorOutput( 0, readReceiverChannel(0) );
 
-		printf("\npwm1: %d", readReceiverChannel(0) );
-		printf("\npwm2: %d", readReceiverChannel(1) );
+		printf("\npwm1: %d %d %d %d", readReceiverChannel(0), readReceiverChannel(1), readReceiverChannel(2), readReceiverChannel(3) );
 		//demoCompass();
 	}
 }

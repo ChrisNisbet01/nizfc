@@ -23,18 +23,21 @@ output_configuration_st output_configuration[NB_OUTPUT_CONFIGURATIONS];
 
 static const output_configuration_st default_output_configuration =
 {
-	.pwmrate = 400 /* Hz */
+	.pwmrate = 400, /* Hz */
+	.debug = 0
 };
 
 typedef enum output_parameter_id_t
 {
-	output_parameter_id_mode = 0
+	output_parameter_id_mode = 0,
+	output_parameter_id_debug = 1
 } output_parameter_id_t;
 
 
 static char const * const output_parameter_name_mappings[] =
 {
-	[output_parameter_id_mode] = "pwmrate"
+	[output_parameter_id_mode] = "pwmrate",
+	[output_parameter_id_debug] = "debug"
 };
 
 static const parameterConfig_st output_config_parameterConfigs[] =
@@ -43,6 +46,11 @@ static const parameterConfig_st output_config_parameterConfigs[] =
 	.parameter_id = output_parameter_id_mode,
 	.data_type = config_data_type_uint16,
 	.offsetToData = offsetof(output_configuration_st, pwmrate),
+	},
+	{
+	.parameter_id = output_parameter_id_debug,
+	.data_type = config_data_type_uint16,
+	.offsetToData = offsetof(output_configuration_st, debug),
 	}
 };
 
