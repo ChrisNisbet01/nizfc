@@ -11,6 +11,7 @@
 #include <i2c_stm32f30x.h>
 #include <receiver.h>
 #include <outputs.h>
+#include <output_configuration.h>
 #include <cli.h>
 #include <startup.h>
 
@@ -455,12 +456,18 @@ static void main_task( void *pv )
 
 	while (1)
 	{
+		uint_fast16_t rx_value;
 		CoTimeDelay(0, 0, 1, 0);
         STM_EVAL_LEDToggle(LED3);
 
-		setMotorOutput( 0, readReceiverChannel(0) );
+		rx_value = readReceiverChannel(0);
+		setMotorOutput( 0, rx_value );
+		setMotorOutput( 1, rx_value );
+		setMotorOutput( 2, rx_value );
+		setMotorOutput( 3, rx_value );
 
-		printf("\npwm1: %d %d %d %d", readReceiverChannel(0), readReceiverChannel(1), readReceiverChannel(2), readReceiverChannel(3) );
+		if (output_configuration[0].debug != 0 )
+			printf("\npwm1: %d %d %d %d", readReceiverChannel(0), readReceiverChannel(1), readReceiverChannel(2), readReceiverChannel(3) );
 		//demoCompass();
 	}
 }

@@ -56,7 +56,7 @@ void setMotorOutput( unsigned int motor, unsigned int pulseWidthMillsecs )
 	if (motor < ARRAY_SIZE(pwm_tx_pins) && pwmOutputs[motor].used == true)
 	{
 		/* temp debug use cli parameter */
-		setPWMTXWidth( pwmOutputs[motor].pwmTimerCtx, output_configuration[0].debug );
+		setPWMTXWidth( pwmOutputs[motor].pwmTimerCtx, pulseWidthMillsecs );
 	}
 }
 

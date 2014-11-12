@@ -26,18 +26,20 @@ typedef struct rx_signals_st
 
 static rx_signals_st	rx_signals;
 
-static void NewReceiverChannelData( uint32_t *channels, uint_fast8_t first_index, uint_fast8_t nb_channels )
+static void NewReceiverChannelData( uint32_t * channels, uint_fast8_t first_index, uint_fast8_t nb_channels )
 {
 	/* new frame of channel data from the RC receiver */
 	uint_fast8_t i, max_channels;
 
 	max_channels = min(MAX_RX_SIGNALS, first_index + nb_channels);
-	STM_EVAL_LEDToggle(LED7);
 
 	CoEnterMutexSection( rx_signals.rx_signals_mutex );
 
 	for (i=first_index; i < max_channels; i++)
-	    rx_signals.rx_signals[i] = channels[i];
+	{
+		STM_EVAL_LEDToggle(LED7 + i);
+	    rx_signals.rx_signals[i] = *channels++;
+	}
 
 	CoLeaveMutexSection( rx_signals.rx_signals_mutex );
 }
