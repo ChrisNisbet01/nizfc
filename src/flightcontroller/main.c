@@ -16,8 +16,10 @@
 #include <sensors.h>
 #include <lsm303dlhc.h>
 
+
 #define MAIN_TASK_STACK_SIZE 0x200
 #define CLI_TASK_STACK_SIZE 0x200
+
 static OS_STK cli_task_stack[CLI_TASK_STACK_SIZE];
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE];
 
@@ -28,12 +30,43 @@ void *i2c_port;
 void *pcli;
 void *lsm303dlhcDevice;
 static sensorCallback_st sensorCallbacks;
+float RollAng, PitchAng, Heading;
 
 static int uartPutChar( int ch )
 {
 	return uartWriteCharBlockingWithTimeout( cli_uart, ch, 10 );
 }
 
+static float calculateHeading( float *magValues, float *accValues )
+{
+	float fNormAcc, fSinRoll, fCosRoll, fSinPitch, fCosPitch, acosPitch, acosRoll;
+	float fTiltedX ,fTiltedY;
+	float heading;	/* in degrees */
+
+	fNormAcc = sqrt((accValues[0]*accValues[0])+(accValues[1]*accValues[1])+(accValues[2]*accValues[2]));
+
+	fSinRoll = -accValues[1]/fNormAcc;
+	fCosRoll = sqrt(1.0-(fSinRoll * fSinRoll));
+	fSinPitch = accValues[0]/fNormAcc;
+	fCosPitch = sqrt(1.0-(fSinPitch * fSinPitch));
+	acosPitch = acos(fCosPitch)*180.0f/M_PI;
+	acosRoll = acos(fCosRoll)*180.0/M_PI;
+
+	RollAng = (atan2(-accValues[1], accValues[2])*180.0)/M_PI;
+    PitchAng = (atan2(accValues[0], sqrt(accValues[1]*accValues[1] + accValues[2]*accValues[2]))*180.0)/M_PI;
+
+	fTiltedX = magValues[0] * fCosPitch + magValues[2] * fSinPitch;
+	fTiltedY = magValues[0] * fSinRoll * fSinPitch  + magValues[1] * fCosRoll - magValues[1] * fSinRoll * fCosPitch;
+
+	heading = (float) ((atan2f(fTiltedY,fTiltedX))*180.0f)/M_PI;
+
+	if (heading < 0)
+	{
+		heading = heading + 360.0f;
+	}
+
+	return heading;
+}
 static void main_task( void *pv )
 {
 	UNUSED(pv);
@@ -61,7 +94,8 @@ static void main_task( void *pv )
 	while (1)
 	{
 		uint_fast16_t rx_value;
-		CoTimeDelay(0, 0, 1, 0);
+
+		CoTimeDelay(0, 0, 0, 500);
         STM_EVAL_LEDToggle(LED3);
         float accelerometerValues[3];
         float magnetometerValues[3];
@@ -76,27 +110,13 @@ static void main_task( void *pv )
 			printf("\npwm1: %d %d %d %d", readReceiverChannel(0), readReceiverChannel(1), readReceiverChannel(2), readReceiverChannel(3) );
 		if ( lsm303dlhcDevice )
 		{
-			if (output_configuration[0].debug & 2 )
+			if ( sensorCallbacks.readAccelerometer != NULL
+				&& sensorCallbacks.readMagnetometer != NULL
+				&& sensorCallbacks.readAccelerometer( lsm303dlhcDevice, accelerometerValues ) == true
+				&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true)
 			{
-				if ( sensorCallbacks.readAccelerometer != NULL )
-				{
-					if ( sensorCallbacks.readAccelerometer( lsm303dlhcDevice, accelerometerValues ) == true )
-					{
-						printf("\nacc: x%d:%f y%d:%f z%d:%f", 0, accelerometerValues[0], 1, accelerometerValues[1], 2, accelerometerValues[2] );
-					}
-					else
-						printf("\nfailed to read acc");
-				}
-			}
-			if (output_configuration[0].debug & 4 )
-			{
-				if ( sensorCallbacks.readMagnetometer != NULL )
-				{
-					if ( sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true )
-						printf("\nmag: x:%f y:%f z:%f", magnetometerValues[0], magnetometerValues[1], magnetometerValues[2] );
-					else
-						printf("\nfailed to read mag");
-				}
+				Heading = calculateHeading( magnetometerValues, accelerometerValues );
+				printf("\n%spitch %f roll %f heading %f", "", PitchAng, RollAng, Heading );
 			}
 		}
 	}

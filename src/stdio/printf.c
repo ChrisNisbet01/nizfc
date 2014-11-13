@@ -432,9 +432,11 @@ signed int vsnprintf(char *pStr, size_t length, const char *pFormat, va_list ap)
             	a_un a;
             	uint32_t temp;
             	a.dbl = va_arg(ap, double);
-				//temp = a.words[0];
-				//a.words[0] = a.words[1];
-				//a.words[1] = temp;
+#if 1
+				temp = a.words[0];
+				a.words[0] = a.words[1];
+				a.words[1] = temp;
+#endif
             	num = PutFloat(pStr, a.dbl);
             	break;
             }
