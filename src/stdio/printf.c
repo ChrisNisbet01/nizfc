@@ -268,7 +268,78 @@ signed int PutHexa(
     return num;
 }
 
+static char *_i2a(unsigned i, char *a, unsigned base)
+{
+    if (i / base > 0)
+        a = _i2a(i / base, a, base);
+    *a = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i % base];
+    return a + 1;
+}
 
+char *itoa(int i, char *a, int base)
+{
+    if ((base < 2) || (base > 36))
+        base = 10;
+    if (i < 0) {
+        *a = '-';
+        *_i2a(-(unsigned) i, a + 1, base) = 0;
+    } else
+        *_i2a(i, a, base) = 0;
+    return a;
+}
+static char *ftoa(float x, char *floatString)
+{
+    int32_t value;
+    char intString1[12];
+    char intString2[12] = { 0, };
+    char *decimalPoint = ".";
+    uint8_t dpLocation;
+
+    if (x > 0)                  // Rounding for x.xxx display format
+        x += 0.0005f;
+    else
+        x -= 0.0005f;
+
+    value = (int32_t)(x * 1000.0f);    // Convert float * 1000 to an integer
+
+    itoa(abs(value), intString1, 10);   // Create string from abs of integer value
+
+    if (value >= 0)
+        intString2[0] = ' ';    // Positive number, add a pad space
+    else
+        intString2[0] = '-';    // Negative number, add a negative sign
+
+    if (strlen(intString1) == 1) {
+        intString2[1] = '0';
+        intString2[2] = '0';
+        intString2[3] = '0';
+        strcat(intString2, intString1);
+    } else if (strlen(intString1) == 2) {
+        intString2[1] = '0';
+        intString2[2] = '0';
+        strcat(intString2, intString1);
+    } else if (strlen(intString1) == 3) {
+        intString2[1] = '0';
+        strcat(intString2, intString1);
+    } else {
+        strcat(intString2, intString1);
+    }
+
+    dpLocation = strlen(intString2) - 3;
+
+    strncpy(floatString, intString2, dpLocation);
+    floatString[dpLocation] = '\0';
+    strcat(floatString, decimalPoint);
+    strcat(floatString, intString2 + dpLocation);
+
+    return floatString;
+}
+
+signed int PutFloat( char *pStr, float value )
+{
+	ftoa( value, pStr );
+	return strlen( pStr );
+}
 
 /* Global Functions ----------------------------------------------------------- */
 
@@ -350,6 +421,23 @@ signed int vsnprintf(char *pStr, size_t length, const char *pFormat, va_list ap)
             case 'X': num = PutHexa(pStr, fill, width, 1, va_arg(ap, unsigned int)); break;
             case 's': num = PutString(pStr, fill, width, va_arg(ap, char *)); break;
             case 'c': num = PutChar(pStr, va_arg(ap, unsigned int)); break;
+            case 'f':
+            {
+            	/* for some reason the value has its words swapped. Sometimes */
+            	typedef union a_un
+            	{
+            		uint32_t words[2];
+            		double   dbl;
+            	} a_un;
+            	a_un a;
+            	uint32_t temp;
+            	a.dbl = va_arg(ap, double);
+				//temp = a.words[0];
+				//a.words[0] = a.words[1];
+				//a.words[1] = temp;
+            	num = PutFloat(pStr, a.dbl);
+            	break;
+            }
             default:
                 return EOF;
             }

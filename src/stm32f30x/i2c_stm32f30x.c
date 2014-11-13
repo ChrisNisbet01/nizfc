@@ -15,6 +15,7 @@
 typedef enum i2c_idx_t
 {
 	I2C1_IDX,
+	I2C2_IDX,
 	MAX_I2C
 } i2c_idx_t;
 
@@ -57,6 +58,23 @@ static const i2c_config_st i2c_configs[] =
 			.sdaRCC_AHBPeriph = RCC_AHBPeriph_GPIOB,
 			.sdaPinAF = GPIO_AF_4,
 			.RCC_APB1Periph = RCC_APB1Periph_I2C1
+		},
+	[I2C2_IDX] =
+		{
+			.i2c_port = I2C2,
+			.frequencyKHz = 400,
+			.port = I2C_PORT_2,
+			.sclGpio = GPIOF,
+			.sclPin = GPIO_Pin_6,
+			.sclPinSource = GPIO_PinSource6,
+			.sclRCC_AHBPeriph = RCC_AHBPeriph_GPIOF,
+			.sclPinAF = GPIO_AF_4,
+			.sdaGpio = GPIOA,
+			.sdaPin = GPIO_Pin_10,
+			.sdaPinSource = GPIO_PinSource10,
+			.sdaRCC_AHBPeriph = RCC_AHBPeriph_GPIOA,
+			.sdaPinAF = GPIO_AF_4,
+			.RCC_APB1Periph = RCC_APB1Periph_I2C2
 		}
 };
 #define NB_I2C_PORTS	(sizeof(i2c_configs)/sizeof(i2c_configs[0]))
@@ -158,7 +176,7 @@ done:
 }
 
 /* bascially taken from STM32Discovery example code */
-bool i2cWrite(void *pv, uint8_t addr_, uint8_t reg, uint8_t *data)
+bool i2cWrite(void *pv, uint8_t addr_, uint8_t reg, uint8_t data)
 {
     I2C_TypeDef *I2Cx = pv;
 	uint_fast32_t i2cTimeout;
@@ -206,7 +224,7 @@ bool i2cWrite(void *pv, uint8_t addr_, uint8_t reg, uint8_t *data)
     }
 
     /* Write data to TXDR */
-    I2C_SendData(I2Cx, *data);
+    I2C_SendData(I2Cx, data);
 
     /* Wait until STOPF flag is set */
     i2cTimeout = I2C_LONG_TIMEOUT;

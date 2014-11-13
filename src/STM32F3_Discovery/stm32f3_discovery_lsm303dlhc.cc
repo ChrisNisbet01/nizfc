@@ -377,37 +377,6 @@ uint8_t LSM303DLHC_AccGetDataStatus(void)
 }
 
 /**
-  * @brief  Set LSM303DLHC Mag Initialization.
-  * @param  LSM303DLHC_InitStruct: pointer to a LSM303DLHC_MagInitTypeDef structure
-  *         that contains the configuration setting for the LSM303DLHC.
-  * @retval None
-  */
-void LSM303DLHC_MagInit(LSM303DLHCMag_InitTypeDef *LSM303DLHC_InitStruct)
-{
-  uint8_t cra_regm = 0x00, crb_regm = 0x00, mr_regm = 0x00;
-
-	/* Assumes that the I2C driver has been Initialised */
-
-  /* Configure MEMS: temp and Data rate */
-  cra_regm |= (uint8_t) (LSM303DLHC_InitStruct->Temperature_Sensor | LSM303DLHC_InitStruct->MagOutput_DataRate);
-
-  /* Configure MEMS: full Scale */
-  crb_regm |= (uint8_t) (LSM303DLHC_InitStruct->MagFull_Scale);
-
-  /* Configure MEMS: working mode */
-  mr_regm |= (uint8_t) (LSM303DLHC_InitStruct->Working_Mode);
-
-  /* Write value to Mag MEMS CRA_REG regsister */
-  LSM303DLHC_Write(MAG_I2C_ADDRESS, LSM303DLHC_CRA_REG_M, &cra_regm);
-
-  /* Write value to Mag MEMS CRB_REG regsister */
-  LSM303DLHC_Write(MAG_I2C_ADDRESS, LSM303DLHC_CRB_REG_M, &crb_regm);
-
-  /* Write value to Mag MEMS MR_REG regsister */
-  LSM303DLHC_Write(MAG_I2C_ADDRESS, LSM303DLHC_MR_REG_M, &mr_regm);
-}
-
-/**
   * @brief  Get status for Mag LSM303DLHC data
   * @param  None
   * @retval Data status in a LSM303DLHC Data register
