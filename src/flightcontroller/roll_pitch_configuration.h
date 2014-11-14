@@ -7,6 +7,12 @@ typedef struct roll_pitch_configuration_st
 {
 	float roll_lpf_factor;
 	float pitch_lpf_factor;
+	float kP;
+	float kI;
+	float kD;
+	float integralLimit;
+	float dLimit;
+	float pidRange;
 } roll_pitch_configuration_st;
 
 

@@ -29,7 +29,13 @@ static const roll_pitch_configuration_st default_roll_pitch_configuration =
 
 typedef enum roll_parameter_id_t
 {
-	roll_parameter_id_lpf = 0
+	roll_parameter_id_lpf = 0,
+	roll_parameter_id_kP = 1,
+	roll_parameter_id_kI = 2,
+	roll_parameter_id_kD = 3,
+	roll_parameter_id_integralLimit = 4,
+	roll_parameter_id_dLimit = 5,
+	roll_parameter_id_pidRange = 6
 } roll_parameter_id_t;
 
 typedef enum pitch_parameter_id_t
@@ -40,7 +46,13 @@ typedef enum pitch_parameter_id_t
 
 static char const * const roll_parameter_name_mappings[] =
 {
-	[roll_parameter_id_lpf] = "lpf"
+	[roll_parameter_id_lpf] = "lpf",
+	[roll_parameter_id_kP] = "kp",
+	[roll_parameter_id_kI] = "ki",
+	[roll_parameter_id_kD] = "kd",
+	[roll_parameter_id_integralLimit] = "ilimit",
+	[roll_parameter_id_dLimit] = "dlimit",
+	[roll_parameter_id_pidRange] = "pidrange"
 };
 
 static char const * const pitch_parameter_name_mappings[] =
@@ -54,8 +66,39 @@ static const parameterConfig_st roll_config_parameterConfigs[] =
 	.parameter_id = roll_parameter_id_lpf,
 	.data_type = config_data_type_float,
 	.offsetToData = offsetof(roll_pitch_configuration_st, roll_lpf_factor),
+	},
+	{
+	.parameter_id = roll_parameter_id_kP,
+	.data_type = config_data_type_float,
+	.offsetToData = offsetof(roll_pitch_configuration_st, kP),
+	},
+	{
+	.parameter_id = roll_parameter_id_kI,
+	.data_type = config_data_type_float,
+	.offsetToData = offsetof(roll_pitch_configuration_st, kI),
+	},
+	{
+	.parameter_id = roll_parameter_id_kD,
+	.data_type = config_data_type_float,
+	.offsetToData = offsetof(roll_pitch_configuration_st, kD),
+	},
+	{
+	.parameter_id = roll_parameter_id_integralLimit,
+	.data_type = config_data_type_float,
+	.offsetToData = offsetof(roll_pitch_configuration_st, integralLimit),
+	},
+	{
+	.parameter_id = roll_parameter_id_dLimit,
+	.data_type = config_data_type_float,
+	.offsetToData = offsetof(roll_pitch_configuration_st, dLimit),
+	},
+	{
+	.parameter_id = roll_parameter_id_pidRange,
+	.data_type = config_data_type_float,
+	.offsetToData = offsetof(roll_pitch_configuration_st, pidRange),
 	}
 };
+
 static const parameterConfig_st pitch_config_parameterConfigs[] =
 {
 	{

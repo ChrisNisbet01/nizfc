@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <ctype.h>
 
 /*---------------------------------------------------------*/
@@ -25,5 +26,32 @@ int strtoint (char const * str, unsigned int  * pint )
 	*pint = value;
 
 	return 1;
+}
+
+
+float limitFloat( float value, float lowLimit, float highLimit)
+{
+    if (value < lowLimit)
+        value = lowLimit;
+    else if (value > highLimit)
+        value = highLimit;
+
+    return value;
+}
+
+
+int limit( int value, int lowLimit, int highLimit)
+{
+    if (value < lowLimit)
+        value = lowLimit;
+    else if (value > highLimit)
+        value = highLimit;
+
+    return value;
+}
+
+float scale(int32_t value, int32_t srcMin, int32_t srcMax, float destMin, float destMax)
+{
+	return destMin + ((destMax - destMin)*(float)(value-srcMin))/(float)(srcMax-srcMin);
 }
 

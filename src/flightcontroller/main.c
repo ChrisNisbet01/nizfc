@@ -16,6 +16,8 @@
 #include <sensors.h>
 #include <lsm303dlhc.h>
 #include <roll_pitch_configuration.h>
+#include <receiver_handler.h>
+#include <motor_control.h>
 
 
 #define MAIN_TASK_STACK_SIZE 0x200
@@ -72,15 +74,20 @@ static float calculateHeading( float *magValues, float *accValues )
 }
 
 OS_FlagID printTimerFlag;
+OS_FlagID receiverFlag;
 
 static void printTimer( void )
 {
 	CoSetFlag( printTimerFlag );
 }
 
+static void newReceiverDataCallback( void )
+{
+	CoSetFlag( receiverFlag );
+}
+
 static void main_task( void *pv )
 {
-	OS_TCID printTimerID;
 	UNUSED(pv);
 
 	STM_EVAL_LEDInit(LED3);
@@ -100,27 +107,21 @@ static void main_task( void *pv )
 		sensorConfig.i2cCtx = i2c_port;
 		lsm303dlhcDevice = initLSM303DLHC( &sensorConfig, &sensorCallbacks );
 	}
-	openReceiver();
-	openOutputs();
 
-	printTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-	printTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ/2, CFG_SYSTICK_FREQ/2, printTimer );
-	CoStartTmr( printTimerID );
+	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+
+	initMotorControl();
+	openReceiver( newReceiverDataCallback );
+	openOutputs();
 
 	while (1)
 	{
 		uint_fast16_t rx_value;
 
-		CoTimeDelay(0, 0, 0, 10);
+		CoTimeDelay(0, 0, 0, 20);
         STM_EVAL_LEDToggle(LED3);
         float accelerometerValues[3];
         float magnetometerValues[3];
-
-		rx_value = readReceiverChannel(0);
-		setMotorOutput( 0, rx_value );
-		setMotorOutput( 1, rx_value );
-		setMotorOutput( 2, rx_value );
-		setMotorOutput( 3, rx_value );
 
 		if ( lsm303dlhcDevice )
 		{
@@ -133,14 +134,14 @@ static void main_task( void *pv )
 				RollAngFiltered = RollAng * roll_pitch_configuration[0].roll_lpf_factor + RollAngFiltered * (1.0-roll_pitch_configuration[0].roll_lpf_factor);
 				PitchAngFiltered = PitchAng * roll_pitch_configuration[0].pitch_lpf_factor + PitchAngFiltered * (1.0-roll_pitch_configuration[0].pitch_lpf_factor);
 			}
-			if ( CoAcceptSingleFlag( printTimerFlag ) == E_OK )
-			{
-				if (output_configuration[0].debug & 1 )
-					printf("\npwm1: %d %d %d %d", readReceiverChannel(0), readReceiverChannel(1), readReceiverChannel(2), readReceiverChannel(3) );
-				if (output_configuration[0].debug & 2 )
-					printf("\npitch %d:%d roll %d:%d heading %f", (int)(PitchAng*1000), (int)(PitchAngFiltered*1000), (int)(RollAng*1000), (int)(RollAngFiltered*1000), Heading );
-			}
 		}
+		// TODO: process receiver signals on a per frame basis
+		if (CoAcceptSingleFlag( receiverFlag ) == E_OK)
+		{
+			processStickPositions();
+		}
+		updatePIDControlLoops();
+		updateMotorOutputs();
 	}
 }
 
@@ -158,9 +159,15 @@ void newUartData( void *pv )
 
 static void cli_task( void *pv )
 {
+	OS_TCID printTimerID;
+
 	UNUSED(pv);
 
-	cliUartFlag = CoCreateFlag( Co_TRUE, 0 );
+	cliUartFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+	printTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+
+	printTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ/2, CFG_SYSTICK_FREQ/2, printTimer );
+	CoStartTmr( printTimerID );
 
 	cli_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart != NULL )
@@ -170,14 +177,36 @@ static void cli_task( void *pv )
 	{
 		if ( cli_uart != NULL )
 		{
-			CoWaitForSingleFlag( cliUartFlag, 0 );
-			while ( uartRxReady( cli_uart ) )
-			{
-				uint8_t ch;
+			StatusType err;
+			U32 readyFlags;
 
-				ch = uartReadChar( cli_uart );
-				cliHandleNewChar( pcli, ch );
-			}
+			readyFlags = CoWaitForMultipleFlags( (1<<printTimerFlag)|(1<<cliUartFlag), OPT_WAIT_ANY, 0, &err );
+		 	if ( readyFlags & (1<<cliUartFlag) )
+		 	{
+				while ( uartRxReady( cli_uart ) )
+				{
+					uint8_t ch;
+
+					ch = uartReadChar( cli_uart );
+					cliHandleNewChar( pcli, ch );
+				}
+		 	}
+		 	if ( readyFlags & (1<<printTimerFlag) )
+		 	{
+				if (output_configuration[0].debug & 1 )
+				{
+			 		printf("\nthrottle: %d", (int)getThrottleSetpoint() );
+			 		printf("\nroll: %d", (int)getRollAngleSetpoint() );
+			 		printf("\npitch: %d", (int)getPitchAngleSetpoint() );
+				}
+				if (output_configuration[0].debug & 2 )
+				{
+					int motor;
+
+					for (motor = 0; motor < 4; motor++ )
+						printf("\nmotor %d: %u", motor, (unsigned int)getMotorValue( motor ) );
+				}
+		 	}
 		}
 	}
 }

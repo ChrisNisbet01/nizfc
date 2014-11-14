@@ -24,7 +24,13 @@ typedef struct rx_signals_st
 	OS_MutexID rx_signals_mutex;	/* protection for the rx_signals data */
 } rx_signals_st;
 
+typedef struct receiver_ctx_st
+{
+	void	(*newDataCb)( void );
+} receiver_ctx_st;
+
 static rx_signals_st	rx_signals;
+static receiver_ctx_st  receiver_ctx;
 
 static void NewReceiverChannelData( uint32_t * channels, uint_fast8_t first_index, uint_fast8_t nb_channels )
 {
@@ -42,6 +48,10 @@ static void NewReceiverChannelData( uint32_t * channels, uint_fast8_t first_inde
 	}
 
 	CoLeaveMutexSection( rx_signals.rx_signals_mutex );
+
+	// TODO: on a per channel basis
+	// TODO: don't forget about failsafe/timeouts
+	receiver_ctx.newDataCb();
 }
 
 void initReceiver( void )
@@ -68,8 +78,10 @@ uint_fast16_t readReceiverChannel(uint_fast8_t channel)
 	return channel_value;
 }
 
-void openReceiver( void )
+void openReceiver( void (*newDataCb)( void ) )
 {
+	receiver_ctx.newDataCb = newDataCb;
+
 	switch( receiver_configuration[0].mode )
 	{
 		case receiver_mode_pwm:
