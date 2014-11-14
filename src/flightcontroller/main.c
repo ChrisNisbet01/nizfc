@@ -15,6 +15,7 @@
 #include <startup.h>
 #include <sensors.h>
 #include <lsm303dlhc.h>
+#include <roll_pitch_configuration.h>
 
 
 #define MAIN_TASK_STACK_SIZE 0x200
@@ -30,7 +31,9 @@ void *i2c_port;
 void *pcli;
 void *lsm303dlhcDevice;
 static sensorCallback_st sensorCallbacks;
+
 float RollAng, PitchAng, Heading;
+float RollAngFiltered, PitchAngFiltered, Heading;
 
 static int uartPutChar( int ch )
 {
@@ -67,8 +70,17 @@ static float calculateHeading( float *magValues, float *accValues )
 
 	return heading;
 }
+
+OS_FlagID printTimerFlag;
+
+static void printTimer( void )
+{
+	CoSetFlag( printTimerFlag );
+}
+
 static void main_task( void *pv )
 {
+	OS_TCID printTimerID;
 	UNUSED(pv);
 
 	STM_EVAL_LEDInit(LED3);
@@ -91,11 +103,15 @@ static void main_task( void *pv )
 	openReceiver();
 	openOutputs();
 
+	printTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+	printTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ/2, CFG_SYSTICK_FREQ/2, printTimer );
+	CoStartTmr( printTimerID );
+
 	while (1)
 	{
 		uint_fast16_t rx_value;
 
-		CoTimeDelay(0, 0, 0, 500);
+		CoTimeDelay(0, 0, 0, 10);
         STM_EVAL_LEDToggle(LED3);
         float accelerometerValues[3];
         float magnetometerValues[3];
@@ -106,8 +122,6 @@ static void main_task( void *pv )
 		setMotorOutput( 2, rx_value );
 		setMotorOutput( 3, rx_value );
 
-		if (output_configuration[0].debug & 1 )
-			printf("\npwm1: %d %d %d %d", readReceiverChannel(0), readReceiverChannel(1), readReceiverChannel(2), readReceiverChannel(3) );
 		if ( lsm303dlhcDevice )
 		{
 			if ( sensorCallbacks.readAccelerometer != NULL
@@ -116,7 +130,15 @@ static void main_task( void *pv )
 				&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true)
 			{
 				Heading = calculateHeading( magnetometerValues, accelerometerValues );
-				printf("\n%spitch %f roll %f heading %f", "", PitchAng, RollAng, Heading );
+				RollAngFiltered = RollAng * roll_pitch_configuration[0].roll_lpf_factor + RollAngFiltered * (1.0-roll_pitch_configuration[0].roll_lpf_factor);
+				PitchAngFiltered = PitchAng * roll_pitch_configuration[0].pitch_lpf_factor + PitchAngFiltered * (1.0-roll_pitch_configuration[0].pitch_lpf_factor);
+			}
+			if ( CoAcceptSingleFlag( printTimerFlag ) == E_OK )
+			{
+				if (output_configuration[0].debug & 1 )
+					printf("\npwm1: %d %d %d %d", readReceiverChannel(0), readReceiverChannel(1), readReceiverChannel(2), readReceiverChannel(3) );
+				if (output_configuration[0].debug & 2 )
+					printf("\npitch %d:%d roll %d:%d heading %f", (int)(PitchAng*1000), (int)(PitchAngFiltered*1000), (int)(RollAng*1000), (int)(RollAngFiltered*1000), Heading );
 			}
 		}
 	}

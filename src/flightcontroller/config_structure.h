@@ -8,7 +8,9 @@ typedef enum configuration_id_t
 	configuration_id_receiver = 1,
 	configuration_id_save = 2,
 	configuration_id_show = 3,
-	configuration_id_output = 4
+	configuration_id_output = 4,
+	configuration_id_roll = 5,
+	configuration_id_pitch = 6
 } configuration_id_t;
 
 /*

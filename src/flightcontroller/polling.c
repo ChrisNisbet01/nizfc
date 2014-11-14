@@ -9,12 +9,14 @@
 extern int outputPollHandler( poll_id_t poll_id, void *pv );
 extern int receiverPollHandler( poll_id_t poll_id, void *pv );
 extern int configPollHandler( poll_id_t poll_id, void *pv );
+extern int rollPitchPollHandler( poll_id_t poll_id, void *pv );
 
 static const code_group_mappings_st code_groups[] =
 {
 	{ .pollHandler = outputPollHandler },
 	{ .pollHandler = receiverPollHandler },
-	{ .pollHandler = configPollHandler }
+	{ .pollHandler = configPollHandler },
+	{ .pollHandler = rollPitchPollHandler }
 };
 
 poll_result_t pollCodeGroups( poll_id_t poll_id, void *pv, bool poll_all_groups )

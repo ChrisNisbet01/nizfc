@@ -16,8 +16,6 @@
 #include <cli.h>
 #include <receiver.h>
 #include <receiver_configuration.h>
-#include <pwm.h>
-#include <ppm.h>
 
 
 static int receiver_command( run_command_data_st *pcommand );
