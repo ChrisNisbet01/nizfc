@@ -118,7 +118,7 @@ static void main_task( void *pv )
 	{
 		uint_fast16_t rx_value;
 
-		CoTimeDelay(0, 0, 0, 20);
+		CoTimeDelay(0, 0, 0, 10);
         STM_EVAL_LEDToggle(LED3);
         float accelerometerValues[3];
         float magnetometerValues[3];
