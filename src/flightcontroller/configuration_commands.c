@@ -138,10 +138,10 @@ static int printSavedConfig( run_command_data_st *pcommand )
 		{
 			int data_length;
 
-			show_config_data.configuration_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, GROUP );
-			show_config_data.instance = GET_CONFIG_FIELD( *(uint32_t *)pcfg, INSTANCE );
-			show_config_data.parameter_id = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_ID );
-			show_config_data.data_type = GET_CONFIG_FIELD( *(uint32_t *)pcfg, PARAMETER_TYPE );
+			show_config_data.configuration_id = GET_CONFIG_FIELD( *(uint32_t *)show_config_data.pcfg, GROUP );
+			show_config_data.instance = GET_CONFIG_FIELD( *(uint32_t *)show_config_data.pcfg, INSTANCE );
+			show_config_data.parameter_id = GET_CONFIG_FIELD( *(uint32_t *)show_config_data.pcfg, PARAMETER_ID );
+			show_config_data.data_type = GET_CONFIG_FIELD( *(uint32_t *)show_config_data.pcfg, PARAMETER_TYPE );
 
 			if ( show_config_data.configuration_id == configuration_id_reserved ) /* indicates end of config */
 				break;

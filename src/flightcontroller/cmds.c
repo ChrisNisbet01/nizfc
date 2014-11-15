@@ -542,7 +542,8 @@ bool savedParameterValueMatchesCurrentValue( void const *psaved,
 			areSame = *(int32_t *)pCurrentValue == *(int32_t *)savedValue;
 			break;
 		case config_data_type_float:
-			areSame = *(float *)pCurrentValue == *(float *)savedValue;
+			/* casting to floats and comparing results in a crash */
+			areSame = memcmp( pCurrentValue, savedValue, sizeof(float) ) == 0;
 			break;
 		case config_data_type_string:
 			areSame = strcasecmp( (char *)pCurrentValue, (char *)savedValue ) == 0;
@@ -643,7 +644,7 @@ int handleStandardCommand( run_command_data_st const * command_context )
 			for (index=0; index < command->nbParameterConfigs; index++)
 			{
 				char const * parameter_name = command->ParameterNameLookupCB(command->parameterConfigs[index].parameter_id);
-				unsigned int offset_to_correct_configuration_data = (command->nb_configuration_instance * command->configuration_size);
+				unsigned int offset_to_correct_configuration_data = (instance * command->configuration_size);
 
 				cliPrintf( cliCtx, "\n%20s: ", parameter_name );
 				(void)lookupParameterPrintValue( (char *)command->configuration + offset_to_correct_configuration_data,
