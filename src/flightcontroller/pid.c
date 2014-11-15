@@ -3,7 +3,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <pid.h>
-
+#include <stdio.h>
+#include <utils.h>
 
 void resetPID( pid_st *pid )
 {
@@ -21,6 +22,7 @@ void initPID( pid_st *pid, float maximumRange, float kP, float kI, float kD, flo
 	pid->kD = kD;
 	pid->integralLimit = intergralLimit;
 	pid->dTermLimit = dTermLimit;
+	pid->outputValue = 0.0f;
 }
 
 void updatePID( pid_st *pid, float pv, float setpoint, float dt )
@@ -31,7 +33,7 @@ void updatePID( pid_st *pid, float pv, float setpoint, float dt )
 	float dTerm;
 
 	pTerm = error * pid->kP;
-	/* limit P term to maximum range */
+	/* limit P term to maximum range? */
 
 	/* I term */
 	if ( pid->kI != 0.0f )
@@ -73,5 +75,5 @@ void updatePID( pid_st *pid, float pv, float setpoint, float dt )
 
 	pid->outputValue = pTerm + iTerm - dTerm;
 	if ( pid->maximumRange != 0.0f )
-		pid->outputValue = limitFloat( pid->outputValue, -pid->maximumRange, pid->maximumRange );
+		pid->outputValue = limitFloat( pid->outputValue, -1.0f * pid->maximumRange, pid->maximumRange );
 }

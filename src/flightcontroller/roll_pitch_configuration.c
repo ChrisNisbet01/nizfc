@@ -175,6 +175,7 @@ int rollPitchPollHandler( poll_id_t poll_id, void *pv )
 			break;
 		case poll_id_initialise:
 			initRollPitchConfiguration();
+			result = poll_result_ok;
 			break;
 		case poll_id_run_command:
 			result = runCommandHandler( roll_pitch_commands, ARRAY_SIZE(roll_pitch_commands), pv );
@@ -228,15 +229,25 @@ int rollPitchPollHandler( poll_id_t poll_id, void *pv )
 			result = poll_result_ok;
 			break;
 		case poll_id_load_configuration:
-			result = loadParametersHandler( pv,
+			(void)loadParametersHandler( pv,
 								roll_pitch_commands,
 								ARRAY_SIZE(roll_pitch_commands),
+								roll_pitch_configuration,
+								ARRAY_SIZE(roll_pitch_configuration),
+								sizeof(roll_pitch_configuration[0]),
+								roll_config_parameterConfigs,
+								ARRAY_SIZE(roll_config_parameterConfigs)
+								);
+			(void)loadParametersHandler( pv,
 								roll_pitch_commands,
 								ARRAY_SIZE(roll_pitch_commands),
-								sizeof(roll_pitch_commands[0]),
+								roll_pitch_configuration,
+								ARRAY_SIZE(roll_pitch_configuration),
+								sizeof(roll_pitch_configuration[0]),
 								pitch_config_parameterConfigs,
 								ARRAY_SIZE(pitch_config_parameterConfigs)
 								);
+			result = poll_result_ok;
 			break;
 		default:
 			break;

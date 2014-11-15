@@ -134,7 +134,6 @@ void printParameterValue( void const * pconfig_data,
 		{
 			float value = *(float *)pconfig_data;
 
-			// TODO: printf floating point
 			cliPrintf(cliCtx, "%f", value);
 			break;
 		}
@@ -218,8 +217,19 @@ bool assignSavedParameterValue( void const * const saved_data,
 			savedValue = (uint32_t)*(uint32_t *)saved_data;
 			break;
 		case config_data_type_float:
-			savedFloatValue = *(float *)saved_data;
+		{
+			union {
+				uint8_t buf[4];
+				float f;
+			} u;
+			u.buf[0] = *((uint8_t *)saved_data + 0);
+			u.buf[1] = *((uint8_t *)saved_data + 1);
+			u.buf[2] = *((uint8_t *)saved_data + 2);
+			u.buf[3] = *((uint8_t *)saved_data + 3);
+			savedFloatValue = u.f;
+
 			break;
+		}
 		default:
 			break;
 	}
@@ -283,7 +293,10 @@ bool assignSavedParameterValue( void const * const saved_data,
 			break;
 		case config_data_type_float:
 			if ( saved_data_type == config_data_type_float )
-				*(float *)parameter = savedFloatValue;
+			{
+				memcpy( parameter, &savedFloatValue, sizeof(float ) );
+				//*(float *)parameter = savedFloatValue;
+			}
 			else if ( saved_data_type != config_data_type_string )
 				*(float *)parameter = (float)savedValue;
 			else	/* string */

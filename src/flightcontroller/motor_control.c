@@ -131,16 +131,8 @@ void updatePIDControlLoops( void )
 	{
 		if ( delta_time > 0 )
 		{
-			static int count;
-
 			updatePID( &rollAnglePID, RollAngFiltered, getRollAngleSetpoint(), dT );
 			updatePID( &pitchAnglePID, PitchAngFiltered, getPitchAngleSetpoint(), dT );
-			if ( count++ >= 100 )
-			{
-				count = 0;
-				printf("\r\nrollpid %d", (long)rollAnglePID.outputValue );
-				printf("\r\npitchpid %d", (long)rollAnglePID.outputValue );
-			}
 		}
 	}
 	else
@@ -175,14 +167,19 @@ void updateMotorOutputs( void )
 	craft = &crafts[0];	// TODO configurable;
 
 	mixer = craft->motorRatios;
+	uint_fast16_t tempMotorValues[craft->nbMotors];
 	for ( motorIndex=0, maxMotorValue = 0; motorIndex < craft->nbMotors; motorIndex++ )
 	{
-		motorValues[motorIndex] = lrintf(getThrottleSetpoint() * mixer->throttle
-						+ pitchAnglePID.outputValue * mixer->pitch
-						+ rollAnglePID.outputValue * mixer->roll
-						+ 0.0f * mixer->yaw);	// TODO:
-		if ( maxMotorValue < motorValues[motorIndex] )
-			maxMotorValue = motorValues[motorIndex];
+		tempMotorValues[motorIndex] = lrintf(getThrottleSetpoint() * mixer[motorIndex].throttle);
+		/* only add in PID control values once throttle is above 0 */
+		if ( getThrottleSetpoint() > 1050 )
+		{
+			tempMotorValues[motorIndex] += lrintf(pitchAnglePID.outputValue * mixer[motorIndex].pitch
+							+ rollAnglePID.outputValue * mixer[motorIndex].roll
+							+ 0.0f * mixer[motorIndex].yaw);	// TODO:
+		}
+		if ( maxMotorValue < tempMotorValues[motorIndex] )
+			maxMotorValue = tempMotorValues[motorIndex];
 	}
 
 	for ( motorIndex=0; motorIndex < craft->nbMotors; motorIndex++ )
@@ -190,14 +187,16 @@ void updateMotorOutputs( void )
 		if ( isCraftArmed() )
 		{
 			if ( maxMotorValue > 2000 )
-				motorValues[motorIndex] -= (maxMotorValue - 2000);
+				tempMotorValues[motorIndex] -= (maxMotorValue - 2000);
 		}
 		else
 		{
-			motorValues[motorIndex] = 1000;	// TODO: configurable value
+			tempMotorValues[motorIndex] = 1000;	// TODO: configurable value
 		}
+		/* store so that the output value can be displayed */
+		motorValues[motorIndex] = limit(tempMotorValues[motorIndex], 1000, 2000);
 
-		setMotorOutput( motorIndex, limit(motorValues[motorIndex], 1000, 2000) );
+		setMotorOutput( motorIndex, motorValues[motorIndex] );
 	}
 }
 

@@ -106,6 +106,7 @@ int receiverPollHandler( poll_id_t poll_id, void *pv )
 		case poll_id_initialise:
 			initReceiverConfiguration();
 			initReceiver();
+			result = poll_result_ok;
 			break;
 		case poll_id_run_command:
 			result = runCommandHandler( receiver_commands, ARRAY_SIZE(receiver_commands), pv );

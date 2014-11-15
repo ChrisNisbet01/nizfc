@@ -169,10 +169,6 @@ static void cli_task( void *pv )
 	printTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ/2, CFG_SYSTICK_FREQ/2, printTimer );
 	CoStartTmr( printTimerID );
 
-	cli_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
-	if ( cli_uart != NULL )
-		pcli = initCli( uartPutChar );
-
 	while (1)
 	{
 		if ( cli_uart != NULL )
@@ -215,6 +211,9 @@ int main(void)
 {
 	CoInitOS();
 
+	cli_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
+	if ( cli_uart != NULL )
+		pcli = initCli( uartPutChar );
 	initialiseCodeGroups();
 	loadSavedConfiguration();
 

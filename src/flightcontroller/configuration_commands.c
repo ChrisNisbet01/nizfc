@@ -101,7 +101,7 @@ static int printUnsavedConfig( run_command_data_st *pcommand )
 	show_config_data.run_command_data = pcommand;
 	show_config_data.whatToPrint = print_unsaved;
 
-	result = pollCodeGroups( poll_id_show_configuration, &show_config_data, false );
+	result = pollCodeGroups( poll_id_show_configuration, &show_config_data, true );
 
 	return result;
 }
@@ -115,7 +115,7 @@ static int printCurrentConfig( run_command_data_st *pcommand, printConfig_t what
 	show_config_data.run_command_data = pcommand;
 	show_config_data.whatToPrint = whatToPrint;
 
-	result = pollCodeGroups( poll_id_show_configuration, &show_config_data, false );
+	result = pollCodeGroups( poll_id_show_configuration, &show_config_data, true );
 
 	return result;
 }
@@ -158,7 +158,7 @@ static int printSavedConfig( run_command_data_st *pcommand )
 				break;
 			}
 
-			if ( pollCodeGroups( poll_id_show_configuration, &show_config_data, false ) != poll_result_ok )
+			if ( pollCodeGroups( poll_id_show_configuration, &show_config_data, true ) != poll_result_ok )
 			{
 				cliPrintf( pcommand->cliCtx, "\nUnprocessed configuration item" );
 				cliPrintf( pcommand->cliCtx, "\ng:%d i:%d p:%d",
@@ -197,7 +197,7 @@ static int rebootCommand( run_command_data_st *pcommand )
 
 static int helpCommand( run_command_data_st *pcommand )
 {
-	pollCodeGroups( poll_id_identify, pcommand, 1 );
+	pollCodeGroups( poll_id_identify, pcommand, true );
 	return poll_result_ok;
 }
 
@@ -243,7 +243,7 @@ static int saveCommand( run_command_data_st *pcommand )
 		goto done;
 	}
 
-	pollCodeGroups( poll_id_save_configuration, pcommand, 1 );
+	pollCodeGroups( poll_id_save_configuration, pcommand, true );
 
 	if ( completeConfigurationSave() == false )
 	{
@@ -621,6 +621,7 @@ void loadSavedConfiguration( void )
 			load_config_data.parameter_id = GET_CONFIG_FIELD( hdr, PARAMETER_ID );
 			load_config_data.data_type = GET_CONFIG_FIELD( hdr, PARAMETER_TYPE );
 
+			//printf("\nid %d inst %d id %d type %d", load_config_data.configuration_id, load_config_data.instance, load_config_data.parameter_id, load_config_data.data_type );
 			if ( load_config_data.configuration_id == configuration_id_reserved ) /* indicates end of config */
 				break;
 
@@ -632,7 +633,7 @@ void loadSavedConfiguration( void )
 				break;
 			}
 
-			if ( pollCodeGroups( poll_id_load_configuration, &load_config_data, false ) != poll_result_ok )
+			if ( pollCodeGroups( poll_id_load_configuration, &load_config_data, true ) != poll_result_ok )
 			{
 				/* unprocessed saved value. */
 			}
@@ -647,7 +648,7 @@ void loadSavedConfiguration( void )
 
 void initialiseCodeGroups( void )
 {
-	pollCodeGroups( poll_id_initialise, NULL, 1 );
+	pollCodeGroups( poll_id_initialise, NULL, true );
 }
 
 
