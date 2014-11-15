@@ -43,7 +43,6 @@ static void NewReceiverChannelData( uint32_t * channels, uint_fast8_t first_inde
 
 	for (i=first_index; i < max_channels; i++)
 	{
-		STM_EVAL_LEDToggle(LED7 + i);
 	    rx_signals.rx_signals[i] = *channels++;
 	}
 
@@ -51,6 +50,7 @@ static void NewReceiverChannelData( uint32_t * channels, uint_fast8_t first_inde
 
 	// TODO: on a per channel basis
 	// TODO: don't forget about failsafe/timeouts
+	STM_EVAL_LEDToggle(LED7);
 	receiver_ctx.newDataCb();
 }
 
