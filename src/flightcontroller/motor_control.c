@@ -58,20 +58,20 @@ void initMotorControl( void )
 {
 	// TODO: separate config for roll and pitch
 	initPID( &rollAnglePID,
-				roll_pitch_configuration[0].pidRange,
-				roll_pitch_configuration[0].kP,
-				roll_pitch_configuration[0].kI,
-				roll_pitch_configuration[0].kD,
-				roll_pitch_configuration[0].integralLimit,
-				roll_pitch_configuration[0].dLimit );
+				roll_configuration[0].pidRange,
+				roll_configuration[0].kP,
+				roll_configuration[0].kI,
+				roll_configuration[0].kD,
+				roll_configuration[0].integralLimit,
+				roll_configuration[0].dLimit );
 
 	initPID( &pitchAnglePID,
-				roll_pitch_configuration[0].pidRange,
-				roll_pitch_configuration[0].kP,
-				roll_pitch_configuration[0].kI,
-				roll_pitch_configuration[0].kD,
-				roll_pitch_configuration[0].integralLimit,
-				roll_pitch_configuration[0].dLimit );
+				pitch_configuration[0].pidRange,
+				pitch_configuration[0].kP,
+				pitch_configuration[0].kI,
+				pitch_configuration[0].kD,
+				pitch_configuration[0].integralLimit,
+				pitch_configuration[0].dLimit );
 
 }
 

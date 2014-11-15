@@ -19,6 +19,7 @@
 
 
 static int receiver_command( run_command_data_st *pcommand );
+static char const * receiverParameterNameLookup( unsigned int parameterID );
 
 static const enum_mapping_st receiver_mode_mappings[] =
 {
@@ -62,7 +63,18 @@ static const parameterConfig_st receiver_config_parameterConfigs[] =
 
 static const command_st receiver_commands[] =
 {
-	{ .group_id = configuration_id_receiver, .name = "rx", .handler = receiver_command	}
+	{
+		.group_id = configuration_id_receiver,
+		.name = "rx",
+		.handler = receiver_command,
+		.configuration = receiver_configuration,
+		.nb_configuration_instance = ARRAY_SIZE(receiver_configuration),
+		.configuration_size = sizeof(receiver_configuration[0]),
+		.default_configuration = &default_receiver_configuration,
+		.parameterConfigs = receiver_config_parameterConfigs,
+		.nbParameterConfigs = ARRAY_SIZE(receiver_config_parameterConfigs),
+		.ParameterNameLookupCB = receiverParameterNameLookup
+	}
 };
 
 static char const * receiverParameterNameLookup( unsigned int parameterID )
@@ -76,14 +88,7 @@ static char const * receiverParameterNameLookup( unsigned int parameterID )
 
 static int receiver_command( run_command_data_st *pcommand )
 {
-	return handleStandardCommand( pcommand,
-							receiver_configuration,
-							ARRAY_SIZE(receiver_configuration),
-							sizeof(receiver_configuration[0]),
-							&default_receiver_configuration,
-							receiver_config_parameterConfigs,
-							ARRAY_SIZE(receiver_config_parameterConfigs),
-							receiverParameterNameLookup);
+	return handleStandardCommand( pcommand );
 }
 
 static void initReceiverConfiguration( void )
@@ -116,37 +121,22 @@ int receiverPollHandler( poll_id_t poll_id, void *pv )
 		case poll_id_save_configuration:
 		{
 			result = saveParameterValues( pv,
-								configuration_id_receiver,
-								receiver_configuration,
-								ARRAY_SIZE(receiver_configuration),
-								sizeof(receiver_configuration[0]),
-								&default_receiver_configuration,
-								receiver_config_parameterConfigs,
-								ARRAY_SIZE(receiver_config_parameterConfigs) );
+								receiver_commands,
+								ARRAY_SIZE(receiver_commands)
+								);
 			break;
 		}
 		case poll_id_show_configuration:
 			result = printParametersHandler( pv,
 								receiver_commands,
 								ARRAY_SIZE(receiver_commands),
-								receiver_configuration,
-								ARRAY_SIZE(receiver_configuration),
-								sizeof(receiver_configuration[0]),
-								&default_receiver_configuration,
-								receiver_config_parameterConfigs,
-								ARRAY_SIZE(receiver_config_parameterConfigs),
 								receiver_parameter_name_mappings
 								);
 			break;
 		case poll_id_load_configuration:
 			result = loadParametersHandler( pv,
 								receiver_commands,
-								ARRAY_SIZE(receiver_commands),
-								receiver_configuration,
-								ARRAY_SIZE(receiver_configuration),
-								sizeof(receiver_configuration[0]),
-								receiver_config_parameterConfigs,
-								ARRAY_SIZE(receiver_config_parameterConfigs)
+								ARRAY_SIZE(receiver_commands)
 								);
 			break;
 		default:

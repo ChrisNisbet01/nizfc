@@ -131,8 +131,8 @@ static void main_task( void *pv )
 				&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true)
 			{
 				Heading = calculateHeading( magnetometerValues, accelerometerValues );
-				RollAngFiltered = RollAng * roll_pitch_configuration[0].roll_lpf_factor + RollAngFiltered * (1.0-roll_pitch_configuration[0].roll_lpf_factor);
-				PitchAngFiltered = PitchAng * roll_pitch_configuration[0].pitch_lpf_factor + PitchAngFiltered * (1.0-roll_pitch_configuration[0].pitch_lpf_factor);
+				RollAngFiltered = RollAng * roll_configuration[0].lpf_factor + RollAngFiltered * (1.0-roll_configuration[0].lpf_factor);
+				PitchAngFiltered = PitchAng * pitch_configuration[0].lpf_factor + PitchAngFiltered * (1.0-pitch_configuration[0].lpf_factor);
 			}
 		}
 		// TODO: process receiver signals on a per frame basis

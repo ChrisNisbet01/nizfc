@@ -291,13 +291,8 @@ done:
 }
 
 int saveParameterValues( run_command_data_st const * command_context,
-					configuration_id_t configuration_id,
-					void const * pcfg,
-					unsigned int const nb_configurations,
-					unsigned int const configuration_size,
-					void const * default_configuration,
-					parameterConfig_st const * parameterConfigs,
-					unsigned int const nbParameterConfigs
+					command_st const *commands,
+					unsigned int nb_commands
 					)
 {
 	/*
@@ -307,23 +302,29 @@ int saveParameterValues( run_command_data_st const * command_context,
 	UNUSED(command_context);
 	int result = poll_result_error;
 	unsigned int configuration_index, parameterConfig_index;
+	unsigned int command_index;
 
-	for ( configuration_index = 0; configuration_index < nb_configurations; configuration_index++ )
+	for (command_index = 0; command_index < nb_commands; command_index++ )
 	{
-		unsigned int offset_to_configuration_data = (configuration_index*configuration_size);
+		command_st const *command = &commands[command_index];
 
-		for ( parameterConfig_index = 0; parameterConfig_index < nbParameterConfigs; parameterConfig_index++ )
+		for ( configuration_index = 0; configuration_index < command->nb_configuration_instance; configuration_index++ )
 		{
-			if (currentParameterValueMatchesDefaultValue( (char *)pcfg + offset_to_configuration_data + parameterConfigs[parameterConfig_index].offsetToData,
-															default_configuration,
-															&parameterConfigs[parameterConfig_index] ) == false )
+			unsigned int offset_to_configuration_data = (configuration_index * command->configuration_size);
+
+			for ( parameterConfig_index = 0; parameterConfig_index < command->nbParameterConfigs; parameterConfig_index++ )
 			{
-				if (writeParameterToFlash( configuration_id,
-									configuration_index,
-									(char *)pcfg + offset_to_configuration_data,
-									&parameterConfigs[parameterConfig_index] ) == false)
+				if (currentParameterValueMatchesDefaultValue( (char *)command->configuration + offset_to_configuration_data + command->parameterConfigs[parameterConfig_index].offsetToData,
+																command->default_configuration,
+																&command->parameterConfigs[parameterConfig_index] ) == false )
 				{
-					goto done;
+					if (writeParameterToFlash( command->group_id,
+										configuration_index,
+										(char *)command->configuration + offset_to_configuration_data,
+										&command->parameterConfigs[parameterConfig_index] ) == false)
+					{
+						goto done;
+					}
 				}
 			}
 		}
@@ -339,9 +340,6 @@ done:
 static int printSavedParameters( void *pv,
 					command_st const *commands,
 					unsigned int nb_commands,
-					unsigned int const nb_configurations,
-					parameterConfig_st const * parameterConfigs,
-					unsigned int const nbParameterConfigs,
 					char const * const * parameter_name_mappings
 					)
 {
@@ -354,12 +352,12 @@ static int printSavedParameters( void *pv,
 										nb_commands,
 										show_config_data->configuration_id )) != NULL )
 	{
-		if ( show_config_data->instance < nb_configurations )
+		if ( show_config_data->instance < command->nb_configuration_instance )
 		{
 			parameterConfig_st const * parameterConfig;
 
-			if ( (parameterConfig=findDataPointFromParameterID( parameterConfigs,
-															nbParameterConfigs,
+			if ( (parameterConfig=findDataPointFromParameterID( command->parameterConfigs,
+															command->nbParameterConfigs,
 															show_config_data->parameter_id )) != NULL )
 			{
 				/* check that the data types match */
@@ -385,12 +383,6 @@ static int printSavedParameters( void *pv,
 static int printCurrentParameters( void *pv,
 					command_st const *commands,
 					unsigned int nb_commands,
-					void const * pcfg,
-					unsigned int const nb_configurations,
-					unsigned int const configuration_size,
-					void const * default_configuration,
-					parameterConfig_st const * parameterConfigs,
-					unsigned int const nbParameterConfigs,
 					char const * const * parameter_name_mappings,
 					printConfig_t whatToPrint
 					)
@@ -402,27 +394,28 @@ static int printCurrentParameters( void *pv,
 
 	for (command_index = 0; command_index < nb_commands; command_index++)
 	{
+		command_st const *command = &commands[command_index];
 		unsigned int instance;
 
-		for (instance = 0; instance < nb_configurations; instance++)
+		for (instance = 0; instance < command->nb_configuration_instance; instance++)
 		{
 			unsigned int parameterConfig_instance;
-			unsigned int offset_to_configuration_data = (instance*configuration_size);
+			unsigned int offset_to_configuration_data = (instance * command->configuration_size);
 
-			for (parameterConfig_instance = 0; parameterConfig_instance < nbParameterConfigs; parameterConfig_instance++)
+			for (parameterConfig_instance = 0; parameterConfig_instance < command->nbParameterConfigs; parameterConfig_instance++)
 			{
-				void *parameter = (char *)pcfg + offset_to_configuration_data + parameterConfigs[parameterConfig_instance].offsetToData;
+				void *parameter = (char *)command->configuration + offset_to_configuration_data + command->parameterConfigs[parameterConfig_instance].offsetToData;
 
 				if ( whatToPrint == print_all
-					|| currentParameterValueMatchesDefaultValue(parameter, default_configuration, &parameterConfigs[parameterConfig_instance] ) == false)
+					|| currentParameterValueMatchesDefaultValue(parameter, command->default_configuration, &command->parameterConfigs[parameterConfig_instance] ) == false)
 				{
 					cliPrintf( run_command_data->cliCtx,
 								"\n%s %d %s ",
 								commands[command_index].name,
 								instance,
-								parameter_name_mappings[parameterConfigs[parameterConfig_instance].parameter_id]);
+								parameter_name_mappings[command->parameterConfigs[parameterConfig_instance].parameter_id]);
 					printParameterValue( parameter,
-											&parameterConfigs[parameterConfig_instance],
+											&command->parameterConfigs[parameterConfig_instance],
 											run_command_data->cliCtx );
 				}
 			}
@@ -435,12 +428,6 @@ static int printCurrentParameters( void *pv,
 static int printUnsavedParameters( void *pv,
 					command_st const *commands,
 					unsigned int nb_commands,
-					void const * pcfg,
-					unsigned int const nb_configurations,
-					unsigned int const configuration_size,
-					void const * default_configuration,
-					parameterConfig_st const * parameterConfigs,
-					unsigned int const nbParameterConfigs,
 					char const * const * parameter_name_mappings
 					)
 {
@@ -451,27 +438,28 @@ static int printUnsavedParameters( void *pv,
 
 	for (command_index = 0; command_index < nb_commands; command_index++)
 	{
+		command_st const *command = &commands[command_index];
 		unsigned int instance;
 
-		for (instance = 0; instance < nb_configurations; instance++)
+		for (instance = 0; instance < command->nb_configuration_instance; instance++)
 		{
 			unsigned int parameterConfig_instance;
-			unsigned int offset_to_configuration_data = (instance*configuration_size);
+			unsigned int offset_to_configuration_data = (instance * command->configuration_size);
 
-			for (parameterConfig_instance = 0; parameterConfig_instance < nbParameterConfigs; parameterConfig_instance++)
+			for (parameterConfig_instance = 0; parameterConfig_instance < command->nbParameterConfigs; parameterConfig_instance++)
 			{
-				void const * parameter = (char *)pcfg + offset_to_configuration_data + parameterConfigs[parameterConfig_instance].offsetToData;
-				void const * psaved = findSavedParameter( commands[command_index].group_id, instance, parameterConfigs[parameterConfig_instance].parameter_id );
+				void const * parameter = (char *)command->configuration + offset_to_configuration_data + command->parameterConfigs[parameterConfig_instance].offsetToData;
+				void const * psaved = findSavedParameter( commands[command_index].group_id, instance, command->parameterConfigs[parameterConfig_instance].parameter_id );
 				bool printParameter = false;
 				/*
 					if in saved config and value doesn't match, or if non-default and not in saved config
 				*/
 				if ( psaved == NULL )
 				{
-					if (currentParameterValueMatchesDefaultValue(parameter, default_configuration, &parameterConfigs[parameterConfig_instance] ) == false)
+					if (currentParameterValueMatchesDefaultValue(parameter, command->default_configuration, &command->parameterConfigs[parameterConfig_instance] ) == false)
 						printParameter = true;
 				}
-				else if (savedParameterValueMatchesCurrentValue( psaved, parameter, &parameterConfigs[parameterConfig_instance] ) == false)
+				else if (savedParameterValueMatchesCurrentValue( psaved, parameter, &command->parameterConfigs[parameterConfig_instance] ) == false)
 				{
 					printParameter = true;
 				}
@@ -481,9 +469,9 @@ static int printUnsavedParameters( void *pv,
 								"\n%s %d %s ",
 								commands[command_index].name,
 								instance,
-								parameter_name_mappings[parameterConfigs[parameterConfig_instance].parameter_id]);
+								parameter_name_mappings[command->parameterConfigs[parameterConfig_instance].parameter_id]);
 					printParameterValue( parameter,
-											&parameterConfigs[parameterConfig_instance],
+											&command->parameterConfigs[parameterConfig_instance],
 											run_command_data->cliCtx );
 				}
 			}
@@ -497,12 +485,6 @@ static int printUnsavedParameters( void *pv,
 int printParametersHandler( void *pv,
 					command_st const *commands,
 					unsigned int nb_commands,
-					void const * pcfg,
-					unsigned int const nb_configurations,
-					unsigned int const configuration_size,
-					void const * default_configuration,
-					parameterConfig_st const * parameterConfigs,
-					unsigned int const nbParameterConfigs,
 					char const * const * parameter_name_mappings)
 {
 	show_config_data_st * show_config_data = pv;
@@ -514,9 +496,6 @@ int printParametersHandler( void *pv,
 			result = printSavedParameters( pv,
 											commands,
 											nb_commands,
-											nb_configurations,
-											parameterConfigs,
-											nbParameterConfigs,
 											parameter_name_mappings );
 			break;
 		case print_current:
@@ -524,12 +503,6 @@ int printParametersHandler( void *pv,
 			result = printCurrentParameters( pv,
 												commands,
 												nb_commands,
-												pcfg,
-												nb_configurations,
-												configuration_size,
-												default_configuration,
-												parameterConfigs,
-												nbParameterConfigs,
 												parameter_name_mappings,
 												show_config_data->whatToPrint );
 			break;
@@ -537,12 +510,6 @@ int printParametersHandler( void *pv,
 			result = printUnsavedParameters( pv,
 												commands,
 												nb_commands,
-												pcfg,
-												nb_configurations,
-												configuration_size,
-												default_configuration,
-												parameterConfigs,
-												nbParameterConfigs,
 												parameter_name_mappings );
 		default:
 			break;
@@ -562,13 +529,7 @@ typedef struct load_config_data_st
 
 int loadParametersHandler( void *pv,
 					command_st const *commands,
-					unsigned int nb_commands,
-					void const * pcfg,
-					unsigned int const nb_configurations,
-					unsigned int const configuration_size,
-					parameterConfig_st const * parameterConfigs,
-					unsigned int const nbParameterConfigs
-					)
+					unsigned int nb_commands )
 {
 	load_config_data_st * load_config_data = pv;
 	int result = poll_result_error;
@@ -578,16 +539,16 @@ int loadParametersHandler( void *pv,
 										nb_commands,
 										load_config_data->configuration_id )) != NULL )
 	{
-		if ( load_config_data->instance < nb_configurations )
+		if ( load_config_data->instance < command->nb_configuration_instance )
 		{
 			parameterConfig_st const * parameterConfig;
 
-			if ( (parameterConfig=findDataPointFromParameterID( parameterConfigs,
-															nbParameterConfigs,
+			if ( (parameterConfig=findDataPointFromParameterID( command->parameterConfigs,
+															command->nbParameterConfigs,
 															load_config_data->parameter_id )) != NULL )
 			{
-				unsigned int offset_to_configuration_data = (load_config_data->instance*configuration_size);
-				void * const config_instance = (char *)pcfg + offset_to_configuration_data;
+				unsigned int offset_to_configuration_data = (load_config_data->instance * command->configuration_size);
+				void * const config_instance = (char *)command->configuration + offset_to_configuration_data;
 
 				assignSavedParameterValue( load_config_data->pcfg,
 											load_config_data->data_type,

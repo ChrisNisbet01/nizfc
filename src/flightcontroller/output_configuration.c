@@ -18,6 +18,7 @@
 
 
 static int output_command( run_command_data_st *pcommand );
+static char const * outputParameterNameLookup( unsigned int parameterID );
 
 output_configuration_st output_configuration[NB_OUTPUT_CONFIGURATIONS];
 
@@ -56,7 +57,18 @@ static const parameterConfig_st output_config_parameterConfigs[] =
 
 static const command_st output_commands[] =
 {
-	{ .group_id = configuration_id_output, .name = "output", .handler = output_command	}
+	{
+		.group_id = configuration_id_output,
+		.name = "output",
+		.handler = output_command,
+		.configuration = output_configuration,
+		.nb_configuration_instance = ARRAY_SIZE(output_configuration),
+		.configuration_size = sizeof(output_configuration[0]),
+		.default_configuration = &default_output_configuration,
+		.parameterConfigs = output_config_parameterConfigs,
+		.nbParameterConfigs = ARRAY_SIZE(output_config_parameterConfigs),
+		.ParameterNameLookupCB = outputParameterNameLookup
+	}
 };
 
 static char const * outputParameterNameLookup( unsigned int parameterID )
@@ -70,14 +82,7 @@ static char const * outputParameterNameLookup( unsigned int parameterID )
 
 static int output_command( run_command_data_st *pcommand )
 {
-	return handleStandardCommand( pcommand,
-							output_configuration,
-							ARRAY_SIZE(output_configuration),
-							sizeof(output_configuration[0]),
-							&default_output_configuration,
-							output_config_parameterConfigs,
-							ARRAY_SIZE(output_config_parameterConfigs),
-							outputParameterNameLookup);
+	return handleStandardCommand( pcommand );
 }
 
 static void initOutputConfiguration( void )
@@ -108,37 +113,22 @@ int outputPollHandler( poll_id_t poll_id, void *pv )
 		case poll_id_save_configuration:
 		{
 			result = saveParameterValues( pv,
-								configuration_id_output,
-								output_configuration,
-								ARRAY_SIZE(output_configuration),
-								sizeof(output_configuration[0]),
-								&default_output_configuration,
-								output_config_parameterConfigs,
-								ARRAY_SIZE(output_config_parameterConfigs) );
+								output_commands,
+								ARRAY_SIZE(output_commands)
+								);
 			break;
 		}
 		case poll_id_show_configuration:
 			result = printParametersHandler( pv,
 								output_commands,
 								ARRAY_SIZE(output_commands),
-								output_configuration,
-								ARRAY_SIZE(output_configuration),
-								sizeof(output_configuration[0]),
-								&default_output_configuration,
-								output_config_parameterConfigs,
-								ARRAY_SIZE(output_config_parameterConfigs),
 								output_parameter_name_mappings
 								);
 			break;
 		case poll_id_load_configuration:
 			result = loadParametersHandler( pv,
 								output_commands,
-								ARRAY_SIZE(output_commands),
-								output_configuration,
-								ARRAY_SIZE(output_configuration),
-								sizeof(output_configuration[0]),
-								output_config_parameterConfigs,
-								ARRAY_SIZE(output_config_parameterConfigs)
+								ARRAY_SIZE(output_commands)
 								);
 			break;
 		default:
