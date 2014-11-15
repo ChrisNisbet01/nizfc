@@ -75,9 +75,21 @@ void initMotorControl( void )
 
 }
 
+static bool craftIsArmed = false;
+void armCraft( void )
+{
+	printf("\narmed!");
+	craftIsArmed = true;
+}
+
+void disarmCraft( void )
+{
+	craftIsArmed = false;
+	printf("\ndisarmed");
+}
+
 static bool isCraftArmed( void )
 {
-	static bool craftIsArmed = false;
 	uint_fast16_t throttleChannel = readReceiverChannel(0);
 	uint_fast16_t rollChannel = readReceiverChannel(3);
 	static U64 lastChange;
@@ -99,15 +111,9 @@ static bool isCraftArmed( void )
 	if ( canChange == true )
 	{
 		if ( craftIsArmed == false )
-		{
-			printf("\narmed!");
-			craftIsArmed = true;
-		}
+			armCraft();
 		else
-		{
-			printf("\ndisarmed");
-			craftIsArmed = false;
-		}
+			disarmCraft();
 	}
 
 	return craftIsArmed;

@@ -10,11 +10,15 @@
 #include <cli.h>
 #include <configuration.h>
 #include <configuration_commands.h>
-#include "stm32f30x_misc.h"
+#include <stm32f30x_misc.h>
+#include <motor_control.h>
+
 static int saveCommand( run_command_data_st *pcommand );
 static int showCommand( run_command_data_st *pcommand );
 static int helpCommand( run_command_data_st *pcommand );
 static int rebootCommand( run_command_data_st *pcommand );
+static int armCommand( run_command_data_st *pcommand );
+static int disarmCommand( run_command_data_st *pcommand );
 
 static const command_st config_commands[] =
 {
@@ -22,7 +26,9 @@ static const command_st config_commands[] =
 	{ .group_id = configuration_id_show, 		.name = "show",    .handler = showCommand	},
 	{ .group_id = configuration_id_show, 		.name = "?",       .handler = helpCommand	},
 	{ .group_id = configuration_id_show, 		.name = "help",    .handler = helpCommand	},
-	{ .group_id = configuration_id_reserved, 	.name = "reboot",  .handler = rebootCommand	}
+	{ .group_id = configuration_id_reserved, 	.name = "reboot",  .handler = rebootCommand	},
+	{ .group_id = configuration_id_reserved, 	.name = "arm",     .handler = armCommand	},
+	{ .group_id = configuration_id_reserved, 	.name = "disarm",  .handler = disarmCommand	}
 };
 
 typedef enum printConfig_t
@@ -191,6 +197,24 @@ static int rebootCommand( run_command_data_st *pcommand )
 	UNUSED(pcommand);
 
 	systemReset();
+
+	return poll_result_ok;
+}
+
+static int armCommand( run_command_data_st *pcommand )
+{
+	UNUSED(pcommand);
+
+	armCraft();
+
+	return poll_result_ok;
+}
+
+static int disarmCommand( run_command_data_st *pcommand )
+{
+	UNUSED(pcommand);
+
+	disarmCraft();
 
 	return poll_result_ok;
 }
