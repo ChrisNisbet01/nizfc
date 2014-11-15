@@ -145,9 +145,7 @@ void printParameterValue( void const * pconfig_data,
 		}
 		case config_data_type_float:
 		{
-			float value = *(float *)pconfig_data;
-
-			cliPrintf(cliCtx, "%f", value);
+			cliPrintf(cliCtx, "%g", pconfig_data);
 			break;
 		}
 		case config_data_type_string:

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <uart.h>
+//#include <vsnprintf.h>
 
 /**
  * @brief  Transmit a char, if you want to use printf(),
@@ -19,6 +20,14 @@
  * @param  c    Character to write.
  */
 extern void *cli_uart;
+
+/** Maximum string size allowed (in bytes). */
+#define MAX_STRING_SIZE         256
+
+
+/** Required for proper compilation. */
+struct _reent r = {0, (FILE *) 0, (FILE *) 1, (FILE *) 0};
+struct _reent *_impure_ptr = &r;
 
 void PrintChar(char c)
 {
@@ -31,14 +40,6 @@ void PrintChar(char c)
 		uartWriteCharBlockingWithTimeout( cli_uart, (uint8_t)c, 2 );
 	}
 }
-
-/** Maximum string size allowed (in bytes). */
-#define MAX_STRING_SIZE         256
-
-
-/** Required for proper compilation. */
-struct _reent r = {0, (FILE *) 0, (FILE *) 1, (FILE *) 0};
-struct _reent *_impure_ptr = &r;
 
 /**
  * @brief  Writes a character inside the given string. Returns 1.
@@ -422,23 +423,11 @@ signed int vsnprintf(char *pStr, size_t length, const char *pFormat, va_list ap)
             case 'X': num = PutHexa(pStr, fill, width, 1, va_arg(ap, unsigned int)); break;
             case 's': num = PutString(pStr, fill, width, va_arg(ap, char *)); break;
             case 'c': num = PutChar(pStr, va_arg(ap, unsigned int)); break;
-            case 'f':
+            case 'f': num = PutFloat(pStr, va_arg(ap, double)); break;
+            case 'g':
             {
-            	/* for some reason the value has its words swapped. Sometimes */
-            	typedef union a_un
-            	{
-            		uint32_t words[2];
-            		double   dbl;
-            	} a_un;
-            	a_un a;
-            	uint32_t temp;
-            	a.dbl = va_arg(ap, double);
-#if 1
-				temp = a.words[0];
-				a.words[0] = a.words[1];
-				a.words[1] = temp;
-#endif
-            	num = PutFloat(pStr, a.dbl);
+            	float *pf = (float *)va_arg(ap, long);
+            	num = PutFloat(pStr, *pf);
             	break;
             }
             default:
@@ -465,7 +454,6 @@ signed int vsnprintf(char *pStr, size_t length, const char *pFormat, va_list ap)
     return size;
 }
 
-
 /**
  * @brief  Stores the result of a formatted string into another string. Format
  *         arguments are given in a va_list instance.
@@ -485,7 +473,6 @@ signed int snprintf(char *pString, size_t length, const char *pFormat, ...)
     va_start(ap, pFormat);
     rc = vsnprintf(pString, length, pFormat, ap);
     va_end(ap);
-
     return rc;
 }
 
