@@ -166,7 +166,7 @@ static void cli_task( void *pv )
 	cliUartFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	printTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 
-	printTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ/2, CFG_SYSTICK_FREQ/2, printTimer );
+	printTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ, CFG_SYSTICK_FREQ, printTimer );
 	CoStartTmr( printTimerID );
 
 	while (1)
@@ -191,16 +191,20 @@ static void cli_task( void *pv )
 		 	{
 				if (output_configuration[0].debug & 1 )
 				{
+					extern float getRollPIDOutput( void );
+					extern float getPitchPIDOutput( void );
+
 			 		printf("\nthrottle: %d", (int)getThrottleSetpoint() );
-			 		printf("\nroll: %d", (int)getRollAngleSetpoint() );
-			 		printf("\npitch: %d", (int)getPitchAngleSetpoint() );
+			 		printf("\nroll: %d:%d PID: %d", (int)getRollAngleSetpoint(), (int)RollAngFiltered, (int)getRollPIDOutput() );
+			 		printf("\npitch: %d:%d PID: %d", (int)getPitchAngleSetpoint(), (int)PitchAngFiltered, (int)getPitchPIDOutput()  );
 				}
 				if (output_configuration[0].debug & 2 )
 				{
 					int motor;
 
+					printf("\r\n");
 					for (motor = 0; motor < 4; motor++ )
-						printf("\nmotor %d: %u", motor, (unsigned int)getMotorValue( motor ) );
+						printf("  m-%d: %u", motor+1, (unsigned int)getMotorValue( motor ) );
 				}
 		 	}
 		}

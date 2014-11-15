@@ -163,6 +163,16 @@ uint16_t getMotorValue( uint_fast8_t motorIndex )
 	return motorValue;
 }
 
+float getRollPIDOutput( void )
+{
+	return rollAnglePID.outputValue;
+}
+
+float getPitchPIDOutput( void )
+{
+	return pitchAnglePID.outputValue;
+}
+
 void updateMotorOutputs( void )
 {
 	unsigned int motorIndex;

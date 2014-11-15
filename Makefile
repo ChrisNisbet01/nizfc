@@ -118,7 +118,8 @@ SRC_FILES = $(COMMON_SRC) \
             $(COOS_SRC) \
             $(CMSIS_LIB_SRC)
 
-SRC_FILES_NO_LTO = $(COOS_SRC_NO_LTO)
+SRC_FILES_NO_LTO = $(COOS_SRC_NO_LTO) \
+				$(SRC_DIR)/syscalls/*.c
 
 
 # add .c files to object list

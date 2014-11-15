@@ -52,7 +52,7 @@ static void determinePitchAngleSetpoint( uint_fast16_t channel )
 	// TODO: expo?
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.pitch_angle = scale(temp, 1000, 2000, -50.0f, 50.0f );
+	setpoints.pitch_angle = scale(temp, 1000, 2000, 50.0f, -50.0f );
 }
 
 static void determineYawRateSetpoint( uint_fast16_t channel )
