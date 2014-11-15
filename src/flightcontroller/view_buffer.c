@@ -8,7 +8,6 @@ uint8_t *p = (uint8_t *)pv;
 uint32_t  i = 0 , x = 0;
 char  buf[20], *pb = &buf[0];
 char  tb[46], *tpb = &tb[0];
-int olen = len;
 
 if( len > 256 && !(len & 0x8000) )   // don't go silly with the length eh!
    len = 256;

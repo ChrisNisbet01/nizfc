@@ -24,6 +24,19 @@ static command_st const * findCommand( command_st const * commands, uint32_t nb_
 	return NULL;
 }
 
+static non_config_command_st const * findNonConfigCommand( non_config_command_st const * commands, uint32_t nb_commands, char const * name )
+{
+	uint32_t index;
+
+	for (index = 0; index < nb_commands; index++)
+	{
+		if ( strncasecmp(name, commands[index].name, strlen(name) ) == 0 )
+			return &commands[index];
+	}
+
+	return NULL;
+}
+
 static void printParameterName( parameterConfig_st const * parameterConfig, ParameterNameLookup ParameterNameLookupCB, void *cliCtx )
 {
 	cliPrintf( cliCtx, "%20s", ParameterNameLookupCB(parameterConfig->parameter_id));
@@ -779,12 +792,26 @@ parameterConfig_st const * findDataPointFromParameterID( parameterConfig_st cons
 int runCommand( int argc, char **argv, void *cliCtx )
 {
 	run_command_data_st command_data;
+	int result;
 
 	command_data.argc = argc;
 	command_data.argv = argv;
 	command_data.cliCtx = cliCtx;
+	command_data.handled = false;
+	result = pollCodeGroups( poll_id_run_command, &command_data, false );
 
-	return pollCodeGroups( poll_id_run_command, &command_data, 0 );
+	/* Not a config command. Maybe it's a non-config command */
+	if (command_data.handled == false)
+	{
+		non_config_run_command_data_st non_config_command_data;
+
+		non_config_command_data.argc = argc;
+		non_config_command_data.argv = argv;
+		non_config_command_data.cliCtx = cliCtx;
+		result = pollCodeGroups( poll_id_run_non_config_command, &non_config_command_data, false );
+	}
+
+	return result;
 }
 
 /* called from the code responsible for the various commands from within the poll_id_run_command pollCodeGroups() call. */
@@ -798,16 +825,51 @@ int runCommandHandler( command_st const * commands, uint32_t nb_commands, void *
 	{
 		pcmd_data->command = pcmd;
 		result = pcmd->handler( pcmd_data );
+		pcmd_data->handled = true;
 	}
 	else
+	{
 		result = poll_result_error;
+	}
 
 	return result;
 }
 
+int runNonConfigCommandHandler( non_config_command_st const * commands, uint32_t nb_commands, void *pv )
+{
+	non_config_command_st const * pcmd;
+	int result;
+	non_config_run_command_data_st *pcmd_data = pv;
+
+	if ( (pcmd=findNonConfigCommand(commands, nb_commands, pcmd_data->argv[0])) != NULL )
+	{
+		result = pcmd->handler( pcmd_data );
+	}
+	else
+	{
+		result = poll_result_error;
+	}
+
+	return result;
+}
+
+
 int idCommandHandler( command_st const * commands, uint32_t nb_commands, void *pv )
 {
-	run_command_data_st *pcmd_data = pv;
+	help_command_data_st *pcmd_data = pv;
+	unsigned int command_index;
+
+	for ( command_index = 0; command_index < nb_commands; command_index++ )
+	{
+		cliPrintf( pcmd_data->cliCtx, "\n%s", commands[command_index].name );
+	}
+
+	return poll_result_ok;
+}
+
+int idNonConfigCommandHandler( non_config_command_st const * commands, uint32_t nb_commands, void *pv )
+{
+	help_command_data_st *pcmd_data = pv;
 	unsigned int command_index;
 
 	for ( command_index = 0; command_index < nb_commands; command_index++ )

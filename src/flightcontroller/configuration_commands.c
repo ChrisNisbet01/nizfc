@@ -13,22 +13,22 @@
 #include <stm32f30x_misc.h>
 #include <motor_control.h>
 
-static int saveCommand( run_command_data_st *pcommand );
-static int showCommand( run_command_data_st *pcommand );
-static int helpCommand( run_command_data_st *pcommand );
-static int rebootCommand( run_command_data_st *pcommand );
-static int armCommand( run_command_data_st *pcommand );
-static int disarmCommand( run_command_data_st *pcommand );
+static int saveCommand( non_config_run_command_data_st *pcommand );
+static int showCommand( non_config_run_command_data_st *pcommand );
+static int helpCommand( non_config_run_command_data_st *pcommand );
+static int rebootCommand( non_config_run_command_data_st *pcommand );
+static int armCommand( non_config_run_command_data_st *pcommand );
+static int disarmCommand( non_config_run_command_data_st *pcommand );
 
-static const command_st config_commands[] =
+static const non_config_command_st config_commands[] =
 {
-	{ .group_id = configuration_id_save, 		.name = "save",    .handler = saveCommand	},
-	{ .group_id = configuration_id_show, 		.name = "show",    .handler = showCommand	},
-	{ .group_id = configuration_id_show, 		.name = "?",       .handler = helpCommand	},
-	{ .group_id = configuration_id_show, 		.name = "help",    .handler = helpCommand	},
-	{ .group_id = configuration_id_reserved, 	.name = "reboot",  .handler = rebootCommand	},
-	{ .group_id = configuration_id_reserved, 	.name = "arm",     .handler = armCommand	},
-	{ .group_id = configuration_id_reserved, 	.name = "disarm",  .handler = disarmCommand	}
+	{ .name = "save",    .handler = saveCommand	},
+	{ .name = "show",    .handler = showCommand	},
+	{ .name = "?",       .handler = helpCommand	},
+	{ .name = "help",    .handler = helpCommand	},
+	{ .name = "reboot",  .handler = rebootCommand	},
+	{ .name = "arm",     .handler = armCommand	},
+	{ .name = "disarm",  .handler = disarmCommand	}
 };
 
 typedef enum printConfig_t
@@ -41,7 +41,7 @@ typedef enum printConfig_t
 
 typedef struct show_config_data_st
 {
-	run_command_data_st *run_command_data;
+	non_config_run_command_data_st *run_command_data;
 	printConfig_t		whatToPrint;
 	configuration_id_t configuration_id;
 	unsigned int instance;
@@ -98,7 +98,7 @@ done:
 	return psaved;
 }
 
-static int printUnsavedConfig( run_command_data_st *pcommand )
+static int printUnsavedConfig( non_config_run_command_data_st *pcommand )
 {
 	int result = poll_result_error;
 	show_config_data_st show_config_data;
@@ -112,7 +112,7 @@ static int printUnsavedConfig( run_command_data_st *pcommand )
 	return result;
 }
 
-static int printCurrentConfig( run_command_data_st *pcommand, printConfig_t whatToPrint )
+static int printCurrentConfig( non_config_run_command_data_st *pcommand, printConfig_t whatToPrint )
 {
 	int result = poll_result_error;
 	show_config_data_st show_config_data;
@@ -126,7 +126,7 @@ static int printCurrentConfig( run_command_data_st *pcommand, printConfig_t what
 	return result;
 }
 
-static int printSavedConfig( run_command_data_st *pcommand )
+static int printSavedConfig( non_config_run_command_data_st *pcommand )
 {
 	int result = poll_result_error;
 
@@ -192,7 +192,7 @@ void systemReset(void)
 	NVIC_SystemReset();
 }
 
-static int rebootCommand( run_command_data_st *pcommand )
+static int rebootCommand( non_config_run_command_data_st *pcommand )
 {
 	UNUSED(pcommand);
 
@@ -201,7 +201,7 @@ static int rebootCommand( run_command_data_st *pcommand )
 	return poll_result_ok;
 }
 
-static int armCommand( run_command_data_st *pcommand )
+static int armCommand( non_config_run_command_data_st *pcommand )
 {
 	UNUSED(pcommand);
 
@@ -210,7 +210,7 @@ static int armCommand( run_command_data_st *pcommand )
 	return poll_result_ok;
 }
 
-static int disarmCommand( run_command_data_st *pcommand )
+static int disarmCommand( non_config_run_command_data_st *pcommand )
 {
 	UNUSED(pcommand);
 
@@ -219,13 +219,21 @@ static int disarmCommand( run_command_data_st *pcommand )
 	return poll_result_ok;
 }
 
-static int helpCommand( run_command_data_st *pcommand )
+static int helpCommand( non_config_run_command_data_st *pcommand )
 {
-	pollCodeGroups( poll_id_identify, pcommand, true );
+	help_command_data_st help_command;
+
+	help_command.argc = pcommand->argc;
+	help_command.argv = pcommand->argv;
+	help_command.cliCtx = pcommand->cliCtx;
+
+	pollCodeGroups( poll_id_identify, &help_command, true );
+	pollCodeGroups( poll_id_identify_non_config, &help_command, true );
+
 	return poll_result_ok;
 }
 
-static int showCommand( run_command_data_st *pcommand )
+static int showCommand( non_config_run_command_data_st *pcommand )
 {
 	int result = poll_result_error;
 	int argc = pcommand->argc;
@@ -257,7 +265,7 @@ static int showCommand( run_command_data_st *pcommand )
 	A save_config poll is made, which should result in all supporintg code calling the save_config
 	function for all of their configuration data.
 */
-static int saveCommand( run_command_data_st *pcommand )
+static int saveCommand( non_config_run_command_data_st *pcommand )
 {
 	int result = -1;
 
@@ -368,7 +376,7 @@ static int printSavedParameters( void *pv,
 					)
 {
 	show_config_data_st * show_config_data = pv;
-	run_command_data_st *run_command_data = show_config_data->run_command_data;
+	non_config_run_command_data_st *run_command_data = show_config_data->run_command_data;
 	int result = poll_result_error;
 	command_st const *command;
 
@@ -412,7 +420,7 @@ static int printCurrentParameters( void *pv,
 					)
 {
 	show_config_data_st * show_config_data = pv;
-	run_command_data_st *run_command_data = show_config_data->run_command_data;
+	non_config_run_command_data_st *run_command_data = show_config_data->run_command_data;
 	int result = poll_result_ok;
 	unsigned int command_index;
 
@@ -456,7 +464,7 @@ static int printUnsavedParameters( void *pv,
 					)
 {
 	show_config_data_st * show_config_data = pv;
-	run_command_data_st *run_command_data = show_config_data->run_command_data;
+	non_config_run_command_data_st *run_command_data = show_config_data->run_command_data;
 	int result = poll_result_ok;
 	unsigned int command_index;
 
@@ -643,14 +651,15 @@ int configPollHandler( poll_id_t poll_id, void *pv )
 
 	switch( poll_id )
 	{
-		case poll_id_identify:
+		case poll_id_identify_non_config:
 		{
-			result = idCommandHandler( config_commands, ARRAY_SIZE(config_commands), pv );
+			idNonConfigCommandHandler( config_commands, ARRAY_SIZE(config_commands), pv );
+			result = poll_result_ok;
 			break;
 		}
-		case poll_id_run_command:
+		case poll_id_run_non_config_command:
 		{
-			result = runCommandHandler( config_commands, ARRAY_SIZE(config_commands), pv );
+			result = runNonConfigCommandHandler( config_commands, ARRAY_SIZE(config_commands), pv );
 			break;
 		}
 		default:

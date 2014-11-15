@@ -4,6 +4,7 @@
 #include <config_structure.h>
 
 typedef struct run_command_data_st run_command_data_st;
+typedef struct non_config_run_command_data_st non_config_run_command_data_st;
 typedef char const * (*ParameterNameLookup)( unsigned int parameterID );
 
 typedef struct command_st
@@ -20,19 +21,42 @@ typedef struct command_st
 	ParameterNameLookup ParameterNameLookupCB;
 } command_st;
 
+typedef struct non_config_command_st
+{
+	char 				const * name;
+	int 				(* handler)(non_config_run_command_data_st *p);
+} non_config_command_st;
+
 typedef struct run_command_data_st
 {
 	void *cliCtx;
 	int argc;
 	char **argv;
 	command_st const * command;
+	bool handled;
 } run_command_data_st;
+
+typedef struct non_config_run_command_data_st
+{
+	void *cliCtx;
+	int argc;
+	char **argv;
+} non_config_run_command_data_st;
+
+typedef struct help_command_data_st
+{
+	void *cliCtx;
+	int argc;
+	char **argv;
+} help_command_data_st;
 
 int getLengthOfData( config_data_types_t data_type, void const * pcfg );
 
 int runCommand( int argc, char **argv, void *cliCtx );
 int runCommandHandler( command_st const * const commands, uint32_t nb_commands, void *pv );
+int runNonConfigCommandHandler( non_config_command_st const * commands, uint32_t nb_commands, void *pv );
 int idCommandHandler( command_st const * commands, uint32_t nb_commands, void *pv );
+int idNonConfigCommandHandler( non_config_command_st const * commands, uint32_t nb_commands, void *pv );
 
 int handleStandardCommand( run_command_data_st const * command_context );
 bool savedParameterValueMatchesCurrentValue( void const *psaved,
