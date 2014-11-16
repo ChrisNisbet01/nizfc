@@ -7,6 +7,7 @@
 #include <spi_stm32f30x.h>
 #include <sensors.h>
 #include <l3gd20.h>
+#include <utils.h>
 
 #define L3GD20_SendByte(byte) spiSendByte(l3gd20ctx.spiCtx, byte)
 
@@ -19,6 +20,8 @@
 #define L3G_Sensitivity_250dps     114.285f       /*!< gyroscope sensitivity with 250 dps full scale [LSB/dps] */
 #define L3G_Sensitivity_500dps     57.1429f       /*!< gyroscope sensitivity with 500 dps full scale [LSB/dps] */
 #define L3G_Sensitivity_2000dps    14.285f	      /*!< gyroscope sensitivity with 2000 dps full scale [LSB/dps] */
+
+#define NB_GYRO_CAL_SAMPLES			100
 
 typedef struct l3gd20Ctx_st
 {
@@ -263,14 +266,33 @@ static bool calculateGyroZeroBias( l3gd20Ctx_st * l3gCtx )
 	int32_t largebuf[3] = {0,0,0};
 	int16_t buf[3];
 
-	for (i = 0; i < 100; i++ )
+	for (i = 0; i < NB_GYRO_CAL_SAMPLES; i++ )
 	{
+		long tmo = 4;
+		while ((L3GD20_GetDataStatus() & 0x08) == 0)	/* wait for new xyz axis data */
+		{
+			if ( tmo-- == 0 )
+				goto done;
+			delayMilliseconds( 10 );
+		}
 		if ( readRaw( buf ) == false )
 			goto done;
-		largebuf[0] += buf[0];
-		largebuf[1] += buf[1];
-		largebuf[2] += buf[2];
+		/* any shaking of the board resets things */
+		if ( fabs((float)buf[0] / l3gCtx->gyroSensitivity) > 10.0f )
+		{
+			i = 0;
+			largebuf[0] = 0;
+			largebuf[1] = 0;
+			largebuf[2] = 0;
+		}
+		else
+		{
+			largebuf[0] += buf[0];
+			largebuf[1] += buf[1];
+			largebuf[2] += buf[2];
+		}
 	}
+
 	l3gCtx->zero_bias[0] = (largebuf[0]+i/2)/i;
 	l3gCtx->zero_bias[1] = (largebuf[1]+i/2)/i;
 	l3gCtx->zero_bias[2] = (largebuf[2]+i/2)/i;

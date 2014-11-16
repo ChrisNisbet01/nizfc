@@ -1,5 +1,11 @@
 #include <stdint.h>
 #include <ctype.h>
+#include <coos.h>
+
+void delayMilliseconds( unsigned int milliseconds )
+{
+	CoTickDelay( (milliseconds*CFG_SYSTICK_FREQ)/1000);
+}
 
 /*---------------------------------------------------------*/
 int strtoint (char const * str, unsigned int  * pint )
