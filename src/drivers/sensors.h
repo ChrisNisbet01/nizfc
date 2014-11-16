@@ -25,6 +25,7 @@ typedef struct sensorCallback_st
 typedef struct sensorConfig_st
 {
 	void *i2cCtx;
+	void *spiCtx;
 } sensorConfig_st;
 
 

@@ -8,6 +8,7 @@
 #include <utils.h>
 #include <polling.h>
 #include <i2c_stm32f30x.h>
+#include <spi_stm32f30x.h>
 #include <receiver.h>
 #include <outputs.h>
 #include <output_configuration.h>
@@ -30,8 +31,10 @@ void *cli_uart;
 OS_FlagID cliUartFlag;
 
 void *i2c_port;
+void *spi_port;
 void *pcli;
 void *lsm303dlhcDevice;
+void *l3gd20dlhcDevice;
 static sensorCallback_st sensorCallbacks;
 
 float RollAng, PitchAng, Heading;
@@ -100,12 +103,21 @@ static void main_task( void *pv )
 	STM_EVAL_LEDInit(LED10);
 
 	i2c_port = i2cInit( I2C_PORT_1 );
+	spi_port = spiInit( SPI_PORT_1 );
+
 	if ( i2c_port != NULL )
 	{
 		sensorConfig_st sensorConfig;
 
 		sensorConfig.i2cCtx = i2c_port;
 		lsm303dlhcDevice = initLSM303DLHC( &sensorConfig, &sensorCallbacks );
+	}
+	if (spi_port != NULL )
+	{
+		sensorConfig_st sensorConfig;
+
+		sensorConfig.spiCtx = spi_port;
+		l3gd20dlhcDevice = initL3GD20( &sensorConfig, &sensorCallbacks );
 	}
 
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );

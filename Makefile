@@ -58,7 +58,7 @@ FPU_DEFINES = -D__FPU_USED
 PLATFORM_FLAGS =
 
 PLATFORM_DIR = $(SRC_DIR)/STM32F3_Discovery
-PLATFORM_SRC = $(PLATFORM_DIR)/*.c \
+PLATFORM_SRC = $(PLATFORM_DIR)/stm32f3_discovery.c \
                $(SRC_DIR)/stm32f30x/*.c
 LINK_SCRIPT = $(ROOT)/arm-gcc-link-stm32f3-nizfc.ld
 CO_FLASH_PROCESSOR_TYPE = STM32F303VC

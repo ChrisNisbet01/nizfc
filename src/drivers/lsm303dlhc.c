@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
-#include <coos.h>
 #include <utils.h>
 #include <i2c_stm32f30x.h>
 #include <sensors.h>
@@ -143,7 +142,7 @@ static bool initMag( void )
 
 	LSM303DLHC_InitStructure.Temperature_Sensor = LSM303DLHC_TEMPSENSOR_DISABLE;
 	LSM303DLHC_InitStructure.MagOutput_DataRate = LSM303DLHC_ODR_30_HZ ;
-	LSM303DLHC_InitStructure.MagFull_Scale = LSM303DLHC_FS_8_1_GA;
+	LSM303DLHC_InitStructure.MagFull_Scale = LSM303DLHC_FS_5_6_GA;
 	LSM303DLHC_InitStructure.Working_Mode = LSM303DLHC_CONTINUOUS_CONVERSION;
 
 	return LSM303DLHC_MagInit(&LSM303DLHC_InitStructure);
