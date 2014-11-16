@@ -16,6 +16,7 @@
 #include <startup.h>
 #include <sensors.h>
 #include <lsm303dlhc.h>
+#include <l3gd20.h>
 #include <roll_pitch_configuration.h>
 #include <receiver_handler.h>
 #include <motor_control.h>
@@ -34,7 +35,7 @@ void *i2c_port;
 void *spi_port;
 void *pcli;
 void *lsm303dlhcDevice;
-void *l3gd20dlhcDevice;
+void *l3gd20Device;
 static sensorCallback_st sensorCallbacks;
 
 float RollAng, PitchAng, Heading;
@@ -117,7 +118,7 @@ static void main_task( void *pv )
 		sensorConfig_st sensorConfig;
 
 		sensorConfig.spiCtx = spi_port;
-		l3gd20dlhcDevice = initL3GD20( &sensorConfig, &sensorCallbacks );
+		l3gd20Device = initL3GD20( &sensorConfig, &sensorCallbacks );
 	}
 
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
@@ -217,6 +218,21 @@ static void cli_task( void *pv )
 					printf("\r\n");
 					for (motor = 0; motor < 4; motor++ )
 						printf("  m-%d: %u", motor+1, (unsigned int)getMotorValue( motor ) );
+				}
+				if (output_configuration[0].debug & 4 )
+				{
+					if ( sensorCallbacks.readGyro != NULL )
+					{
+						float f[3];
+						if ( sensorCallbacks.readGyro( l3gd20Device, f ) == true )
+						{
+							cliPrintf(pcli, "\nx:%g, y:%g, z:%g", &f[0], &f[1], &f[2] );
+						}
+						else
+							cliPrintf(pcli, "\n read failed");
+					}
+					else
+						cliPrintf(pcli, "\nno gyro");
 				}
 		 	}
 		}
