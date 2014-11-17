@@ -4,6 +4,9 @@
 /* IMU Data */
 typedef struct IMU_DATA_ST
 {
+	float	roll;		// angle from accelerometer only */
+	float	pitch;
+
 	float gyroXangle; 	// Angle calculated using the gyro only
 	float gyroYangle;
 

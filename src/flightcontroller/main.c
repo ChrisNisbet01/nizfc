@@ -84,12 +84,13 @@ OS_FlagID IMUTimerFlag;
 
 static void printTimer( void )
 {
-	CoSetFlag( printTimerFlag );
+	isr_SetFlag( printTimerFlag );
 }
 
 static void newReceiverDataCallback( void )
 {
-	CoSetFlag( receiverFlag );
+    STM_EVAL_LEDToggle(LED10);
+	isr_SetFlag( receiverFlag );
 }
 
 static uint32_t IMUDelta;
@@ -101,7 +102,7 @@ static void IMUCallback( void )
 {
 	CoEnterISR();
 
-	CoSetFlag( IMUTimerFlag );
+	isr_SetFlag( IMUTimerFlag );
 
 	CoExitISR();
 }
@@ -110,7 +111,7 @@ IMU_DATA_ST imu_data;
 
 static void initIMU( void )
 {
-    init_attitude_estimation( &imu_data, 0.07f, 0.07f );
+    init_attitude_estimation( &imu_data, roll_configuration[0].lpf_factor, roll_configuration[0].lpf_factor );
 
 	IMUTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	/* start a three millisecond timer */
@@ -132,8 +133,8 @@ static void estimateAttitude( float dT )
 
     do_attitude_estimation( &imu_data,
     				dT,
-    				gyroValues[0],
     				gyroValues[1],
+    				-gyroValues[0],
     				accelerometerValues[0],
     				accelerometerValues[1],
     				accelerometerValues[2] );
@@ -226,15 +227,18 @@ static void main_task( void *pv )
 		U32 ReadyFlags;
 
 		ReadyFlags = CoWaitForMultipleFlags( (1<<IMUTimerFlag) | (1<<receiverFlag), OPT_WAIT_ANY, 0, &err );
-		if ( (ReadyFlags & (1<<IMUTimerFlag)) != 0 )
+		if (err == E_OK)
 		{
-			IMUHandler();
-		    STM_EVAL_LEDToggle(LED6);
-		}
-		if ( (ReadyFlags & (1<<receiverFlag)) != 0 )
-		{
-		    STM_EVAL_LEDToggle(LED3);
-			processStickPositions();
+			if ( (ReadyFlags & (1<<IMUTimerFlag)) != 0 )
+			{
+				IMUHandler();
+			    STM_EVAL_LEDToggle(LED6);
+			}
+			if ( (ReadyFlags & (1<<receiverFlag)) != 0 )
+			{
+			    STM_EVAL_LEDToggle(LED3);
+				processStickPositions();
+			}
 		}
 	}
 }
@@ -245,7 +249,7 @@ void newUartData( void *pv )
 	{
 		CoEnterISR();
 
-		CoSetFlag(cliUartFlag);
+		isr_SetFlag(cliUartFlag);
 
 		CoExitISR();
 	}
@@ -302,7 +306,14 @@ static void cli_task( void *pv )
 				}
 				if (output_configuration[0].debug & 8 )
 				{
-					cliPrintf( pcli, "\ndT: %d %g micros %d exe %d roll %g pitch %g", IMUDelta, &fIMUDelta, micros(), IMUExeTime, &RollAngFiltered, &PitchAngFiltered);
+					//cliPrintf( pcli, "\ndT: %d %g micros %d exe %d roll %g pitch %g gx %g, gy %g",
+					//	IMUDelta, &fIMUDelta, micros(), IMUExeTime, &RollAngFiltered, &PitchAngFiltered, &gyroValues[0], &gyroValues[1]);
+					cliPrintf( pcli, "\ndT: %d ar %g ap %g gr %g gp %g fr %g fp %g kr %g kp %g", &fIMUDelta,
+						&imu_data.roll, &imu_data.pitch,
+						&imu_data.gyroXangle, &imu_data.gyroYangle,
+						&RollAngFiltered, &PitchAngFiltered,
+						&imu_data.kalAngleX, &imu_data.kalAngleY
+						);
 				}
 		 	}
 		}

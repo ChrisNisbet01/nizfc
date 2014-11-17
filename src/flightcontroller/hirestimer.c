@@ -107,7 +107,6 @@ uint32_t micros2(void)
 
 	if ( loops > 1 )
 	{
-		printf("!");
 		STM_EVAL_LEDToggle(LED9);
 	}
 

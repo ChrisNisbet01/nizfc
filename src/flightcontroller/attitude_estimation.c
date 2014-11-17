@@ -56,11 +56,11 @@ void init_attitude_estimation( IMU_DATA_ST *pdata, float CF_X_factor, float CF_Y
 void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroXrate, float gyroYrate, float accX, float accY, float accZ )
 {
 #ifdef RESTRICT_PITCH // Eq. 25 and 26
-	float roll  = atan2f(accY, accZ) * RAD_TO_DEG;
-	float pitch = atan2f(-accX, sqrtf(accY * accY + accZ * accZ)) * RAD_TO_DEG;
+	float roll  = -atan2f(accY, accZ) * RAD_TO_DEG;
+	float pitch = -atan2f(-accX, sqrtf(accY * accY + accZ * accZ)) * RAD_TO_DEG;
 #else // Eq. 28 and 29
-	float roll  = atan2f(accY, sqrtf(accX * accX + accZ * accZ)) * RAD_TO_DEG;
-	float pitch = atan2f(-accX, accZ) * RAD_TO_DEG;
+	float roll  = -atan2f(accY, sqrtf(accX * accX + accZ * accZ)) * RAD_TO_DEG;
+	float pitch = -atan2f(-accX, accZ) * RAD_TO_DEG;
 #endif
 	float rotationX, rotationY;
 
@@ -104,9 +104,12 @@ void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroXrate, floa
 	pdata->compAngleX = (1.0f-CFX) * (pdata->compAngleX + rotationX) + CFX * roll; // Calculate the angle using a Complementary filter
 	pdata->compAngleY = (1.0f-CFY) * (pdata->compAngleY + rotationY) + CFY * pitch;
 
+	pdata->roll = roll;
+	pdata->pitch = pitch;
+
 	// Reset the gyro angle when it has drifted too much
 	if (pdata->gyroXangle < -180.0f || pdata->gyroXangle > 180.0f)
-		pdata->gyroXangle = pdata->kalAngleX;
+		pdata->gyroXangle = pdata->compAngleX;
 	if (pdata->gyroYangle < -180.0f || pdata->gyroYangle > 180.0f)
-		pdata->gyroYangle = pdata->kalAngleY;
+		pdata->gyroYangle = pdata->compAngleY;
 }

@@ -25,7 +25,7 @@ roll_pitch_configuration_st roll_configuration[NB_ROLL_CONFIGURATIONS];
 roll_pitch_configuration_st pitch_configuration[NB_PITCH_CONFIGURATIONS];
 static const roll_pitch_configuration_st default_roll_pitch_configuration =
 {
-	.lpf_factor = 0.8f
+	.lpf_factor = 0.01f
 };
 
 typedef enum roll_pitch_parameter_id_t

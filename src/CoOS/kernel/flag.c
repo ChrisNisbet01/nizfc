@@ -536,14 +536,15 @@ StatusType CoSetFlag(OS_FlagID id)
     }
 #endif
 
+    OsSchedLock();
     if((pfcb->flagRdy&((U32)1<<id)) != 0)    /* Flag had already been set          */
     {
+	    OsSchedUnlock();
     	return E_OK;
     }
 
     pfcb->flagRdy |= ((U32)1<<id);           /* Update the flags ready list        */
 
-    OsSchedLock();
     pnode = pfcb->headNode;
     while(pnode != Co_NULL)
     {
