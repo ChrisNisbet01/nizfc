@@ -38,7 +38,7 @@
 /*---------------------------- Include ---------------------------------------*/
 #include <coocox.h>
 U64     OSTickCnt = 0;                  /*!< Current system tick counter      */
-U32     OSTickCnt2;                  /*!< Current system tick counter      */
+volatile U32     OSTickCnt2;                  /*!< Current system tick counter      */
 
 /**
  ******************************************************************************

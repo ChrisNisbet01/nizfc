@@ -1,4 +1,6 @@
 #include <stdlib.h>
+
+#include <stm32f3_discovery.h>
 #include <stm32f30x_tim.h>
 #include <stm32f30x_rcc.h>
 #include <stm32f30x_misc.h>
@@ -67,15 +69,51 @@ void initHiResTimer( uint32_t periodMicrosecs, void (*appCallback)( void ) )
 uint32_t micros(void)
 {
     uint32_t centiseconds, cycle_count;
+	uint32_t microsValue;
 
     do
     {
         centiseconds = CoGetOSTime2();
+	  __asm volatile
+ 		(
+ 		" MOV     R0,R0    \n"
+	    );
         cycle_count = SysTick->VAL;
     }
     while (centiseconds != CoGetOSTime2());
 
-    return (centiseconds * (1000000/CFG_SYSTICK_FREQ)) + ( ticksPerSystickInterrupt - cycle_count) / ticksPerMicrosecond;
+	microsValue = (centiseconds * (1000000/CFG_SYSTICK_FREQ)) + ( ticksPerSystickInterrupt - cycle_count) / ticksPerMicrosecond;
+
+    return microsValue;
+}
+
+uint32_t micros2(void)
+{
+    uint32_t centiseconds, cycle_count;
+	uint32_t microsValue;
+	int loops = 0;
+
+    do
+    {
+        centiseconds = CoGetOSTime2();
+		  __asm volatile
+	 		(
+	 		" MOV     R0,R0    \n"
+		    );
+        cycle_count = SysTick->VAL;
+        loops++;
+    }
+    while (centiseconds != CoGetOSTime2());
+
+	if ( loops > 1 )
+	{
+		printf("!");
+		STM_EVAL_LEDToggle(LED9);
+	}
+
+	microsValue = (centiseconds * (1000000/CFG_SYSTICK_FREQ)) + ( ticksPerSystickInterrupt - cycle_count) / ticksPerMicrosecond;
+
+    return microsValue;
 }
 
 void initMicrosecondClock(void)

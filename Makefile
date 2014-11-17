@@ -4,6 +4,7 @@ CYGWIN=nodosfilewarning
 CC_PREFIX ?= arm-none-eabi-
 CC = $(CC_PREFIX)gcc
 OBJCOPY		 = $(CC_PREFIX)objcopy
+OBJDUMP		 = $(CC_PREFIX)objdump
 SIZE		 = $(CC_PREFIX)size
 CO_FLASH     = /cygdrive/c/CooCox/CoIDE/bin/coflash.exe
 
@@ -26,6 +27,7 @@ BIN_DIR		 = $(ROOT)/bin
 COOS_DIR     = $(SRC_DIR)/CoOS
 TARGET_HEX   = $(BIN_DIR)/$(TARGET).hex
 TARGET_ELF   = $(BIN_DIR)/$(TARGET).elf
+TARGET_DIS   = $(BIN_DIR)/$(TARGET).dis
 TARGET_MAP   = $(BIN_DIR)/$(TARGET).map
 
 COMMON_CFLAGS = -ffunction-sections \
@@ -141,6 +143,9 @@ all: $(TARGET_HEX)
 
 flash: all
 	$(CO_FLASH) program $(CO_FLASH_PROCESSOR_TYPE) $(TARGET_ELF) --adapter-name=ST-Link
+
+dump: all
+	$(OBJDUMP) -d $(TARGET_ELF) > $(TARGET_DIS)
 
 $(TARGET_HEX): $(TARGET_ELF)
 	$(OBJCOPY) -O ihex --set-start 0x8000000 $< $@

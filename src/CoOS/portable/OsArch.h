@@ -61,7 +61,7 @@
 
 /*---------------------------- Variable declare ------------------------------*/
 extern U64      OSTickCnt;          /*!< Counter for current system ticks.    */
-extern U32      OSTickCnt2;          /*!< Counter for current system ticks.    */
+extern volatile U32      OSTickCnt2;          /*!< Counter for current system ticks.    */
 
 /*!< Initial context of task being created	*/
 extern OS_STK  *InitTaskContext(FUNCPtr task,void *param,OS_STK *pstk);

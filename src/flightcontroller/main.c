@@ -21,6 +21,7 @@
 #include <receiver_handler.h>
 #include <motor_control.h>
 #include <hirestimer.h>
+#include <attitude_estimation.h>
 
 #define MAIN_TASK_STACK_SIZE 0x200
 #define CLI_TASK_STACK_SIZE 0x200
@@ -92,6 +93,7 @@ static void newReceiverDataCallback( void )
 }
 
 static uint32_t IMUDelta;
+static uint32_t IMUExeTime;
 static float    fIMUDelta;
 static uint32_t lastIMUTime;
 
@@ -104,8 +106,12 @@ static void IMUCallback( void )
 	CoExitISR();
 }
 
+IMU_DATA_ST imu_data;
+
 static void initIMU( void )
 {
+    init_attitude_estimation( &imu_data, 0.07f, 0.07f );
+
 	IMUTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	/* start a three millisecond timer */
 	initHiResTimer( 3000, IMUCallback );
@@ -113,59 +119,65 @@ static void initIMU( void )
 		we get an interrupt almost immediately after we start the timer.
 		Pretend we've processed the loop one cycle ago.
 	*/
-	lastIMUTime = micros()-3000;
+	lastIMUTime = micros2()-3000;
 }
 
-static float gyroAngle[3];
+float accelerometerValues[3];
+float smoothedAccelerometerValues[3];
+float magnetometerValues[3];
+float gyroValues[3];
+
+static void estimateAttitude( float dT )
+{
+
+    do_attitude_estimation( &imu_data,
+    				dT,
+    				gyroValues[0],
+    				gyroValues[1],
+    				accelerometerValues[0],
+    				accelerometerValues[1],
+    				accelerometerValues[2] );
+
+    RollAngFiltered = imu_data.compAngleX;
+    PitchAngFiltered = imu_data.compAngleY;
+
+}
 
 static void IMUHandler( void )
 {
-	uint32_t now = micros();
+	uint32_t temp;
+	uint32_t now = micros2();
 	IMUDelta = now - lastIMUTime;
+	temp = lastIMUTime;
 	lastIMUTime = now;
 
+	/* calculate time between iterations */
 	fIMUDelta = (float)IMUDelta/1000000.0f;
-    float accelerometerValues[3];
-    float magnetometerValues[3];
-
-	if ( sensorCallbacks.readGyro != NULL )
-	{
-		float f[3];
-		if ( sensorCallbacks.readGyro( l3gd20Device, f ) == true )
-		{
-			if ( IMUDelta >= 2000 && IMUDelta < 4000 )
-			{
-				gyroAngle[0] -= fIMUDelta * f[0];
-				gyroAngle[1] -= fIMUDelta * f[1];
-				gyroAngle[2] -= fIMUDelta * f[2];
-			}
-			else
-			{
-				printf("\r\ndelta %d", IMUDelta );
-				STM_EVAL_LEDOn(LED4);
-			}
-		}
-	}
-	else
-		cliPrintf(pcli, "\nno gyro");
 
 	if ( lsm303dlhcDevice )
 	{
 		if ( sensorCallbacks.readAccelerometer != NULL
 			&& sensorCallbacks.readMagnetometer != NULL
+			&& sensorCallbacks.readGyro != NULL
 			&& sensorCallbacks.readAccelerometer( lsm303dlhcDevice, accelerometerValues ) == true
-			&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true)
+			&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true
+			&& sensorCallbacks.readGyro( l3gd20Device, gyroValues ) == true)
 		{
-			Heading = calculateHeading( magnetometerValues, accelerometerValues );
-			RollAngFiltered = RollAng * roll_configuration[0].lpf_factor + RollAngFiltered * (1.0-roll_configuration[0].lpf_factor);
-			PitchAngFiltered = PitchAng * pitch_configuration[0].lpf_factor + PitchAngFiltered * (1.0-pitch_configuration[0].lpf_factor);
+
+			estimateAttitude( fIMUDelta );
+
+			updatePIDControlLoops();
 		}
 	}
+
+
 	// TODO: process receiver signals on a per frame basis
 
-	updatePIDControlLoops();
 	updateMotorOutputs();
 
+	IMUExeTime = (now=micros()) - lastIMUTime;
+	if (IMUExeTime > 1000)
+		printf("\r\nlong %u %u %u", IMUExeTime, now, lastIMUTime);
 }
 
 static void main_task( void *pv )
@@ -290,11 +302,17 @@ static void cli_task( void *pv )
 				}
 				if (output_configuration[0].debug & 8 )
 				{
-					cliPrintf( pcli, "\ndT: %d %g x:%g y:%g z:%g micros %d", IMUDelta, &fIMUDelta, &gyroAngle[0], &gyroAngle[1], &gyroAngle[2], micros() );
+					cliPrintf( pcli, "\ndT: %d %g micros %d exe %d roll %g pitch %g", IMUDelta, &fIMUDelta, micros(), IMUExeTime, &RollAngFiltered, &PitchAngFiltered);
 				}
 		 	}
 		}
 	}
+}
+
+void _Default_Handler( void )
+{
+	STM_EVAL_LEDOn(LED8);
+	while( 1 );
 }
 
 int main(void)
