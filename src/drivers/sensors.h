@@ -15,10 +15,10 @@ typedef bool (*readGyroFn)( void * pv, gyrometer_sensor_t *gyrometer );
 /* passed to the senor in the 'init' call. If the hardware supports a feature it will fill in the appropriate callback */
 typedef struct sensorCallback_st
 {
-	readTempFn 			readTemp;
-	readAccelerometerFn readAccelerometer;
-	readMagnetometerFn  readMagnetometer;
-	readGyroFn 			readGyro;
+	volatile readTempFn 		 readTemp;
+	volatile readAccelerometerFn readAccelerometer;
+	volatile readMagnetometerFn  readMagnetometer;
+	volatile readGyroFn 		 readGyro;
 } sensorCallback_st;
 
 /* passed to the sensor in the init call. Used to pass along configuration preferences. */

@@ -176,26 +176,30 @@ float getPitchPIDOutput( void )
 void updateMotorOutputs( void )
 {
 	unsigned int motorIndex;
+	uint_fast16_t maxMotorValue = 0;
 	craftType_st const * craft;
-	motorMixRatios_st const * mixer;
-	uint_fast16_t maxMotorValue;
 
 	craft = &crafts[0];	// TODO configurable;
-
-	mixer = craft->motorRatios;
 	uint_fast16_t tempMotorValues[craft->nbMotors];
-	for ( motorIndex=0, maxMotorValue = 0; motorIndex < craft->nbMotors; motorIndex++ )
+
+	if ( isCraftArmed() )
 	{
-		tempMotorValues[motorIndex] = lrintf(getThrottleSetpoint() * mixer[motorIndex].throttle);
-		/* only add in PID control values once throttle is above 0 */
-		if ( getThrottleSetpoint() > 1050 )
+		motorMixRatios_st const * mixer;
+
+		mixer = craft->motorRatios;
+		for ( motorIndex=0; motorIndex < craft->nbMotors; motorIndex++ )
 		{
-			tempMotorValues[motorIndex] += lrintf(pitchAnglePID.outputValue * mixer[motorIndex].pitch
-							+ rollAnglePID.outputValue * mixer[motorIndex].roll
-							+ 0.0f * mixer[motorIndex].yaw);	// TODO:
+			tempMotorValues[motorIndex] = lrintf(getThrottleSetpoint() * mixer[motorIndex].throttle);
+			/* only add in PID control values once throttle is above 0 */
+			if ( getThrottleSetpoint() > 1050 )
+			{
+				tempMotorValues[motorIndex] += lrintf(pitchAnglePID.outputValue * mixer[motorIndex].pitch
+								+ rollAnglePID.outputValue * mixer[motorIndex].roll
+								+ 0.0f * mixer[motorIndex].yaw);	// TODO:
+			}
+			if ( maxMotorValue < tempMotorValues[motorIndex] )
+				maxMotorValue = tempMotorValues[motorIndex];
 		}
-		if ( maxMotorValue < tempMotorValues[motorIndex] )
-			maxMotorValue = tempMotorValues[motorIndex];
 	}
 
 	for ( motorIndex=0; motorIndex < craft->nbMotors; motorIndex++ )
@@ -212,6 +216,7 @@ void updateMotorOutputs( void )
 		/* store so that the output value can be displayed */
 		motorValues[motorIndex] = limit(tempMotorValues[motorIndex], 1000, 2000);
 
+		/* update the output to the motor esc */
 		setMotorOutput( motorIndex, motorValues[motorIndex] );
 	}
 }

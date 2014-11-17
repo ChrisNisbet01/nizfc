@@ -1,48 +1,48 @@
 /**
  *******************************************************************************
  * @file       CoOS.h
- * @version    V1.1.6    
+ * @version    V1.1.6
  * @date       2014.05.23
  * @brief      API header file of CooCox CoOS.
- * @details    This file including all API functions's declare of CooCox CoOS.	
+ * @details    This file including all API functions's declare of CooCox CoOS.
  *******************************************************************************
  * @copy
  *
- *  Redistribution and use in source and binary forms, with or without 
- *  modification, are permitted provided that the following conditions 
- *  are met: 
- *  
- *      * Redistributions of source code must retain the above copyright 
- *  notice, this list of conditions and the following disclaimer. 
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *      * Redistributions of source code must retain the above copyright
+ *  notice, this list of conditions and the following disclaimer.
  *      * Redistributions in binary form must reproduce the above copyright
  *  notice, this list of conditions and the following disclaimer in the
- *  documentation and/or other materials provided with the distribution. 
- *      * Neither the name of the <ORGANIZATION> nor the names of its 
- *  contributors may be used to endorse or promote products derived 
- *  from this software without specific prior written permission. 
- *  
+ *  documentation and/or other materials provided with the distribution.
+ *      * Neither the name of the <ORGANIZATION> nor the names of its
+ *  contributors may be used to endorse or promote products derived
+ *  from this software without specific prior written permission.
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+ *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  *  THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * <h2><center>&copy; COPYRIGHT 2014 CooCox </center></h2>
  *******************************************************************************
- */ 
+ */
 
 #ifndef _CCRTOS_H
 #define _CCRTOS_H
 #include "OsConfig.h"
 /*---------------------------- Type Define  ----------------------------------*/
-typedef signed   char      S8;              
-typedef unsigned char      U8;	
+typedef signed   char      S8;
+typedef unsigned char      U8;
 typedef short              S16;
 typedef unsigned short     U16;
 typedef int                S32;
@@ -98,16 +98,16 @@ typedef void               (*vFUNCPtr)(void);
 #define E_TASK_WAIT_OTHER     (StatusType)15
 #define E_EXCEED_MAX_NUM      (StatusType)16
 #define E_NOT_IN_DELAY_LIST   (StatusType)17
-#define E_SEV_REQ_FULL        (StatusType)18	
-#define E_NOT_FREE_ALL        (StatusType)19	
-#define E_PROTECTED_TASK      (StatusType)20 
-#define E_OS_IN_LOCK          (StatusType)21												
+#define E_SEV_REQ_FULL        (StatusType)18
+#define E_NOT_FREE_ALL        (StatusType)19
+#define E_PROTECTED_TASK      (StatusType)20
+#define E_OS_IN_LOCK          (StatusType)21
 
 
 /*---------------------------- Wait Opreation type  --------------------------*/
 #define OPT_WAIT_ALL          0         /*!< Wait for all flags.              */
 #define OPT_WAIT_ANY          1         /*!< Wait for any one of flags.       */
-#define OPT_WAIT_ONE          2         /*!< Waot for one flag.               */	
+#define OPT_WAIT_ONE          2         /*!< Waot for one flag.               */
 
 
 /*---------------------------- Delete Opreation type  ------------------------*/
@@ -160,12 +160,13 @@ extern OS_TID      CreateTask(FUNCPtr task,void *argv,U32 parameter,OS_STK *stk)
 
 /* Implement in file "time.c"      */
 extern U64         CoGetOSTime(void);
+extern U32         CoGetOSTime2(void);
 extern StatusType  CoTickDelay(U32 ticks);
 extern StatusType  CoResetTaskDelayTick(OS_TID taskID,U32 ticks);
 extern StatusType  CoTimeDelay(U8 hour,U8 minute,U8 sec,U16 millsec);
 
 
-/* Implement in file "timer.c"     */ 
+/* Implement in file "timer.c"     */
 extern StatusType  CoDelTmr(OS_TCID tmrID);
 extern StatusType  CoStopTmr(OS_TCID tmrID);
 extern StatusType  CoStartTmr(OS_TCID tmrID);

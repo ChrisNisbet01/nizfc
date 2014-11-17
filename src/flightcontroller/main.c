@@ -20,7 +20,7 @@
 #include <roll_pitch_configuration.h>
 #include <receiver_handler.h>
 #include <motor_control.h>
-
+#include <hirestimer.h>
 
 #define MAIN_TASK_STACK_SIZE 0x200
 #define CLI_TASK_STACK_SIZE 0x200
@@ -79,6 +79,7 @@ static float calculateHeading( float *magValues, float *accValues )
 
 OS_FlagID printTimerFlag;
 OS_FlagID receiverFlag;
+OS_FlagID IMUTimerFlag;
 
 static void printTimer( void )
 {
@@ -88,6 +89,83 @@ static void printTimer( void )
 static void newReceiverDataCallback( void )
 {
 	CoSetFlag( receiverFlag );
+}
+
+static uint32_t IMUDelta;
+static float    fIMUDelta;
+static uint32_t lastIMUTime;
+
+static void IMUCallback( void )
+{
+	CoEnterISR();
+
+	CoSetFlag( IMUTimerFlag );
+
+	CoExitISR();
+}
+
+static void initIMU( void )
+{
+	IMUTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+	/* start a three millisecond timer */
+	initHiResTimer( 3000, IMUCallback );
+	/*
+		we get an interrupt almost immediately after we start the timer.
+		Pretend we've processed the loop one cycle ago.
+	*/
+	lastIMUTime = micros()-3000;
+}
+
+static float gyroAngle[3];
+
+static void IMUHandler( void )
+{
+	uint32_t now = micros();
+	IMUDelta = now - lastIMUTime;
+	lastIMUTime = now;
+
+	fIMUDelta = (float)IMUDelta/1000000.0f;
+    float accelerometerValues[3];
+    float magnetometerValues[3];
+
+	if ( sensorCallbacks.readGyro != NULL )
+	{
+		float f[3];
+		if ( sensorCallbacks.readGyro( l3gd20Device, f ) == true )
+		{
+			if ( IMUDelta >= 2000 && IMUDelta < 4000 )
+			{
+				gyroAngle[0] -= fIMUDelta * f[0];
+				gyroAngle[1] -= fIMUDelta * f[1];
+				gyroAngle[2] -= fIMUDelta * f[2];
+			}
+			else
+			{
+				printf("\r\ndelta %d", IMUDelta );
+				STM_EVAL_LEDOn(LED4);
+			}
+		}
+	}
+	else
+		cliPrintf(pcli, "\nno gyro");
+
+	if ( lsm303dlhcDevice )
+	{
+		if ( sensorCallbacks.readAccelerometer != NULL
+			&& sensorCallbacks.readMagnetometer != NULL
+			&& sensorCallbacks.readAccelerometer( lsm303dlhcDevice, accelerometerValues ) == true
+			&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true)
+		{
+			Heading = calculateHeading( magnetometerValues, accelerometerValues );
+			RollAngFiltered = RollAng * roll_configuration[0].lpf_factor + RollAngFiltered * (1.0-roll_configuration[0].lpf_factor);
+			PitchAngFiltered = PitchAng * pitch_configuration[0].lpf_factor + PitchAngFiltered * (1.0-pitch_configuration[0].lpf_factor);
+		}
+	}
+	// TODO: process receiver signals on a per frame basis
+
+	updatePIDControlLoops();
+	updateMotorOutputs();
+
 }
 
 static void main_task( void *pv )
@@ -127,34 +205,25 @@ static void main_task( void *pv )
 	openReceiver( newReceiverDataCallback );
 	openOutputs();
 
+	initIMU();
+
 	while (1)
 	{
 		uint_fast16_t rx_value;
+		StatusType err;
+		U32 ReadyFlags;
 
-		CoTimeDelay(0, 0, 0, 10);
-        STM_EVAL_LEDToggle(LED3);
-        float accelerometerValues[3];
-        float magnetometerValues[3];
-
-		if ( lsm303dlhcDevice )
+		ReadyFlags = CoWaitForMultipleFlags( (1<<IMUTimerFlag) | (1<<receiverFlag), OPT_WAIT_ANY, 0, &err );
+		if ( (ReadyFlags & (1<<IMUTimerFlag)) != 0 )
 		{
-			if ( sensorCallbacks.readAccelerometer != NULL
-				&& sensorCallbacks.readMagnetometer != NULL
-				&& sensorCallbacks.readAccelerometer( lsm303dlhcDevice, accelerometerValues ) == true
-				&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true)
-			{
-				Heading = calculateHeading( magnetometerValues, accelerometerValues );
-				RollAngFiltered = RollAng * roll_configuration[0].lpf_factor + RollAngFiltered * (1.0-roll_configuration[0].lpf_factor);
-				PitchAngFiltered = PitchAng * pitch_configuration[0].lpf_factor + PitchAngFiltered * (1.0-pitch_configuration[0].lpf_factor);
-			}
+			IMUHandler();
+		    STM_EVAL_LEDToggle(LED6);
 		}
-		// TODO: process receiver signals on a per frame basis
-		if (CoAcceptSingleFlag( receiverFlag ) == E_OK)
+		if ( (ReadyFlags & (1<<receiverFlag)) != 0 )
 		{
+		    STM_EVAL_LEDToggle(LED3);
 			processStickPositions();
 		}
-		updatePIDControlLoops();
-		updateMotorOutputs();
 	}
 }
 
@@ -219,20 +288,9 @@ static void cli_task( void *pv )
 					for (motor = 0; motor < 4; motor++ )
 						printf("  m-%d: %u", motor+1, (unsigned int)getMotorValue( motor ) );
 				}
-				if (output_configuration[0].debug & 4 )
+				if (output_configuration[0].debug & 8 )
 				{
-					if ( sensorCallbacks.readGyro != NULL )
-					{
-						float f[3];
-						if ( sensorCallbacks.readGyro( l3gd20Device, f ) == true )
-						{
-							cliPrintf(pcli, "\nx:%g, y:%g, z:%g", &f[0], &f[1], &f[2] );
-						}
-						else
-							cliPrintf(pcli, "\n read failed");
-					}
-					else
-						cliPrintf(pcli, "\nno gyro");
+					cliPrintf( pcli, "\ndT: %d %g x:%g y:%g z:%g micros %d", IMUDelta, &fIMUDelta, &gyroAngle[0], &gyroAngle[1], &gyroAngle[2], micros() );
 				}
 		 	}
 		}
@@ -242,6 +300,8 @@ static void cli_task( void *pv )
 int main(void)
 {
 	CoInitOS();
+
+	initMicrosecondClock();
 
 	cli_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart != NULL )
