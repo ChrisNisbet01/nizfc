@@ -110,6 +110,19 @@ uint32_t micros2(void)
     return microsValue;
 }
 
+void delayMicroseconds(uint32_t us)
+{
+    uint32_t now = micros();
+    while (micros() - now < us);
+}
+
+void delay(uint32_t ms)
+{
+    while (ms--)
+        delayMicroseconds(1000);
+}
+
+
 void initMicrosecondClock(void)
 {
     RCC_ClocksTypeDef clocks;

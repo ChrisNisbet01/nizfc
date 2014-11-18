@@ -3,7 +3,8 @@
 
 typedef enum uart_ports_t
 {
-	UART_2
+	UART_2,
+	UART_USB
 } uart_ports_t;
 
 typedef enum uart_modes_t

@@ -27,7 +27,8 @@ typedef enum special_char_t
 
 typedef struct cliCtx_st
 {
-	int 			(*putChar)( int ch );					/* function to call to put a character to the attached CLI terminal */
+	int 			(*putChar)( void *uart, int ch );					/* function to call to put a character to the attached CLI terminal */
+	void			* uart;			/* uaed to indicate the uart to write to */
 	char 			lineBuffer[CLI_LINEBUFFER_SIZE+1];
 	uint8_t 		linebuffer_cursor_position;
 	char			*commandArgs[MAX_COMMAND_LINE_ARGS];	/* will point into lineBuffer */
@@ -36,14 +37,14 @@ typedef struct cliCtx_st
 
 } cliCtx_st;
 
-static cliCtx_st cli[1];
+static cliCtx_st cli[2];
 
 static int clifputc(void *pv, signed int c)
 {
 	cliCtx_st *pctx	= pv;
 
 	if (pctx->putChar != NULL)
-		return pctx->putChar( c );
+		return pctx->putChar( pctx->uart, c );
     return -1;
 }
 
@@ -97,7 +98,6 @@ static bool cliGetCommand( cliCtx_st *pctx, char const ch )
 {
 	bool got_command = false;
 	char ch7bit = ch & 0x7f;
-
 
 	if( ch7bit == '\n' ) /* just echo linefeeds */
 	{
@@ -202,12 +202,23 @@ void cliHandleNewChar( void *pv, char const ch )
 	}
 }
 
-void *initCli( int (*putChar)(int ch) )
+void *initCli( int (*putChar)(void *uart, int ch), void *uart )
 {
-	cliCtx_st *pctx = &cli[0];
+	int cli_index;
 
-	pctx->linebuffer_cursor_position = 0;
-	pctx->putChar = putChar;
+	for (cli_index = 0; cli_index < ARRAY_SIZE(cli); cli_index++ )
+	{
+		cliCtx_st *pctx = &cli[cli_index];
 
-	return pctx;
+		if ( pctx->uart == NULL )
+		{
+			pctx->linebuffer_cursor_position = 0;
+			pctx->putChar = putChar;
+			pctx->uart = uart;
+
+			return pctx;
+		}
+	}
+
+	return NULL;
 }

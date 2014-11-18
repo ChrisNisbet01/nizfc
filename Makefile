@@ -47,6 +47,8 @@ INCLUDE_DIRS = $(SRC_DIR)/cmsis_boot/startup \
 				$(COOS_DIR) \
 				$(COOS_DIR)/portable \
 				$(COOS_DIR)/kernel \
+				$(SRC_DIR)/STM32_USB-FS-Device_Driver/inc \
+				$(SRC_DIR)/vcp \
 				$(SRC_DIR)/STM32F3_Discovery \
 				$(SRC_DIR)/stm32f30x
 
@@ -57,11 +59,19 @@ CPU_DEFINES = -DSTM32F303VC -DSTM32F30X
 # use hardware floating point
 FPU_FLAGS = -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 FPU_DEFINES = -D__FPU_USED
-PLATFORM_FLAGS =
+PLATFORM_FLAGS = STM32F303xC STM32F303
 
 PLATFORM_DIR = $(SRC_DIR)/STM32F3_Discovery
 PLATFORM_SRC = $(PLATFORM_DIR)/stm32f3_discovery.c \
                $(SRC_DIR)/stm32f30x/*.c
+
+USB_DIR = $(SRC_DIR)/STM32_USB-FS-Device_Driver/src
+USB_SRC = $(USB_DIR)/*.c
+
+VCP_DIR = $(SRC_DIR)/vcp
+VCP_SRC = $(VCP_DIR)/*.c
+
+
 LINK_SCRIPT = $(ROOT)/arm-gcc-link-stm32f3-nizfc.ld
 CO_FLASH_PROCESSOR_TYPE = STM32F303VC
 
@@ -118,7 +128,9 @@ SRC_FILES = $(COMMON_SRC) \
             $(CMSIS_BOOT_SRC) \
             $(PLATFORM_SRC) \
             $(COOS_SRC) \
-            $(CMSIS_LIB_SRC)
+            $(CMSIS_LIB_SRC) \
+            $(USB_SRC) \
+            $(VCP_SRC)
 
 SRC_FILES_NO_LTO = $(COOS_SRC_NO_LTO) \
 				$(SRC_DIR)/syscalls/*.c

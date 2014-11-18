@@ -29,12 +29,12 @@
 static OS_STK cli_task_stack[CLI_TASK_STACK_SIZE];
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE];
 
-void *cli_uart;
+void *cli_uart[2];
+void *pcli[2];
 OS_FlagID cliUartFlag;
 
 void *i2c_port;
 void *spi_port;
-void *pcli;
 void *lsm303dlhcDevice;
 void *l3gd20Device;
 static sensorCallback_st sensorCallbacks;
@@ -42,9 +42,9 @@ static sensorCallback_st sensorCallbacks;
 float RollAng, PitchAng, Heading;
 float RollAngFiltered, PitchAngFiltered, Heading;
 
-int uartPutChar( int ch )
+int uartPutChar( void *uart, int ch )
 {
-	return uartWriteCharBlockingWithTimeout( cli_uart, ch, 10 );
+	return uartWriteCharBlockingWithTimeout( uart, ch, 10 );
 }
 
 static float calculateHeading( float *magValues, float *accValues )
@@ -183,15 +183,6 @@ static void main_task( void *pv )
 {
 	UNUSED(pv);
 
-	STM_EVAL_LEDInit(LED3);
-	STM_EVAL_LEDInit(LED4);
-	STM_EVAL_LEDInit(LED5);
-	STM_EVAL_LEDInit(LED6);
-	STM_EVAL_LEDInit(LED7);
-	STM_EVAL_LEDInit(LED8);
-	STM_EVAL_LEDInit(LED9);
-	STM_EVAL_LEDInit(LED10);
-
 	i2c_port = i2cInit( I2C_PORT_1 );
 	spi_port = spiInit( SPI_PORT_1 );
 
@@ -243,14 +234,12 @@ static void main_task( void *pv )
 
 void newUartData( void *pv )
 {
-	if ( pv == cli_uart )
-	{
-		CoEnterISR();
+	UNUSED(pv);
+	CoEnterISR();
 
-		isr_SetFlag(cliUartFlag);
+	isr_SetFlag(cliUartFlag);
 
-		CoExitISR();
-	}
+	CoExitISR();
 }
 
 static void cli_task( void *pv )
@@ -267,57 +256,67 @@ static void cli_task( void *pv )
 
 	while (1)
 	{
-		if ( cli_uart != NULL )
 		{
-			StatusType err;
-			U32 readyFlags;
+			{
+				StatusType err;
+				U32 readyFlags;
 
-			readyFlags = CoWaitForMultipleFlags( (1<<printTimerFlag)|(1<<cliUartFlag), OPT_WAIT_ANY, 0, &err );
-		 	if ( readyFlags & (1<<cliUartFlag) )
-		 	{
-				while ( uartRxReady( cli_uart ) )
-				{
-					uint8_t ch;
+				readyFlags = CoWaitForMultipleFlags( (1<<printTimerFlag)|(1<<cliUartFlag), OPT_WAIT_ANY, 0, &err );
+			 	if ( readyFlags & (1<<cliUartFlag) )
+			 	{
+					int uart_index;
+					for (uart_index = 0; uart_index < ARRAY_SIZE(cli_uart) && cli_uart[uart_index] != NULL; uart_index++ )
+					{
+						while ( uartRxReady( cli_uart[uart_index] ) )
+						{
+							uint8_t ch;
 
-					ch = uartReadChar( cli_uart );
-#if 0
-					mspProcess( cli_uart, ch );
-#else
-					cliHandleNewChar( pcli, ch );
-#endif
-				}
-		 	}
-		 	if ( readyFlags & (1<<printTimerFlag) )
-		 	{
-				if (output_configuration[0].debug & 1 )
-				{
-					extern float getRollPIDOutput( void );
-					extern float getPitchPIDOutput( void );
+							ch = uartReadChar( cli_uart[uart_index] );
+		#if 0
+							mspProcess( cli_uart[uart_index], ch );
+		#else
+							if ( uart_index == 0)
+								cliHandleNewChar( pcli[uart_index], ch );
+							else
+								mspProcess( cli_uart[uart_index], ch );
+		#endif
+						}
+					}
+			 	}
+			 	if ( readyFlags & (1<<printTimerFlag) )
+			 	{
+					if (output_configuration[0].debug & 1 )
+					{
+						extern float getRollPIDOutput( void );
+						extern float getPitchPIDOutput( void );
 
-			 		printf("\nthrottle: %d", (int)getThrottleSetpoint() );
-			 		printf("\nroll: %d:%d PID: %d", (int)getRollAngleSetpoint(), (int)RollAngFiltered, (int)getRollPIDOutput() );
-			 		printf("\npitch: %d:%d PID: %d", (int)getPitchAngleSetpoint(), (int)PitchAngFiltered, (int)getPitchPIDOutput()  );
-				}
-				if (output_configuration[0].debug & 2 )
-				{
-					int motor;
+				 		printf("\nthrottle: %d", (int)getThrottleSetpoint() );
+				 		printf("\nroll: %d:%d PID: %d", (int)getRollAngleSetpoint(), (int)RollAngFiltered, (int)getRollPIDOutput() );
+				 		printf("\npitch: %d:%d PID: %d", (int)getPitchAngleSetpoint(), (int)PitchAngFiltered, (int)getPitchPIDOutput()  );
+					}
+					if (output_configuration[0].debug & 2 )
+					{
+						int motor;
 
-					printf("\r\n");
-					for (motor = 0; motor < 4; motor++ )
-						printf("  m-%d: %u", motor+1, (unsigned int)getMotorValue( motor ) );
-				}
-				if (output_configuration[0].debug & 8 )
-				{
-					//cliPrintf( pcli, "\ndT: %d %g micros %d exe %d roll %g pitch %g gx %g, gy %g",
-					//	IMUDelta, &fIMUDelta, micros(), IMUExeTime, &RollAngFiltered, &PitchAngFiltered, &gyroValues[0], &gyroValues[1]);
-					cliPrintf( pcli, "\ndT: %d ar %g ap %g gr %g gp %g fr %g fp %g kr %g kp %g", &fIMUDelta,
-						&imu_data.roll, &imu_data.pitch,
-						&imu_data.gyroXangle, &imu_data.gyroYangle,
-						&RollAngFiltered, &PitchAngFiltered,
-						&imu_data.kalAngleX, &imu_data.kalAngleY
-						);
-				}
-		 	}
+						printf("\r\n");
+						for (motor = 0; motor < 4; motor++ )
+							printf("  m-%d: %u", motor+1, (unsigned int)getMotorValue( motor ) );
+					}
+					if (output_configuration[0].debug & 8 )
+					{
+						cliPrintf( pcli[0], "\ndT: %d ar %g ap %g gr %g gp %g fr %g fp %g kr %g kp %g", &fIMUDelta,
+							&imu_data.roll, &imu_data.pitch,
+							&imu_data.gyroXangle, &imu_data.gyroYangle,
+							&RollAngFiltered, &PitchAngFiltered,
+							&imu_data.kalAngleX, &imu_data.kalAngleY
+							);
+					}
+					if (output_configuration[0].debug & 16 )
+					{
+						cliPrintf(pcli[0], "rx ready %d", uartRxReady( cli_uart[1] ) );
+					}
+			 	}
+			}
 		}
 	}
 }
@@ -330,13 +329,26 @@ void _Default_Handler( void )
 
 int main(void)
 {
+	STM_EVAL_LEDInit(LED3);
+	STM_EVAL_LEDInit(LED4);
+	STM_EVAL_LEDInit(LED5);
+	STM_EVAL_LEDInit(LED6);
+	STM_EVAL_LEDInit(LED7);
+	STM_EVAL_LEDInit(LED8);
+	STM_EVAL_LEDInit(LED9);
+	STM_EVAL_LEDInit(LED10);
+
 	CoInitOS();
 
 	initMicrosecondClock();
 
-	cli_uart = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
-	if ( cli_uart != NULL )
-		pcli = initCli( uartPutChar );
+	cli_uart[0] = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
+	if ( cli_uart[0] != NULL )
+		pcli[0] = initCli( uartPutChar, cli_uart[0] );
+	cli_uart[1] = uartOpen( UART_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
+	if ( cli_uart[1] != NULL )
+		pcli[1] = initCli( uartPutChar, cli_uart[1] );
+
 	initialiseCodeGroups();
 	loadSavedConfiguration();
 
