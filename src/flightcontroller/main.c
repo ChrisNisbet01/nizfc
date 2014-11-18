@@ -272,14 +272,10 @@ static void cli_task( void *pv )
 							uint8_t ch;
 
 							ch = uartReadChar( cli_uart[uart_index] );
-		#if 0
-							mspProcess( cli_uart[uart_index], ch );
-		#else
 							if ( uart_index == 0)
 								cliHandleNewChar( pcli[uart_index], ch );
 							else
 								mspProcess( cli_uart[uart_index], ch );
-		#endif
 						}
 					}
 			 	}

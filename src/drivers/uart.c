@@ -44,6 +44,7 @@ typedef enum uart_type_t
 typedef struct uart_ctx_st
 {
 	int							type;		/* UART or USB VCP */
+	OS_FlagID					usbTxFlag;
 	uart_ports_config_t			*uart_config;
 	uint_fast32_t				baudRate;
 	uart_ports_config_t	const 	*port;
@@ -116,6 +117,17 @@ static void putRxChar( void *pv, uint8_t ch )
 	{
 		pctx->newRxDataCb(pctx);
 	}
+}
+
+void usbTxComplete( void )
+{
+	uart_ctx_st *pctx = &uart_ctxs[NB_UART_PORTS];
+
+	CoEnterISR();
+
+	isr_SetFlag( pctx->usbTxFlag );
+
+	CoExitISR();
 }
 
 void newUSBData( void )
@@ -232,6 +244,7 @@ void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*
 		pctx = &uart_ctxs[NB_UART_PORTS + USB_IDX(usb_config)];
 		pctx->type = 1;	/* usb uart */
 	    pctx->newRxDataCb = newRxDataCb;
+	    pctx->usbTxFlag = CoCreateFlag( Co_TRUE, Co_TRUE );
 
 	    Set_System();
 	    Set_USBClock();
@@ -326,11 +339,11 @@ void uartWriteChar(void *pv, uint8_t ch)
 	        return;
 	    }
 
-	    do {
-	        txed = CDC_Send_DATA((uint8_t*)&ch, 1);
-	        if (txed == 0)
-				CoTimeDelay( 0, 0, 0, 1000/CFG_SYSTICK_FREQ );
-	    } while (txed < 1 && (CoGetOSTime() - start < USB_TIMEOUT));
+
+		if ( CoWaitForSingleFlag( pctx->usbTxFlag, CFG_SYSTICK_FREQ/10 ) == E_OK )
+		{
+	        CDC_Send_DATA((uint8_t*)&ch, 1);
+		}
 	}
 }
 
@@ -370,26 +383,10 @@ int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fas
 	}
 	else	/* USB */
 	{
-	    uint32_t txed;
-	    uint32_t start = CoGetOSTime();
-
-	    if (!(usbIsConnected() && usbIsConfigured())) {
-	        return -1;
-	    }
-
-		while (txed = CDC_Send_DATA((uint8_t*)&ch, 1) == 0)
+		if ( CoWaitForSingleFlag( pctx->usbTxFlag, CFG_SYSTICK_FREQ/10 ) == E_OK )
 		{
-			if (millisecs_counter >= max_millisecs_to_wait)
-			{
-				timed_out = 1;
-				break;
-			}
-			CoTimeDelay( 0, 0, 0, 1000/CFG_SYSTICK_FREQ );
-			millisecs_counter += 1000/CFG_SYSTICK_FREQ;
-		}
-		if ( timed_out == 0 )
-		{
-		    result = 0;
+	        CDC_Send_DATA((uint8_t*)&ch, 1);
+	        result = 0;
 		}
 		else
 		{

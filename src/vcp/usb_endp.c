@@ -57,6 +57,7 @@ __IO uint32_t receiveLength;             // HJI
 void EP1_IN_Callback(void)
 {
     packetSent = 0;  // HJI
+    usbTxComplete();
 }
 
 /*******************************************************************************
