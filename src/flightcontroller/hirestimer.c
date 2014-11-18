@@ -105,11 +105,6 @@ uint32_t micros2(void)
     }
     while (centiseconds != CoGetOSTime2());
 
-	if ( loops > 1 )
-	{
-		STM_EVAL_LEDToggle(LED9);
-	}
-
 	microsValue = (centiseconds * (1000000/CFG_SYSTICK_FREQ)) + ( ticksPerSystickInterrupt - cycle_count) / ticksPerMicrosecond;
 
     return microsValue;

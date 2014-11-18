@@ -42,7 +42,7 @@ static sensorCallback_st sensorCallbacks;
 float RollAng, PitchAng, Heading;
 float RollAngFiltered, PitchAngFiltered, Heading;
 
-static int uartPutChar( int ch )
+int uartPutChar( int ch )
 {
 	return uartWriteCharBlockingWithTimeout( cli_uart, ch, 10 );
 }
@@ -89,11 +89,10 @@ static void printTimer( void )
 
 static void newReceiverDataCallback( void )
 {
-    STM_EVAL_LEDToggle(LED10);
 	isr_SetFlag( receiverFlag );
 }
 
-static uint32_t IMUDelta;
+uint32_t IMUDelta;
 static uint32_t IMUExeTime;
 static float    fIMUDelta;
 static uint32_t lastIMUTime;
@@ -124,7 +123,6 @@ static void initIMU( void )
 }
 
 float accelerometerValues[3];
-float smoothedAccelerometerValues[3];
 float magnetometerValues[3];
 float gyroValues[3];
 
@@ -282,7 +280,11 @@ static void cli_task( void *pv )
 					uint8_t ch;
 
 					ch = uartReadChar( cli_uart );
+#if 0
+					mspProcess( cli_uart, ch );
+#else
 					cliHandleNewChar( pcli, ch );
+#endif
 				}
 		 	}
 		 	if ( readyFlags & (1<<printTimerFlag) )
