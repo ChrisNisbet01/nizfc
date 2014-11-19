@@ -13,12 +13,23 @@ typedef enum uart_modes_t
 	uart_mode_rx = (1<<1),
 } uart_modes_t;
 
-void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*newRxDataCb)( void *pv ) );
+typedef struct serial_port_methods_st
+{
+	int (*readChar)( void * serialPortCtx );
+	int (*txBusy)( void * serialPortCtx );
+	int (*rxReady)( void * serialPortCtx );
+	void (*writeChar)( void * serialPortCtx, uint8_t ch );
+	int (*writeCharBlockingWithTimeout)(void * serialPortCtx, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait);
+	void (*writeBulk)( void * serialPortCtx, uint8_t *buf, unsigned int buflen );	/* may be NULL */
+	int (*writeBulkBlockingWithTimeout)(void * serialPortCtx, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait);
+} serial_port_methods_st;
 
-int uartReadChar( void *pv );
-int uartTxBusy( void *pv );
-int uartRxReady( void *pv );
-void uartWriteChar( void *pv, uint8_t ch );
-int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait);
+typedef struct serial_port_st
+{
+	serial_port_methods_st const * methods;
+	void * serialCtx;
+} serial_port_st;
+
+serial_port_st * uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*newRxDataCb)( void *pv ) );
 
 #endif /*  __UART_H__ */

@@ -27,8 +27,8 @@ typedef enum special_char_t
 
 typedef struct cliCtx_st
 {
-	int 			(*putChar)( void *uart, int ch );					/* function to call to put a character to the attached CLI terminal */
-	void			* uart;			/* uaed to indicate the uart to write to */
+	int 			(*putChar)( void * port, int ch );			/* function to call to put a character to the attached CLI terminal */
+	void            * port;										/* used to indicate the port to write to */
 	char 			lineBuffer[CLI_LINEBUFFER_SIZE+1];
 	uint8_t 		linebuffer_cursor_position;
 	char			*commandArgs[MAX_COMMAND_LINE_ARGS];	/* will point into lineBuffer */
@@ -44,7 +44,7 @@ static int clifputc(void *pv, signed int c)
 	cliCtx_st *pctx	= pv;
 
 	if (pctx->putChar != NULL)
-		return pctx->putChar( pctx->uart, c );
+		return pctx->putChar( pctx->port, c );
     return -1;
 }
 
@@ -202,7 +202,7 @@ void cliHandleNewChar( void *pv, char const ch )
 	}
 }
 
-void *initCli( int (*putChar)(void *uart, int ch), void *uart )
+void *initCli( int (*putChar)(void *uart, int ch), void * port )
 {
 	int cli_index;
 
@@ -210,11 +210,11 @@ void *initCli( int (*putChar)(void *uart, int ch), void *uart )
 	{
 		cliCtx_st *pctx = &cli[cli_index];
 
-		if ( pctx->uart == NULL )
+		if ( pctx->port == NULL )
 		{
 			pctx->linebuffer_cursor_position = 0;
 			pctx->putChar = putChar;
-			pctx->uart = uart;
+			pctx->port = port;
 
 			return pctx;
 		}

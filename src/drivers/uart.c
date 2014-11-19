@@ -23,6 +23,7 @@ typedef struct uart_ports_config_t
 {
 	uart_ports_t port;
 	USART_TypeDef *usart;
+	serial_port_methods_st const * methods;
 	volatile uint8_t 	*rxBuffer;
 	uint_fast16_t		rxBufferSize;
 	volatile uint8_t 	*txBuffer;
@@ -33,6 +34,7 @@ typedef struct uart_ports_config_t
 typedef struct usb_uart_config_t
 {
 	uart_ports_t port;
+	serial_port_methods_st const * methods;
 } usb_uart_config_t;
 
 typedef enum uart_type_t
@@ -41,13 +43,18 @@ typedef enum uart_type_t
 	uart_type_usb
 } uart_type_t;
 
+typedef union uart_config_un
+{
+	uart_ports_config_t	const * uart;
+	usb_uart_config_t	const * usb;
+} uart_config_un;
+
 typedef struct uart_ctx_st
 {
 	int							type;		/* UART or USB VCP */
 	OS_FlagID					usbTxFlag;
-	uart_ports_config_t			*uart_config;
 	uint_fast32_t				baudRate;
-	uart_ports_config_t	const 	*port;
+	uart_config_un				port;
 	uart_modes_t				mode;
 	void const          		*ll_info;	/* returned by micro specific init function */
 	volatile uint8_t 			*rxBuffer;
@@ -60,27 +67,68 @@ typedef struct uart_ctx_st
 	volatile uint_fast16_t		txBufferTail;
 
 	void 						(*newRxDataCb)( void *pv );
+
+	serial_port_st				serialPort;
 } uart_ctx_st;
+
+typedef enum uart_methods_t
+{
+	UART_METHODS,
+	USB_METHODS
+} uart_methods_t;
+
+static int uartRxReady(void *pv);
+static int uartTxBusy(void *pv);
+static int uartReadChar(void *pv);
+static void uartWriteChar(void *pv, uint8_t ch);
+static int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait);
+
+
+static const serial_port_methods_st serial_port_methods[] =
+{
+	[UART_METHODS] =
+	{
+	.readChar = uartReadChar,
+	.txBusy = uartTxBusy,
+	.rxReady = uartRxReady,
+	.writeChar = uartWriteChar,
+	.writeCharBlockingWithTimeout = uartWriteCharBlockingWithTimeout,
+	.writeBulk = NULL,
+	.writeBulkBlockingWithTimeout = NULL
+	},
+	[USB_METHODS] =
+	{
+	.readChar = uartReadChar,
+	.txBusy = uartTxBusy,
+	.rxReady = uartRxReady,
+	.writeChar = uartWriteChar,
+	.writeCharBlockingWithTimeout = uartWriteCharBlockingWithTimeout,
+	.writeBulk = NULL,
+	.writeBulkBlockingWithTimeout = NULL
+	}
+};
+
 
 static const uart_ports_config_t uart_ports[] =
 {
 	{
 	.port = UART_2,
+	.methods = &serial_port_methods[UART_METHODS],
 	.usart = USART2,
 	.rxBuffer = Usart2RxBuffer,
-	.rxBufferSize = sizeof 	Usart2RxBuffer,
+	.rxBufferSize = sizeof Usart2RxBuffer,
 	.txBuffer = Usart2TxBuffer,
-	.txBufferSize = sizeof 	Usart2TxBuffer
+	.txBufferSize = sizeof Usart2TxBuffer
 	}
 };
 
 static const usb_uart_config_t usb_uart_ports[] =
 {
 	{
-	.port = UART_USB
+	.port = UART_USB,
+	.methods = &serial_port_methods[USB_METHODS]
 	}
 };
-
 
 #define NB_UART_PORTS	(sizeof(uart_ports)/sizeof(uart_ports[0]))
 #define UART_IDX(ptr)	((ptr)-uart_ports)
@@ -155,7 +203,7 @@ static void uartConfigure(uart_ctx_st *pctx)
     if (pctx->mode & uart_mode_tx)
         USART_InitStructure.USART_Mode |= USART_Mode_Tx;
 
-    USART_Init(pctx->port->usart, &USART_InitStructure);
+    USART_Init(pctx->port.uart->usart, &USART_InitStructure);
 }
 
 static uart_ports_config_t const * uartPortLookup( uart_ports_t port )
@@ -184,12 +232,13 @@ static usb_uart_config_t const * usbUartPortLookup( uart_ports_t port )
 	return NULL;
 }
 
-void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*newRxDataCb)( void *pv ) )
+serial_port_st * uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*newRxDataCb)( void *pv ) )
 {
 	uart_ports_config_t const * uart_config;
 	usb_uart_config_t const *usb_config;
 	uart_ctx_st *pctx;
 	usart_init_st	cfg;
+	serial_port_st *serialPort = NULL;
 
 	if ( (uart_config=uartPortLookup( port )) != NULL )
 	{
@@ -219,11 +268,14 @@ void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*
 
 	    pctx->rxBufferHead = pctx->rxBufferTail = 0;
 	    pctx->txBufferHead = pctx->txBufferTail = 0;
-	    pctx->port = uart_config;
+	    pctx->port.uart = uart_config;
 	    pctx->mode = mode;
 	    pctx->baudRate = baudrate;
 	    pctx->newRxDataCb = newRxDataCb;
 
+		pctx->serialPort.serialCtx = pctx;
+		pctx->serialPort.methods = uart_config->methods;
+		serialPort = &pctx->serialPort;
 	    uartConfigure(pctx);
 
 	    // Receive IRQ
@@ -243,6 +295,11 @@ void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*
 	{
 		pctx = &uart_ctxs[NB_UART_PORTS + USB_IDX(usb_config)];
 		pctx->type = 1;	/* usb uart */
+		pctx->port.usb = usb_config;
+		pctx->serialPort.serialCtx = pctx;
+		pctx->serialPort.methods = usb_config->methods;
+		serialPort = &pctx->serialPort;
+
 	    pctx->newRxDataCb = newRxDataCb;
 	    pctx->usbTxFlag = CoCreateFlag( Co_TRUE, Co_TRUE );
 
@@ -252,17 +309,12 @@ void *uartOpen( uart_ports_t port, uint32_t baudrate, uart_modes_t mode, void (*
 	    USB_Init();
 
 	}
-	else
-	{
-		pctx = NULL;
-		goto done;
-	}
 
 done:
-    return pctx;
+    return serialPort;
 }
 
-int uartRxReady(void *pv)
+static int uartRxReady(void *pv)
 {
 	uart_ctx_st *pctx = pv;
 
@@ -278,7 +330,7 @@ int uartRxReady(void *pv)
 	}
 }
 
-int uartTxBusy(void *pv)
+static int uartTxBusy(void *pv)
 {
 	uart_ctx_st *pctx = pv;
 
@@ -293,7 +345,7 @@ int uartTxBusy(void *pv)
 	}
 }
 
-int uartReadChar(void *pv)
+static int uartReadChar(void *pv)
 {
 	uart_ctx_st *pctx = pv;
     uint8_t ch;
@@ -319,7 +371,7 @@ int uartReadChar(void *pv)
     return ch;
 }
 
-void uartWriteChar(void *pv, uint8_t ch)
+static void uartWriteChar(void *pv, uint8_t ch)
 {
 	uart_ctx_st *pctx = pv;
 
@@ -328,7 +380,7 @@ void uartWriteChar(void *pv, uint8_t ch)
 	    pctx->txBuffer[pctx->txBufferHead] = ch;
 	    pctx->txBufferHead = (pctx->txBufferHead + 1) % pctx->txBufferSize;
 
-	    USART_ITConfig(pctx->port->usart, USART_IT_TXE, ENABLE);
+	    USART_ITConfig(pctx->port.uart->usart, USART_IT_TXE, ENABLE);
 	}
 	else
 	{
@@ -347,7 +399,7 @@ void uartWriteChar(void *pv, uint8_t ch)
 	}
 }
 
-int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait)
+static int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait)
 {
 	uart_ctx_st *pctx = pv;
 	uint_fast16_t millisecs_counter = 0;
@@ -372,7 +424,7 @@ int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fas
 		    pctx->txBuffer[pctx->txBufferHead] = ch;
 		    pctx->txBufferHead = (pctx->txBufferHead + 1) % pctx->txBufferSize;
 
-		    USART_ITConfig(pctx->port->usart, USART_IT_TXE, ENABLE);
+		    USART_ITConfig(pctx->port.uart->usart, USART_IT_TXE, ENABLE);
 		    result = 0;
 		}
 		else

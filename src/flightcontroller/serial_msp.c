@@ -5,11 +5,12 @@
 #include <math.h>
 #include <stm32f3_discovery.h>
 
+#include <uart.h>
 #include "serial_msp.h"
 
 extern uint32_t IMUDelta;
 #define cycleTime IMUDelta
-#define serialPort_t	void
+#define serialPort_t	serial_port_st
 
 /**
  * MSP Guidelines, emphasis is used to clarify.
@@ -233,7 +234,7 @@ typedef enum {
 } mspPortUsage_e;
 
 typedef struct mspPort_s {
-    void *port;
+    serial_port_st * serialPort;
     uint8_t offset;
     uint8_t dataSize;
     uint8_t checksum;
@@ -247,9 +248,9 @@ typedef struct mspPort_s {
 static mspPort_t mspPorts[MAX_MSP_PORT_COUNT];
 
 static mspPort_t *currentPort;
-#define mspSerialPort currentPort
+#define mspSerialPort currentPort->serialPort
 
-#define serialWrite(port, ch) uartPutChar( port, ch )
+#define serialWrite(port, ch) port->methods->writeCharBlockingWithTimeout( port->serialCtx, ch, 10 )
 extern float RollAngFiltered, PitchAngFiltered, Heading;
 
 
@@ -345,22 +346,22 @@ void serializeNames(const char *s)
         serialize8(*c);
 }
 
-static void resetMspPort(mspPort_t *mspPortToReset, serialPort_t *serialPort, mspPortUsage_e usage)
+static void resetMspPort(mspPort_t *mspPortToReset, serialPort_t * serialPort, mspPortUsage_e usage)
 {
     memset(mspPortToReset, 0, sizeof(mspPort_t));
 
-    mspPortToReset->port = serialPort;
+    mspPortToReset->serialPort = serialPort;
     mspPortToReset->mspPortUsage = usage;
 }
 
 // This rate is chosen since softserial supports it.
 
-void mspInit(serialPort_t *port)
+void mspInit(serialPort_t *serialPort)
 {
 
     memset(mspPorts, 0, sizeof(mspPorts));
 
-	mspPorts[0].port = port;
+	mspPorts[0].serialPort = serialPort;
 
 }
 
@@ -465,11 +466,11 @@ static bool processOutCommand(uint8_t cmdMSP)
         headSerialReply(18);
         // Retarded hack until multiwiidorks start using real units for sensor data
         for (i = 0; i < 3; i++)
-            serialize16(lrintf(accelerometerValues[i]));
+            serialize16(lrintf(accelerometerValues[i]*512.0f));
         for (i = 0; i < 3; i++)
-            serialize16(lrintf(gyroValues[i]));
+            serialize16(lrintf(gyroValues[i]*16.4f/4.0f));
         for (i = 0; i < 3; i++)
-            serialize16(lrintf(magnetometerValues[i]));
+            serialize16(lrintf(magnetometerValues[i]*1090.0f));
         break;
     case MSP_ATTITUDE:
         headSerialReply(6);
@@ -601,12 +602,12 @@ static void mspProcessPort(uint8_t c)
 void setCurrentPort(mspPort_t *port)
 {
     currentPort = port;
-    mspSerialPort = currentPort->port;
+    mspSerialPort = currentPort->serialPort;
 }
 
-void mspProcess(void *port, uint8_t c)
+void mspProcess(serial_port_st *port, uint8_t c)
 {
-	mspPorts[0].port = port;
+	mspPorts[0].serialPort = port;
     setCurrentPort(&mspPorts[0]);
 
     mspProcessPort(c);

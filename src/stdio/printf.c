@@ -19,7 +19,7 @@
  * @param  pStr	Storage string.
  * @param  c    Character to write.
  */
-extern void *cli_uart[];
+extern serial_port_st *cli_uart[];
 
 /** Maximum string size allowed (in bytes). */
 #define MAX_STRING_SIZE         256
@@ -35,9 +35,9 @@ void PrintChar(char c)
 	   while(Transfer not completed);
 	   Transmit a char;
 	*/
-	if (cli_uart[0] != NULL)
+	if (cli_uart[0] != NULL)	// TODO: confgurable
 	{
-		uartWriteCharBlockingWithTimeout( cli_uart[0], (uint8_t)c, 2 );
+		cli_uart[0]->methods->writeCharBlockingWithTimeout( cli_uart[0]->serialCtx, (uint8_t)c, 2 );
 	}
 }
 

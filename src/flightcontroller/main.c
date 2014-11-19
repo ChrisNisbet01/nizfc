@@ -5,6 +5,7 @@
 #include <coos.h>
 #include <stm32f3_discovery.h>
 #include <uart.h>
+#include <serial_msp.h>
 #include <utils.h>
 #include <polling.h>
 #include <i2c_stm32f30x.h>
@@ -29,7 +30,7 @@
 static OS_STK cli_task_stack[CLI_TASK_STACK_SIZE];
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE];
 
-void *cli_uart[2];
+serial_port_st *cli_uart[2];
 void *pcli[2];
 OS_FlagID cliUartFlag;
 
@@ -42,9 +43,12 @@ static sensorCallback_st sensorCallbacks;
 float RollAng, PitchAng, Heading;
 float RollAngFiltered, PitchAngFiltered, Heading;
 
-int uartPutChar( void *uart, int ch )
+int uartPutChar( void * port, int ch )
 {
-	return uartWriteCharBlockingWithTimeout( uart, ch, 10 );
+	serial_port_st * serialPort = port;
+	int result = serialPort->methods->writeCharBlockingWithTimeout( serialPort->serialCtx, ch, 10 );
+
+	return result;
 }
 
 static float calculateHeading( float *magValues, float *accValues )
@@ -267,11 +271,11 @@ static void cli_task( void *pv )
 					int uart_index;
 					for (uart_index = 0; uart_index < ARRAY_SIZE(cli_uart) && cli_uart[uart_index] != NULL; uart_index++ )
 					{
-						while ( uartRxReady( cli_uart[uart_index] ) )
+						while ( cli_uart[uart_index]->methods->rxReady( cli_uart[uart_index]->serialCtx ) )
 						{
 							uint8_t ch;
 
-							ch = uartReadChar( cli_uart[uart_index] );
+							ch = cli_uart[uart_index]->methods->readChar( cli_uart[uart_index]->serialCtx );
 							if ( uart_index == 0)
 								cliHandleNewChar( pcli[uart_index], ch );
 							else
@@ -306,10 +310,6 @@ static void cli_task( void *pv )
 							&RollAngFiltered, &PitchAngFiltered,
 							&imu_data.kalAngleX, &imu_data.kalAngleY
 							);
-					}
-					if (output_configuration[0].debug & 16 )
-					{
-						cliPrintf(pcli[0], "rx ready %d", uartRxReady( cli_uart[1] ) );
 					}
 			 	}
 			}
