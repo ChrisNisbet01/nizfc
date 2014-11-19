@@ -240,6 +240,10 @@ typedef struct mspPort_s {
     uint8_t checksum;
     uint8_t indRX;
     uint8_t inBuf[INBUF_SIZE];
+
+    uint8_t outBuf[INBUF_SIZE];
+    uint_fast8_t outIdx;
+
     mspState_e c_state;
     uint8_t cmdMSP;
     mspPortUsage_e mspPortUsage;
@@ -250,9 +254,37 @@ static mspPort_t mspPorts[MAX_MSP_PORT_COUNT];
 static mspPort_t *currentPort;
 #define mspSerialPort currentPort->serialPort
 
-#define serialWrite(port, ch) port->methods->writeCharBlockingWithTimeout( port->serialCtx, ch, 10 )
 extern float RollAngFiltered, PitchAngFiltered, Heading;
 
+void serialWrite( serial_port_st *port, uint8_t ch )
+{
+	if ( port->methods->writeBulkBlockingWithTimeout == NULL )
+	{
+		/* write out each char */
+		port->methods->writeCharBlockingWithTimeout( port->serialCtx, ch, 10 );
+	}
+	else
+	{
+		if ( currentPort->outIdx < INBUF_SIZE )
+		{
+			currentPort->outBuf[currentPort->outIdx++] = ch;
+		}
+		if ( currentPort->outIdx == INBUF_SIZE )
+		{
+			port->methods->writeBulkBlockingWithTimeout( port->serialCtx, currentPort->outBuf, currentPort->outIdx, 10 );
+			currentPort->outIdx = 0;
+		}
+	}
+}
+
+void serialFlush( serial_port_st *port )
+{
+	if ( port->methods->writeBulkBlockingWithTimeout != NULL && currentPort->outIdx > 0 )
+	{
+		port->methods->writeBulkBlockingWithTimeout( port->serialCtx, currentPort->outBuf, currentPort->outIdx, 10 );
+		currentPort->outIdx = 0;
+	}
+}
 
 void serialize32(uint32_t a)
 {
@@ -330,6 +362,7 @@ void headSerialError(uint8_t s)
 void tailSerialReply(void)
 {
     serialize8(currentPort->checksum);
+    serialFlush(mspSerialPort);
 }
 
 void s_struct(uint8_t *cb, uint8_t siz)

@@ -82,6 +82,7 @@ static int uartTxBusy(void *pv);
 static int uartReadChar(void *pv);
 static void uartWriteChar(void *pv, uint8_t ch);
 static int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait);
+static int usbWriteCharBlockingWithTimeout(void * const pv, uint8_t * buf, unsigned int buflen, uint_fast16_t const max_millisecs_to_wait);
 
 
 static const serial_port_methods_st serial_port_methods[] =
@@ -104,7 +105,7 @@ static const serial_port_methods_st serial_port_methods[] =
 	.writeChar = uartWriteChar,
 	.writeCharBlockingWithTimeout = uartWriteCharBlockingWithTimeout,
 	.writeBulk = NULL,
-	.writeBulkBlockingWithTimeout = NULL
+	.writeBulkBlockingWithTimeout = usbWriteCharBlockingWithTimeout
 	}
 };
 
@@ -384,14 +385,9 @@ static void uartWriteChar(void *pv, uint8_t ch)
 	}
 	else
 	{
-	    uint32_t txed;
-	    uint32_t start = CoGetOSTime();
-
 	    if (!(usbIsConnected() && usbIsConfigured())) {
 	        return;
 	    }
-
-
 		if ( CoWaitForSingleFlag( pctx->usbTxFlag, CFG_SYSTICK_FREQ/10 ) == E_OK )
 		{
 	        CDC_Send_DATA((uint8_t*)&ch, 1);
@@ -450,4 +446,28 @@ static int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, u
 
 	return result;
 }
+
+static int usbWriteCharBlockingWithTimeout(void * const pv, uint8_t * buf, unsigned int buflen, uint_fast16_t const max_millisecs_to_wait)
+{
+	uart_ctx_st *pctx = pv;
+	int result = 0;
+	unsigned int tosend = buflen;
+
+	do
+	{
+		if ( CoWaitForSingleFlag( pctx->usbTxFlag, CFG_SYSTICK_FREQ/10 ) == E_OK || packetSent == 0 )
+		{
+	        tosend -= CDC_Send_DATA(buf, tosend);
+		}
+		else
+		{
+			result = -1;
+			// TODO: increment a statistic?
+		}
+	}
+	while (tosend > 0 && result == 0);
+
+	return result;
+}
+
 
