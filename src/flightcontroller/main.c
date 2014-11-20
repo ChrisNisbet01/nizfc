@@ -59,11 +59,12 @@ static float calculateHeading(float *magValues, float roll, float pitch)
     float cos_pitch;
     float sin_pitch;
 	float heading;
+	static float filteredHeading;
 
     cos_roll = cosf((roll*M_PI)/180.0f);
-    sin_roll = 1  - (cos_roll * cos_roll);
+    sin_roll = sinf((roll*M_PI)/180.0f);
     cos_pitch = cosf((pitch*M_PI)/180.0f);
-    sin_pitch = 1  - (cos_pitch * cos_pitch);
+    sin_pitch = sinf((pitch*M_PI)/180.0f);
 
     // Tilt compensated magnetic field X component:
     headX = magValues[1] * sin_roll * sin_pitch + magValues[0] * cos_pitch + magValues[2] * cos_roll * sin_pitch;
@@ -73,7 +74,12 @@ static float calculateHeading(float *magValues, float roll, float pitch)
     heading = atan2f(-headY,-headX) * 180.0f/M_PI;
 
 	// TODO: apply declination
+	/* is heading instability due to loss of resolution when converting mag values to floats? */
+	/* temp debug */
+	// TODO: lpf of r heading value.
+	filteredHeading = filteredHeading * 0.95 + heading * 0.05;
 
+	heading = filteredHeading;
 	if ( heading < 0.0f)
 		heading += 360.0f;
 
@@ -142,7 +148,7 @@ static void estimateAttitude( float dT )
     RollAngFiltered = imu_data.compAngleX;
     PitchAngFiltered = imu_data.compAngleY;
 	/* we have pitch and roll, determine heading */
-	Heading = calculateHeading( magnetometerValues, RollAngFiltered, PitchAngFiltered );
+	Heading = calculateHeading( magnetometerValues, -RollAngFiltered, -PitchAngFiltered );
 }
 
 static void IMUHandler( void )
