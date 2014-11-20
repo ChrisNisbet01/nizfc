@@ -40,7 +40,6 @@ void *lsm303dlhcDevice;
 void *l3gd20Device;
 static sensorCallback_st sensorCallbacks;
 
-float RollAng, PitchAng, Heading;
 float RollAngFiltered, PitchAngFiltered, Heading;
 
 int uartPutChar( void * port, int ch )
@@ -51,33 +50,32 @@ int uartPutChar( void * port, int ch )
 	return result;
 }
 
-static float calculateHeading( float *magValues, float *accValues )
+static float calculateHeading(float *magValues, float roll, float pitch)
 {
-	float fNormAcc, fSinRoll, fCosRoll, fSinPitch, fCosPitch, acosPitch, acosRoll;
-	float fTiltedX ,fTiltedY;
-	float heading;	/* in degrees */
+    float headX;
+    float headY;
+    float cos_roll;
+    float sin_roll;
+    float cos_pitch;
+    float sin_pitch;
+	float heading;
 
-	fNormAcc = sqrt((accValues[0]*accValues[0])+(accValues[1]*accValues[1])+(accValues[2]*accValues[2]));
+    cos_roll = cosf((roll*M_PI)/180.0f);
+    sin_roll = 1  - (cos_roll * cos_roll);
+    cos_pitch = cosf((pitch*M_PI)/180.0f);
+    sin_pitch = 1  - (cos_pitch * cos_pitch);
 
-	fSinRoll = -accValues[1]/fNormAcc;
-	fCosRoll = sqrt(1.0-(fSinRoll * fSinRoll));
-	fSinPitch = accValues[0]/fNormAcc;
-	fCosPitch = sqrt(1.0-(fSinPitch * fSinPitch));
-	acosPitch = acos(fCosPitch)*180.0f/M_PI;
-	acosRoll = acos(fCosRoll)*180.0/M_PI;
+    // Tilt compensated magnetic field X component:
+    headX = magValues[1] * sin_roll * sin_pitch + magValues[0] * cos_pitch + magValues[2] * cos_roll * sin_pitch;
+    // Tilt compensated magnetic field Y component:
+    headY = magValues[1] * cos_roll - magValues[2] * sin_roll;
+    // magnetic heading
+    heading = atan2f(-headY,-headX) * 180.0f/M_PI;
 
-	RollAng = (atan2(-accValues[1], accValues[2])*180.0)/M_PI;
-    PitchAng = (atan2(accValues[0], sqrt(accValues[1]*accValues[1] + accValues[2]*accValues[2]))*180.0)/M_PI;
+	// TODO: apply declination
 
-	fTiltedX = magValues[0] * fCosPitch + magValues[2] * fSinPitch;
-	fTiltedY = magValues[0] * fSinRoll * fSinPitch  + magValues[1] * fCosRoll - magValues[1] * fSinRoll * fCosPitch;
-
-	heading = (float) ((atan2f(fTiltedY,fTiltedX))*180.0f)/M_PI;
-
-	if (heading < 0)
-	{
-		heading = heading + 360.0f;
-	}
+	if ( heading < 0.0f)
+		heading += 360.0f;
 
 	return heading;
 }
@@ -143,7 +141,8 @@ static void estimateAttitude( float dT )
 
     RollAngFiltered = imu_data.compAngleX;
     PitchAngFiltered = imu_data.compAngleY;
-
+	/* we have pitch and roll, determine heading */
+	Heading = calculateHeading( magnetometerValues, RollAngFiltered, PitchAngFiltered );
 }
 
 static void IMUHandler( void )
@@ -291,8 +290,9 @@ static void cli_task( void *pv )
 						extern float getPitchPIDOutput( void );
 
 				 		printf("\nthrottle: %d", (int)getThrottleSetpoint() );
-				 		printf("\nroll: %d:%d PID: %d", (int)getRollAngleSetpoint(), (int)RollAngFiltered, (int)getRollPIDOutput() );
-				 		printf("\npitch: %d:%d PID: %d", (int)getPitchAngleSetpoint(), (int)PitchAngFiltered, (int)getPitchPIDOutput()  );
+				 		printf("\nroll: %d:%g PID: %d", (int)getRollAngleSetpoint(), &RollAngFiltered, (int)getRollPIDOutput() );
+				 		printf("\npitch: %d:%g PID: %d", (int)getPitchAngleSetpoint(), &PitchAngFiltered, (int)getPitchPIDOutput() );
+				 		printf("\nheading: %g", &Heading );
 					}
 					if (output_configuration[0].debug & 2 )
 					{

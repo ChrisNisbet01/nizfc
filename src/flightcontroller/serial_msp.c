@@ -491,7 +491,7 @@ static bool processOutCommand(uint8_t cmdMSP)
         headSerialReply(11);
         serialize16(cycleTime);
         serialize16(0);
-        serialize16(0);
+        serialize16(5);	/* bit 0 == gyro + accel, bit 1 = baro, bit 2 == magnetometer, bit 3 = GPS, bit 4 = sonar */
         serialize32(0);
         serialize8(0);
         break;
@@ -507,9 +507,9 @@ static bool processOutCommand(uint8_t cmdMSP)
         break;
     case MSP_ATTITUDE:
         headSerialReply(6);
-        serialize16(lrintf(RollAngFiltered*10));
-        serialize16(lrintf(PitchAngFiltered*10));
-        serialize16(lrintf(Heading*10));
+        serialize16(lrintf(RollAngFiltered*10.0f));
+        serialize16(lrintf(PitchAngFiltered*10.0f));
+        serialize16(lrintf(Heading));
         break;
     case MSP_ANALOG:
         headSerialReply(7);
