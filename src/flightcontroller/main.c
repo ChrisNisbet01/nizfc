@@ -4,7 +4,7 @@
 #include <math.h>
 #include <coos.h>
 #include <stm32f3_discovery.h>
-#include <uart.h>
+#include <serial.h>
 #include <serial_msp.h>
 #include <utils.h>
 #include <polling.h>
@@ -338,10 +338,10 @@ int main(void)
 
 	initMicrosecondClock();
 
-	cli_uart[0] = uartOpen( UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
+	cli_uart[0] = serialOpen( SERIAL_UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart[0] != NULL )
 		pcli[0] = initCli( uartPutChar, cli_uart[0] );
-	cli_uart[1] = uartOpen( UART_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
+	cli_uart[1] = serialOpen( SERIAL_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart[1] != NULL )
 		pcli[1] = initCli( uartPutChar, cli_uart[1] );
 

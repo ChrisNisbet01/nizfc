@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <uart.h>
+#include <serial.h>
 //#include <vsnprintf.h>
 
 /**
@@ -504,13 +504,12 @@ signed int vsprintf(char *pString, const char *pFormat, va_list ap)
 signed int vfprintf(FILE *pStream, const char *pFormat, va_list ap)
 {
     char pStr[MAX_STRING_SIZE];
-    char pError[] = "stdio.c: increase MAX_STRING_SIZE\n\r";
+    static const char pError[] = "printf.c: increase MAX_STRING_SIZE\n\r";
 
     /* Write formatted string in buffer */
     if (vsprintf(pStr, pFormat, ap) >= MAX_STRING_SIZE) {
 
         fputs(pError, stderr);
-        while (1); /* Increase MAX_STRING_SIZE */
     }
 
     /* Display string */
@@ -641,15 +640,23 @@ signed int fputs(const char *pStr, FILE *pStream)
 {
     signed int num = 0;
 
-    while (*pStr != 0) {
+	if (cli_uart[0] != NULL && cli_uart[0]->methods->writeBulkBlockingWithTimeout != NULL)	// TODO: confgurable
+	{
+		cli_uart[0]->methods->writeBulkBlockingWithTimeout( cli_uart[0]->serialCtx, (uint8_t *)pStr, strlen( pStr ), 10 );
+	}
+	else
+	{
+	    while (*pStr != 0)
+	    {
 
-        if (fputc(*pStr, pStream) == -1) {
+	        if (fputc(*pStr, pStream) == -1) {
 
-            return -1;
-        }
-        num++;
-        pStr++;
-    }
+	            return -1;
+	        }
+	        num++;
+	        pStr++;
+	    }
+	}
 
     return num;
 }
