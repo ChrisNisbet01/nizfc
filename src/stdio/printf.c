@@ -642,7 +642,7 @@ signed int fputs(const char *pStr, FILE *pStream)
 
 	if (cli_uart[0] != NULL && cli_uart[0]->methods->writeBulkBlockingWithTimeout != NULL)	// TODO: confgurable
 	{
-		cli_uart[0]->methods->writeBulkBlockingWithTimeout( cli_uart[0]->serialCtx, (uint8_t *)pStr, strlen( pStr ), 10 );
+		cli_uart[0]->methods->writeBulkBlockingWithTimeout( cli_uart[0]->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 10 );
 	}
 	else
 	{

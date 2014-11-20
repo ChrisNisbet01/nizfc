@@ -8,6 +8,7 @@
 #include <utils.h>
 #include <polling.h>
 #include <cmds.h>
+#include <serial.h>
 
 #define CLI_LINEBUFFER_SIZE 	64
 #define MAX_COMMAND_LINE_ARGS	6
@@ -27,8 +28,7 @@ typedef enum special_char_t
 
 typedef struct cliCtx_st
 {
-	int 			(*putChar)( void * port, int ch );			/* function to call to put a character to the attached CLI terminal */
-	void            * port;										/* used to indicate the port to write to */
+	serial_port_st  * serialPort;										/* used to indicate the port to write to */
 	char 			lineBuffer[CLI_LINEBUFFER_SIZE+1];
 	uint8_t 		linebuffer_cursor_position;
 	char			*commandArgs[MAX_COMMAND_LINE_ARGS];	/* will point into lineBuffer */
@@ -43,9 +43,7 @@ static int clifputc(void *pv, signed int c)
 {
 	cliCtx_st *pctx	= pv;
 
-	if (pctx->putChar != NULL)
-		return pctx->putChar( pctx->port, c );
-    return -1;
+	return pctx->serialPort->methods->writeCharBlockingWithTimeout( pctx->serialPort->serialCtx, c, 10 );
 }
 
 static int clifputs(void *pv, const char *pStr)
@@ -53,13 +51,20 @@ static int clifputs(void *pv, const char *pStr)
 	cliCtx_st *pctx	= pv;
     signed int num = 0;
 
-    while (*pStr != 0)
-   	{
-        if (clifputc(pctx, *pStr) == -1)
-            return -1;
-        num++;
-        pStr++;
-    }
+	if ( pctx->serialPort->methods->writeBulkBlockingWithTimeout != NULL )
+	{
+		return pctx->serialPort->methods->writeBulkBlockingWithTimeout( pctx->serialPort->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 10 );
+	}
+	else
+	{
+	    while (*pStr != 0)
+	   	{
+	        if (clifputc(pctx, *pStr) == -1)
+	            return -1;
+	        num++;
+	        pStr++;
+	    }
+	}
 
     return num;
 }
@@ -202,19 +207,18 @@ void cliHandleNewChar( void *pv, char const ch )
 	}
 }
 
-void *initCli( int (*putChar)(void *uart, int ch), void * port )
+void *initCli( serial_port_st * serialPort )
 {
-	int cli_index;
+	unsigned int cli_index;
 
 	for (cli_index = 0; cli_index < ARRAY_SIZE(cli); cli_index++ )
 	{
 		cliCtx_st *pctx = &cli[cli_index];
 
-		if ( pctx->port == NULL )
+		if ( pctx->serialPort == NULL )
 		{
 			pctx->linebuffer_cursor_position = 0;
-			pctx->putChar = putChar;
-			pctx->port = port;
+			pctx->serialPort = serialPort;
 
 			return pctx;
 		}

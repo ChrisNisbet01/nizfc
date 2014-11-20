@@ -31,8 +31,8 @@ static int usbTxBusy(void *pv);
 static int usbReadChar(void *pv);
 static void usbWriteChar(void *pv, uint8_t ch);
 static int usbWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait);
-static int usbWriteBulkBlockingWithTimeout(void * const pv, uint8_t * buf, unsigned int buflen, uint_fast16_t const max_millisecs_to_wait);
-static int usbWriteBulkBlocking(void * const pv, uint8_t * buf, unsigned int buflen);
+static int usbWriteBulkBlockingWithTimeout(void * const pv, uint8_t const * buf, unsigned int buflen, uint_fast16_t const max_millisecs_to_wait);
+static int usbWriteBulkBlocking(void * const pv, uint8_t const * buf, unsigned int buflen);
 
 
 static const serial_port_methods_st usb_port_methods =
@@ -170,7 +170,7 @@ static int usbWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, ui
 	usb_serial_ctx_st *pctx = pv;
 	int result = -1;
 
-	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, CFG_SYSTICK_FREQ/10 ) == E_OK || packetSent == 0 )
+	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, max_millisecs_to_wait/(1000/CFG_SYSTICK_FREQ) ) == E_OK || packetSent == 0 )
 	{
         CDC_Send_DATA((uint8_t*)&ch, 1);
         result = 0;
@@ -184,7 +184,7 @@ static int usbWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, ui
 	return result;
 }
 
-static int usbWriteBulkBlockingWithTimeout(void * const pv, uint8_t * buf, unsigned int buflen, uint_fast16_t const max_millisecs_to_wait)
+static int usbWriteBulkBlockingWithTimeout(void * const pv, uint8_t const * buf, unsigned int buflen, uint_fast16_t const max_millisecs_to_wait)
 {
 	usb_serial_ctx_st *pctx = pv;
 	int result = 0;
@@ -208,7 +208,7 @@ static int usbWriteBulkBlockingWithTimeout(void * const pv, uint8_t * buf, unsig
 	return result;
 }
 
-static int usbWriteBulkBlocking(void * const pv, uint8_t * buf, unsigned int buflen)
+static int usbWriteBulkBlocking(void * const pv, uint8_t const * buf, unsigned int buflen)
 {
 	return usbWriteBulkBlockingWithTimeout( pv, buf, buflen, 0 );
 }

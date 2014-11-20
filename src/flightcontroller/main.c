@@ -268,7 +268,7 @@ static void cli_task( void *pv )
 				readyFlags = CoWaitForMultipleFlags( (1<<printTimerFlag)|(1<<cliUartFlag), OPT_WAIT_ANY, 0, &err );
 			 	if ( readyFlags & (1<<cliUartFlag) )
 			 	{
-					int uart_index;
+					unsigned int uart_index;
 					for (uart_index = 0; uart_index < ARRAY_SIZE(cli_uart) && cli_uart[uart_index] != NULL; uart_index++ )
 					{
 						while ( cli_uart[uart_index]->methods->rxReady( cli_uart[uart_index]->serialCtx ) )
@@ -340,10 +340,10 @@ int main(void)
 
 	cli_uart[0] = serialOpen( SERIAL_UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart[0] != NULL )
-		pcli[0] = initCli( uartPutChar, cli_uart[0] );
+		pcli[0] = initCli( cli_uart[0] );
 	cli_uart[1] = serialOpen( SERIAL_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart[1] != NULL )
-		pcli[1] = initCli( uartPutChar, cli_uart[1] );
+		pcli[1] = initCli( cli_uart[1] );
 
 	initialiseCodeGroups();
 	loadSavedConfiguration();
