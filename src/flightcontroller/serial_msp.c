@@ -507,6 +507,16 @@ static bool processOutCommand(uint8_t cmdMSP)
         for (i = 0; i < 3; i++)
             serialize16(lrintf(filteredMagnetometerValues[i]*1090.0f));
         break;
+    case MSP_MOTOR:
+        headSerialReply(16);
+        for (i = 0; i < 8; i++)
+	        serialize16(getMotorValue(i));
+        break;
+    case MSP_SERVO:
+        headSerialReply(16);
+        for (i = 0; i < 8; i++)
+	        serialize16(0);
+        break;
     case MSP_ATTITUDE:
         headSerialReply(6);
         serialize16(lrintf(RollAngFiltered*10.0f));
@@ -573,6 +583,10 @@ static bool processInCommand(void)
     uint32_t i;
 
     switch (currentPort->cmdMSP) {
+    case MSP_SET_MOTOR:
+        for (i = 0; i < 8; i++) // FIXME should this use MAX_MOTORS or MAX_SUPPORTED_MOTORS instead of 8
+            setMotorDisarmed( i, read16() );
+        break;
     default:
         // we do not know how to handle the (valid) message, indicate error MSP $M!
         return false;
@@ -614,7 +628,9 @@ static void mspProcessPort(uint8_t c)
         } else if (currentPort->c_state == HEADER_CMD && currentPort->offset >= currentPort->dataSize) {
             if (currentPort->checksum == c) {        // compare calculated and transferred checksum
                 // we got a valid packet, evaluate it
-                if (!(processOutCommand(currentPort->cmdMSP) || processInCommand())) {
+		        if (!(processOutCommand(currentPort->cmdMSP) || processInCommand()))
+		        {
+    				printf("\r\nunsupported code: %d", currentPort->cmdMSP );
                     headSerialError(0);
                 }
                 tailSerialReply();

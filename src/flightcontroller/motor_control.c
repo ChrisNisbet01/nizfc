@@ -52,11 +52,15 @@ static const craftType_st crafts[] =
 };
 
 static uint_fast16_t motorValues[6];	// TODO: defined limit
+static uint_fast16_t disarmedMotorValues[6];	// TODO: defined limit
 
 
 void initMotorControl( void )
 {
+	unsigned int index;
+
 	// TODO: separate config for roll and pitch
+	// TODO: runtime update of PID settings.
 	initPID( &rollAnglePID,
 				roll_configuration[0].pidRange,
 				roll_configuration[0].kP,
@@ -73,6 +77,8 @@ void initMotorControl( void )
 				pitch_configuration[0].integralLimit,
 				pitch_configuration[0].dLimit );
 
+	for (index = 0; index < ARRAY_SIZE(disarmedMotorValues); index++ )
+		disarmedMotorValues[index] = 1000;
 }
 
 static bool craftIsArmed = false;
@@ -163,6 +169,12 @@ uint16_t getMotorValue( uint_fast8_t motorIndex )
 	return motorValue;
 }
 
+void setMotorDisarmed( uint_fast8_t motorIndex, uint_fast16_t value )
+{
+	if (motorIndex < ARRAY_SIZE(disarmedMotorValues))
+		disarmedMotorValues[motorIndex] = limit( value, 1000, 2000 );
+}
+
 float getRollPIDOutput( void )
 {
 	return rollAnglePID.outputValue;
@@ -211,7 +223,7 @@ void updateMotorOutputs( void )
 		}
 		else
 		{
-			tempMotorValues[motorIndex] = 1000;	// TODO: configurable value
+			tempMotorValues[motorIndex] = disarmedMotorValues[motorIndex];	// TODO: configurable value
 		}
 		/* store so that the output value can be displayed */
 		motorValues[motorIndex] = limit(tempMotorValues[motorIndex], 1000, 2000);
