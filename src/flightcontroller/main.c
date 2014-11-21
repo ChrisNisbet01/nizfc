@@ -71,7 +71,7 @@ static float calculateHeading(float *magValues, float roll, float pitch)
     // Tilt compensated magnetic field Y component:
     headY = magValues[1] * cos_roll - magValues[2] * sin_roll;
     // magnetic heading
-    heading = atan2f(-headY,-headX) * 180.0f/M_PI;
+    heading = atan2f(headY,headX) * 180.0f/M_PI;
 
 	// TODO: apply declination
 	/* is heading instability due to loss of resolution when converting mag values to floats? */
