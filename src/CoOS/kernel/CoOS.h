@@ -160,7 +160,7 @@ extern OS_TID      CreateTask(FUNCPtr task,void *argv,U32 parameter,OS_STK *stk)
 
 /* Implement in file "time.c"      */
 extern U64         CoGetOSTime(void);
-extern U32         CoGetOSTime2(void);
+extern volatile U32 * CoGetOSTime2(void);
 extern StatusType  CoTickDelay(U32 ticks);
 extern StatusType  CoResetTaskDelayTick(OS_TID taskID,U32 ticks);
 extern StatusType  CoTimeDelay(U8 hour,U8 minute,U8 sec,U16 millsec);

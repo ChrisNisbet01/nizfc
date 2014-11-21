@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <stm32f3_discovery.h>
 #include <stm32f30x_tim.h>
@@ -66,46 +67,35 @@ void initHiResTimer( uint32_t periodMicrosecs, void (*appCallback)( void ) )
 
 }
 
-uint32_t micros(void)
+uint32_t __attribute__ ((noinline)) micros(void)
 {
-    uint32_t centiseconds, cycle_count;
+    uint32_t centiseconds, centiseconds2, cycle_count;
 	uint32_t microsValue;
+	bool waiting = false;
 
     do
     {
-        centiseconds = CoGetOSTime2();
-	  __asm volatile
- 		(
- 		" MOV     R0,R0    \n"
-	    );
+        centiseconds = *CoGetOSTime2();
         cycle_count = SysTick->VAL;
+        centiseconds2 = *CoGetOSTime2();
+        if ( waiting == true && centiseconds != centiseconds2 )
+        {
+        	/* must mean that CoGetOSTime2 has finally rolled */
+        	STM_EVAL_LEDOn(LED9);
+        	printf("\r\ncnt %d", cycle_count );
+        	break;
+        }
     }
-    while (centiseconds != CoGetOSTime2());
+    while (centiseconds != centiseconds2
+    	|| (( ticksPerSystickInterrupt - cycle_count) < ticksPerMicrosecond && (waiting=true))
+    );
+	if (waiting == true)
+	{
+		STM_EVAL_LEDOn( LED8);
+       	printf("\r\ncnt %d tpus %d", cycle_count, ticksPerMicrosecond );
+	}
 
-	microsValue = (centiseconds * (1000000/CFG_SYSTICK_FREQ)) + ( ticksPerSystickInterrupt - cycle_count) / ticksPerMicrosecond;
-
-    return microsValue;
-}
-
-uint32_t micros2(void)
-{
-    uint32_t centiseconds, cycle_count;
-	uint32_t microsValue;
-	int loops = 0;
-
-    do
-    {
-        centiseconds = CoGetOSTime2();
-		  __asm volatile
-	 		(
-	 		" MOV     R0,R0    \n"
-		    );
-        cycle_count = SysTick->VAL;
-        loops++;
-    }
-    while (centiseconds != CoGetOSTime2());
-
-	microsValue = (centiseconds * (1000000/CFG_SYSTICK_FREQ)) + ( ticksPerSystickInterrupt - cycle_count) / ticksPerMicrosecond;
+	microsValue = (centiseconds2 * (1000000/CFG_SYSTICK_FREQ)) + ( ticksPerSystickInterrupt - cycle_count) / ticksPerMicrosecond;
 
     return microsValue;
 }

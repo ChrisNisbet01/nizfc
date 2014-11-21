@@ -127,7 +127,7 @@ static void initIMU( void )
 		we get an interrupt almost immediately after we start the timer.
 		Pretend we've processed the loop one cycle ago.
 	*/
-	lastIMUTime = micros2()-3000;
+	lastIMUTime = micros()-3000;
 }
 
 float accelerometerValues[3];
@@ -154,7 +154,7 @@ static void estimateAttitude( float dT )
 static void IMUHandler( void )
 {
 	uint32_t temp;
-	uint32_t now = micros2();
+	uint32_t now = micros();
 	IMUDelta = now - lastIMUTime;
 	temp = lastIMUTime;
 	lastIMUTime = now;
