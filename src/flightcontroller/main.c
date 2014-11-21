@@ -23,6 +23,7 @@
 #include <motor_control.h>
 #include <hirestimer.h>
 #include <attitude_estimation.h>
+#include <kalman.h>
 
 #define MAIN_TASK_STACK_SIZE 0x200
 #define CLI_TASK_STACK_SIZE 0x200
@@ -116,6 +117,40 @@ static void IMUCallback( void )
 
 IMU_DATA_ST imu_data;
 
+float accelerometerValues[3];
+float gyroValues[3];
+float magnetometerValues[3];
+
+kalman_state accelerometerKalman[3];
+kalman_state gyroKalman[3];
+kalman_state magnetometerKalman[3];
+
+static void initSensorFilters( void )
+{
+	int index;
+
+	/* init kalman filters */
+	for (index=0; index < 3; index++)
+	{
+		kalman_init( &accelerometerKalman[index], 0.125f, 10.0f, 1.0f, accelerometerValues[index] );
+		kalman_init( &gyroKalman[index], 0.125f, 10.0f, 1.0f, gyroValues[index] );
+		kalman_init( &magnetometerKalman[index], 0.125f, 10.0f, 1.0f, magnetometerValues[index] );
+	}
+}
+
+static void updateSensorFilters( void )
+{
+	int index;
+
+	/* init kalman filters */
+	for (index=0; index < 3; index++)
+	{
+		accelerometerValues[index] = kalman_update( &accelerometerKalman[index], accelerometerValues[index] );
+		magnetometerValues[index] = kalman_update( &magnetometerKalman[index], magnetometerValues[index] );
+		gyroValues[index] = kalman_update( &gyroKalman[index], gyroValues[index] );
+	}
+}
+
 static void initIMU( void )
 {
     init_attitude_estimation( &imu_data, roll_configuration[0].lpf_factor, roll_configuration[0].lpf_factor );
@@ -123,16 +158,16 @@ static void initIMU( void )
 	IMUTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	/* start a three millisecond timer */
 	initHiResTimer( 3000, IMUCallback );
+
 	/*
 		we get an interrupt almost immediately after we start the timer.
 		Pretend we've processed the loop one cycle ago.
 	*/
 	lastIMUTime = micros()-3000;
+
+
 }
 
-float accelerometerValues[3];
-float magnetometerValues[3];
-float gyroValues[3];
 
 static void estimateAttitude( float dT )
 {
@@ -155,6 +190,7 @@ static void IMUHandler( void )
 {
 	uint32_t temp;
 	uint32_t now = micros();
+	static bool doneSensorInit = false;
 	IMUDelta = now - lastIMUTime;
 	temp = lastIMUTime;
 	lastIMUTime = now;
@@ -171,7 +207,12 @@ static void IMUHandler( void )
 			&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true
 			&& sensorCallbacks.readGyro( l3gd20Device, gyroValues ) == true)
 		{
-
+			if (doneSensorInit == false)
+			{
+				doneSensorInit = true;
+				initSensorFilters();
+			}
+			updateSensorFilters();
 			estimateAttitude( fIMUDelta );
 
 			updatePIDControlLoops();

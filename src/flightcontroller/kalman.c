@@ -142,3 +142,26 @@ void KalmanInit( Kalman *p )
 }
 
 
+void kalman_init(kalman_state *k, float q, float r, float p, float intial_value)
+{
+  k->q = q;
+  k->r = r;
+  k->p = p;
+  k->x = intial_value;
+
+}
+
+float kalman_update(kalman_state * state, float measurement)
+{
+  //prediction update
+  //omit x = x
+  state->p = state->p + state->q;
+
+  //measurement update
+  state->k = state->p / (state->p + state->r);
+  state->p = (1 - state->k) * state->p;
+  state->x = state->x + state->k * (measurement - state->x);	/* the new value */
+
+  return state->x;
+}
+

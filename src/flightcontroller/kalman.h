@@ -61,4 +61,15 @@ typedef struct Kalman
 
 void KalmanInit( Kalman *p );
 
+typedef struct {
+  float q; //process noise covariance		(initial value ~0.2)
+  float r; //measurement noise covariance	(intial value ~1-4)
+  float x; //value
+  float p; //estimation error covariance	(initial value 1? Dynamic anyway)
+  float k; //kalman gain					(calculated)
+} kalman_state;
+
+void kalman_init(kalman_state *k, float q, float r, float p, float intial_value);
+float kalman_update(kalman_state * state, float measurement);
+
 #endif /* __KALMAN_H__ */
