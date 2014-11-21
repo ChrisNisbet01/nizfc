@@ -401,8 +401,11 @@ void mspInit(serialPort_t *serialPort)
 #define IS_ENABLED(mask) (mask == 0 ? 0 : 1)
 
 extern float accelerometerValues[3];
-extern float magnetometerValues[3];
 extern float gyroValues[3];
+extern float magnetometerValues[3];
+extern float filteredAccelerometerValues[3];
+extern float filteredGyroValues[3];
+extern float filteredMagnetometerValues[3];
 
 #define BUILD_DATE_LENGTH 11
 char* buildDate = __DATE__;  // "MMM DD YYYY" MMM = Jan/Feb/...
@@ -479,7 +482,6 @@ static bool processOutCommand(uint8_t cmdMSP)
         serialize8(0); // No flight controller specific information to follow.
         break;
     case MSP_IDENT:
-		STM_EVAL_LEDOn(LED10);
         headSerialReply(7);
         serialize8(MW_VERSION);
         serialize8(3); // type of multicopter
@@ -499,11 +501,11 @@ static bool processOutCommand(uint8_t cmdMSP)
         headSerialReply(18);
         // Retarded hack until multiwiidorks start using real units for sensor data
         for (i = 0; i < 3; i++)
-            serialize16(lrintf(accelerometerValues[i]*512.0f));
+	        serialize16(lrintf(filteredAccelerometerValues[i]*512.0f));
         for (i = 0; i < 3; i++)
-            serialize16(lrintf(gyroValues[i]*16.4f/4.0f));
+            serialize16(lrintf(filteredGyroValues[i]*16.4f/4.0f));
         for (i = 0; i < 3; i++)
-            serialize16(lrintf(magnetometerValues[i]*1090.0f));
+            serialize16(lrintf(filteredMagnetometerValues[i]*1090.0f));
         break;
     case MSP_ATTITUDE:
         headSerialReply(6);
@@ -561,7 +563,6 @@ static bool processOutCommand(uint8_t cmdMSP)
         serialize8(0);
         break;
     default:
-    	STM_EVAL_LEDToggle(LED4);
         return false;
     }
     return true;
@@ -604,28 +605,20 @@ static void mspProcessPort(uint8_t c)
             currentPort->checksum ^= c;
             currentPort->c_state = HEADER_SIZE;      // the command is to follow
         } else if (currentPort->c_state == HEADER_SIZE) {
-			STM_EVAL_LEDOn(LED10);
             currentPort->cmdMSP = c;
             currentPort->checksum ^= c;
             currentPort->c_state = HEADER_CMD;
         } else if (currentPort->c_state == HEADER_CMD && currentPort->offset < currentPort->dataSize) {
-			STM_EVAL_LEDOn(LED9);
             currentPort->checksum ^= c;
             currentPort->inBuf[currentPort->offset++] = c;
         } else if (currentPort->c_state == HEADER_CMD && currentPort->offset >= currentPort->dataSize) {
-			STM_EVAL_LEDOn(LED8);
             if (currentPort->checksum == c) {        // compare calculated and transferred checksum
                 // we got a valid packet, evaluate it
-				STM_EVAL_LEDOff(LED10);
-				STM_EVAL_LEDOff(LED9);
-				STM_EVAL_LEDOff(LED8);
                 if (!(processOutCommand(currentPort->cmdMSP) || processInCommand())) {
                     headSerialError(0);
                 }
                 tailSerialReply();
             }
-            else
-            	STM_EVAL_LEDOff(LED10);
 
             currentPort->c_state = IDLE;
         }
