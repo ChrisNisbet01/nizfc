@@ -72,7 +72,7 @@ static float calculateHeading(float *magValues, float roll, float pitch)
     // Tilt compensated magnetic field Y component:
     headY = magValues[1] * cos_roll - magValues[2] * sin_roll;
     // magnetic heading
-    heading = atan2f(headY,headX) * 180.0f/M_PI;
+    heading = atan2f(-headY,-headX) * 180.0f/M_PI;
 
 	// TODO: apply declination
 	/* is heading instability due to loss of resolution when converting mag values to floats? */
@@ -120,6 +120,9 @@ IMU_DATA_ST imu_data;
 float accelerometerValues[3];
 float gyroValues[3];
 float magnetometerValues[3];
+float filteredAccelerometerValues[3];
+float filteredGyroValues[3];
+float filteredMagnetometerValues[3];
 
 kalman_state accelerometerKalman[3];
 kalman_state gyroKalman[3];
@@ -132,7 +135,7 @@ static void initSensorFilters( void )
 	/* init kalman filters */
 	for (index=0; index < 3; index++)
 	{
-		kalman_init( &accelerometerKalman[index], 0.125f, 10.0f, 1.0f, accelerometerValues[index] );
+		kalman_init( &accelerometerKalman[index], 0.05f, 30.0f, 1.0f, accelerometerValues[index] );
 		kalman_init( &gyroKalman[index], 0.125f, 10.0f, 1.0f, gyroValues[index] );
 		kalman_init( &magnetometerKalman[index], 0.125f, 10.0f, 1.0f, magnetometerValues[index] );
 	}
@@ -145,9 +148,9 @@ static void updateSensorFilters( void )
 	/* init kalman filters */
 	for (index=0; index < 3; index++)
 	{
-		accelerometerValues[index] = kalman_update( &accelerometerKalman[index], accelerometerValues[index] );
-		magnetometerValues[index] = kalman_update( &magnetometerKalman[index], magnetometerValues[index] );
-		gyroValues[index] = kalman_update( &gyroKalman[index], gyroValues[index] );
+		filteredAccelerometerValues[index] = kalman_update( &accelerometerKalman[index], accelerometerValues[index] );
+		filteredGyroValues[index] = kalman_update( &gyroKalman[index], gyroValues[index] );
+		filteredMagnetometerValues[index] = kalman_update( &magnetometerKalman[index], magnetometerValues[index] );
 	}
 }
 
@@ -174,16 +177,16 @@ static void estimateAttitude( float dT )
 
     do_attitude_estimation( &imu_data,
     				dT,
-    				gyroValues[1],
-    				-gyroValues[0],
-    				accelerometerValues[0],
-    				accelerometerValues[1],
-    				accelerometerValues[2] );
+    				filteredGyroValues[1],
+    				-filteredGyroValues[0],
+    				filteredAccelerometerValues[0],
+    				filteredAccelerometerValues[1],
+    				filteredAccelerometerValues[2] );
 
     RollAngFiltered = imu_data.compAngleX;
     PitchAngFiltered = imu_data.compAngleY;
 	/* we have pitch and roll, determine heading */
-	Heading = calculateHeading( magnetometerValues, -RollAngFiltered, -PitchAngFiltered );
+	Heading = calculateHeading( filteredMagnetometerValues, -RollAngFiltered, -PitchAngFiltered );
 }
 
 static void IMUHandler( void )
