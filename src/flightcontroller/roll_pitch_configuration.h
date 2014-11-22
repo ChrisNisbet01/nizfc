@@ -3,6 +3,7 @@
 
 #define NB_ROLL_CONFIGURATIONS	1
 #define NB_PITCH_CONFIGURATIONS	1
+#define NB_YAW_CONFIGURATIONS	1
 
 typedef struct roll_pitch_configuration_st
 {
@@ -18,6 +19,7 @@ typedef struct roll_pitch_configuration_st
 
 extern roll_pitch_configuration_st roll_configuration[NB_ROLL_CONFIGURATIONS];
 extern roll_pitch_configuration_st pitch_configuration[NB_PITCH_CONFIGURATIONS];
+extern roll_pitch_configuration_st yaw_configuration[NB_YAW_CONFIGURATIONS];
 
 #endif /* __ROLL_PITCH_CONFIGURATION_H__ */
 

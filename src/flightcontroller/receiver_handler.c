@@ -62,7 +62,7 @@ static void determineYawRateSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.yaw_rate = scale(temp, 1000, 2000, 0.0f, 0.0f );
+	setpoints.yaw_rate = scale(temp, 1000, 2000, -10.0f, 10.0f );
 }
 
 
@@ -91,5 +91,10 @@ float getRollAngleSetpoint( void )
 float getPitchAngleSetpoint( void )
 {
 	return setpoints.pitch_angle;
+}
+
+float getYawRateSetpoint( void )
+{
+	return setpoints.yaw_rate;
 }
 

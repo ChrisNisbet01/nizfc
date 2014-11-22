@@ -24,6 +24,7 @@
 #include <hirestimer.h>
 #include <attitude_estimation.h>
 #include <kalman.h>
+#include <board_alignment.h>
 
 #define MAIN_TASK_STACK_SIZE 0x200
 #define CLI_TASK_STACK_SIZE 0x200
@@ -148,7 +149,9 @@ static void updateSensorFilters( void )
 	/* init kalman filters */
 	for (index=0; index < 3; index++)
 	{
-		filteredAccelerometerValues[index] = kalman_update( &accelerometerKalman[index], accelerometerValues[index] );
+		float factor = 0.99f;
+		filteredAccelerometerValues[index] = filteredAccelerometerValues[index] * factor + accelerometerValues[index] * (1-factor);;
+		//filteredAccelerometerValues[index] = kalman_update( &accelerometerKalman[index], accelerometerValues[index] );
 		filteredGyroValues[index] = kalman_update( &gyroKalman[index], gyroValues[index] );
 		filteredMagnetometerValues[index] = kalman_update( &magnetometerKalman[index], magnetometerValues[index] );
 	}
@@ -210,6 +213,15 @@ static void IMUHandler( void )
 			&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true
 			&& sensorCallbacks.readGyro( l3gd20Device, gyroValues ) == true)
 		{
+			alignVectorsToBoard( accelerometerValues, noRotation );	// TODO: configurable
+			alignVectorsToCraft( accelerometerValues );
+
+			alignVectorsToBoard( magnetometerValues, noRotation );	// TODO: configurable
+			alignVectorsToCraft( magnetometerValues );
+
+			alignVectorsToBoard( gyroValues, noRotation );			// TODO: configurable
+			alignVectorsToCraft( gyroValues );
+
 			if (doneSensorInit == false)
 			{
 				doneSensorInit = true;
@@ -256,6 +268,7 @@ static void main_task( void *pv )
 
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 
+	initBoardAlignment( 0.0f, 0.0f, 0.0f );	// TODO: configurable
 	initMotorControl();
 	openReceiver( newReceiverDataCallback );
 	openOutputs();

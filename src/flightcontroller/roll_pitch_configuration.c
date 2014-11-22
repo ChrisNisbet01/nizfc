@@ -19,10 +19,12 @@
 
 static int roll_command( run_command_data_st *pcommand );
 static int pitch_command( run_command_data_st *pcommand );
+static int yaw_command( run_command_data_st *pcommand );
 static char const * rollPitchParameterNameLookup( unsigned int parameterID );
 
 roll_pitch_configuration_st roll_configuration[NB_ROLL_CONFIGURATIONS];
 roll_pitch_configuration_st pitch_configuration[NB_PITCH_CONFIGURATIONS];
+roll_pitch_configuration_st yaw_configuration[NB_YAW_CONFIGURATIONS];
 static const roll_pitch_configuration_st default_roll_pitch_configuration =
 {
 	.lpf_factor = 0.01f
@@ -114,6 +116,18 @@ static const command_st roll_pitch_commands[] =
 		.parameterConfigs = roll_pitch_config_parameterConfigs,
 		.nbParameterConfigs = ARRAY_SIZE(roll_pitch_config_parameterConfigs),
 		.ParameterNameLookupCB = rollPitchParameterNameLookup
+	},
+	{
+		.group_id = configuration_id_yaw,
+		.name = "yaw",
+		.handler = yaw_command,
+		.configuration = yaw_configuration,
+		.nb_configuration_instance = ARRAY_SIZE(yaw_configuration),
+		.configuration_size = sizeof(yaw_configuration[0]),
+		.default_configuration = &default_roll_pitch_configuration,
+		.parameterConfigs = roll_pitch_config_parameterConfigs,
+		.nbParameterConfigs = ARRAY_SIZE(roll_pitch_config_parameterConfigs),
+		.ParameterNameLookupCB = rollPitchParameterNameLookup
 	}
 };
 
@@ -136,6 +150,11 @@ static int pitch_command( run_command_data_st *pcommand )
 	return handleStandardCommand( pcommand );
 }
 
+static int yaw_command( run_command_data_st *pcommand )
+{
+	return handleStandardCommand( pcommand );
+}
+
 static void initRollPitchConfiguration( void )
 {
 	unsigned int index;
@@ -144,6 +163,8 @@ static void initRollPitchConfiguration( void )
 		memcpy( &roll_configuration[index], &default_roll_pitch_configuration, sizeof roll_configuration[index] );
 	for (index = 0; index < ARRAY_SIZE(pitch_configuration); index++ )
 		memcpy( &pitch_configuration[index], &default_roll_pitch_configuration, sizeof pitch_configuration[index] );
+	for (index = 0; index < ARRAY_SIZE(yaw_configuration); index++ )
+		memcpy( &yaw_configuration[index], &default_roll_pitch_configuration, sizeof yaw_configuration[index] );
 }
 
 int rollPitchPollHandler( poll_id_t poll_id, void *pv )

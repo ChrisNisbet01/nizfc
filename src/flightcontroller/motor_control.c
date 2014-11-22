@@ -11,6 +11,7 @@
 #include <receiver.h>
 #include <receiver_handler.h>
 #include <outputs.h>
+#include <stm32f3_discovery.h>
 
 typedef struct motorMixRatios_st
 {
@@ -29,6 +30,7 @@ typedef struct craftType_st
 
 
 extern float RollAngFiltered, PitchAngFiltered, Heading;
+extern float filteredGyroValues[3];
 
 static pid_st rollAnglePID;
 static pid_st pitchAnglePID;
@@ -77,6 +79,14 @@ void initMotorControl( void )
 				pitch_configuration[0].integralLimit,
 				pitch_configuration[0].dLimit );
 
+	initPID( &yawRatePID,
+				yaw_configuration[0].pidRange,
+				yaw_configuration[0].kP,
+				yaw_configuration[0].kI,
+				yaw_configuration[0].kD,
+				yaw_configuration[0].integralLimit,
+				yaw_configuration[0].dLimit );
+
 	for (index = 0; index < ARRAY_SIZE(disarmedMotorValues); index++ )
 		disarmedMotorValues[index] = 1000;
 }
@@ -86,12 +96,14 @@ void armCraft( void )
 {
 	printf("\narmed!");
 	craftIsArmed = true;
+	STM_EVAL_LEDOn(LED10);
 }
 
 void disarmCraft( void )
 {
 	craftIsArmed = false;
 	printf("\ndisarmed");
+	STM_EVAL_LEDOff(LED10);
 }
 
 static bool isCraftArmed( void )
@@ -105,7 +117,7 @@ static bool isCraftArmed( void )
 	now = CoGetOSTime();
 	if ( throttleChannel > 750 && throttleChannel < 1050 && rollChannel > 750 && rollChannel < 1050 )
 	{
-		if ((now - lastChange) > CFG_SYSTICK_FREQ )
+		if ((now - lastChange) > CFG_SYSTICK_FREQ/2 )
 		{
 			canChange = true;
 			lastChange = now;
@@ -145,6 +157,7 @@ void updatePIDControlLoops( void )
 		{
 			updatePID( &rollAnglePID, RollAngFiltered, getRollAngleSetpoint(), dT );
 			updatePID( &pitchAnglePID, PitchAngFiltered, getPitchAngleSetpoint(), dT );
+			updatePID( &yawRatePID, filteredGyroValues[2], getYawRateSetpoint(), dT );
 		}
 	}
 	else
@@ -207,7 +220,7 @@ void updateMotorOutputs( void )
 			{
 				tempMotorValues[motorIndex] += lrintf(pitchAnglePID.outputValue * mixer[motorIndex].pitch
 								+ rollAnglePID.outputValue * mixer[motorIndex].roll
-								+ 0.0f * mixer[motorIndex].yaw);	// TODO:
+								+ yawRatePID.outputValue * mixer[motorIndex].yaw);
 			}
 			if ( maxMotorValue < tempMotorValues[motorIndex] )
 				maxMotorValue = tempMotorValues[motorIndex];

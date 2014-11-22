@@ -6,6 +6,7 @@ void processStickPositions( void );
 float getThrottleSetpoint( void );
 float getRollAngleSetpoint( void );
 float getPitchAngleSetpoint( void );
+float getYawRateSetpoint( void );
 
 #endif
 
