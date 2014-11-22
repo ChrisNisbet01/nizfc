@@ -8,6 +8,7 @@
 #include <coos.h>
 
 static uint32_t ticksPerMicrosecond;
+static uint32_t numTicksToWaitForRollover;
 static uint32_t ticksPerSystickInterrupt;
 void (*callback)( void );
 
@@ -87,7 +88,7 @@ uint32_t __attribute__ ((noinline)) micros(void)
         }
     }
     while (centiseconds != centiseconds2
-    	|| (( ticksPerSystickInterrupt - cycle_count) < ticksPerMicrosecond && (waiting=true))
+    	|| (( ticksPerSystickInterrupt - cycle_count) < numTicksToWaitForRollover && (waiting=true))
     );
 	if (waiting == true)
 	{
@@ -118,6 +119,7 @@ void initMicrosecondClock(void)
     RCC_ClocksTypeDef clocks;
     RCC_GetClocksFreq(&clocks);
     ticksPerMicrosecond = clocks.SYSCLK_Frequency / 1000000;
+    numTicksToWaitForRollover = 1 * ticksPerMicrosecond;	/* 5us */
     ticksPerSystickInterrupt = ticksPerMicrosecond * (1000000/CFG_SYSTICK_FREQ);
 }
 
