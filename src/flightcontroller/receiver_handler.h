@@ -10,5 +10,9 @@ float getRollRateSetpoint( void );
 float getPitchRateSetpoint( void );
 float getYawRateSetpoint( void );
 
+void armCraft( void );
+void disarmCraft( void );
+bool isCraftArmed( void );
+
 #endif
 

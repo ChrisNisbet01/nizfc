@@ -26,7 +26,7 @@ typedef struct rx_signals_st
 
 typedef struct receiver_ctx_st
 {
-	void	(*newDataCb)( void );
+	void	(*newDataCb)( uint32_t newChannelsReceived );
 } receiver_ctx_st;
 
 static rx_signals_st	rx_signals;
@@ -36,6 +36,7 @@ static void NewReceiverChannelData( uint32_t * channels, uint_fast8_t first_inde
 {
 	/* new frame of channel data from the RC receiver */
 	uint_fast8_t i, max_channels;
+	uint32_t newChannelsReceived = 0;
 
 	max_channels = min(MAX_RX_SIGNALS, first_index + nb_channels);
 
@@ -44,6 +45,7 @@ static void NewReceiverChannelData( uint32_t * channels, uint_fast8_t first_inde
 	for (i=first_index; i < max_channels; i++)
 	{
 	    rx_signals.rx_signals[i] = *channels++;
+	    newChannelsReceived |= (1 << i);
 	}
 
 	CoLeaveMutexSection( rx_signals.rx_signals_mutex );
@@ -51,7 +53,7 @@ static void NewReceiverChannelData( uint32_t * channels, uint_fast8_t first_inde
 	// TODO: on a per channel basis
 	// TODO: don't forget about failsafe/timeouts
 	STM_EVAL_LEDToggle(LED7);
-	receiver_ctx.newDataCb();
+	receiver_ctx.newDataCb(newChannelsReceived);
 }
 
 void initReceiver( void )
@@ -78,7 +80,7 @@ uint_fast16_t readReceiverChannel(uint_fast8_t channel)
 	return channel_value;
 }
 
-void openReceiver( void (*newDataCb)( void ) )
+void openReceiver( void (*newDataCb)( uint32_t channelsReceived ) )
 {
 	receiver_ctx.newDataCb = newDataCb;
 

@@ -11,7 +11,8 @@ typedef enum configuration_id_t
 	configuration_id_output = 4,
 	configuration_id_roll = 5,
 	configuration_id_pitch = 6,
-	configuration_id_yaw = 7
+	configuration_id_yaw = 7,
+	configuration_id_failsafe = 8
 } configuration_id_t;
 
 /*

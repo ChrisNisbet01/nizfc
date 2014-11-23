@@ -6,9 +6,6 @@ void updatePIDControlLoops( void );
 void updateMotorOutputs( void );
 uint16_t getMotorValue( uint_fast8_t motorIndex );
 
-void armCraft( void );
-void disarmCraft( void );
-
 float getRollAnglePIDOutput( void );
 float getPitchAnglePIDOutput( void );
 float getRollRatePIDOutput( void );

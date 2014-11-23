@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
-#include <coos.h>
+#include <coocox.h>
 #include <stm32f3_discovery.h>
 #include <serial.h>
 #include <serial_msp.h>
@@ -25,6 +25,8 @@
 #include <attitude_estimation.h>
 #include <kalman.h>
 #include <board_alignment.h>
+#include <failsafe.h>
+
 
 #define MAIN_TASK_STACK_SIZE 0x200
 #define CLI_TASK_STACK_SIZE 0x200
@@ -91,14 +93,23 @@ static float calculateHeading(float *magValues, float roll, float pitch)
 OS_FlagID printTimerFlag;
 OS_FlagID receiverFlag;
 OS_FlagID IMUTimerFlag;
+OS_FlagID failsafeTriggerFlag;
 
 static void printTimer( void )
 {
 	isr_SetFlag( printTimerFlag );
 }
 
-static void newReceiverDataCallback( void )
+static volatile uint32_t latestChannelsReceived;
+
+static void failsafeTriggerCallback( void )
 {
+	isr_SetFlag( failsafeTriggerFlag );
+}
+
+static void newReceiverDataCallback( uint32_t newChannelsReceived )
+{
+	latestChannelsReceived |= newChannelsReceived;
 	isr_SetFlag( receiverFlag );
 }
 
@@ -267,8 +278,10 @@ static void main_task( void *pv )
 	}
 
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+	failsafeTriggerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 
 	initBoardAlignment( 0.0f, 0.0f, 0.0f );	// TODO: configurable
+	initFailsafe( failsafeTriggerCallback );
 	initMotorControl();
 	openReceiver( newReceiverDataCallback );
 	openOutputs();
@@ -277,20 +290,31 @@ static void main_task( void *pv )
 
 	while (1)
 	{
-		uint_fast16_t rx_value;
 		StatusType err;
 		U32 ReadyFlags;
 
-		ReadyFlags = CoWaitForMultipleFlags( (1<<IMUTimerFlag) | (1<<receiverFlag), OPT_WAIT_ANY, 0, &err );
+		ReadyFlags = CoWaitForMultipleFlags( (1<<IMUTimerFlag) | (1<<receiverFlag) | (1<<failsafeTriggerFlag), OPT_WAIT_ANY, 0, &err );
 		if (err == E_OK)
 		{
+			if ( (ReadyFlags & (1<<failsafeTriggerFlag)) != 0 )
+			{
+				failsafeHasTriggered();
+			}
 			if ( (ReadyFlags & (1<<IMUTimerFlag)) != 0 )
 			{
 				IMUHandler();
-			    STM_EVAL_LEDToggle(LED6);
 			}
 			if ( (ReadyFlags & (1<<receiverFlag)) != 0 )
 			{
+				uint32_t newChannels;
+
+				IRQ_DISABLE_SAVE();
+				newChannels = latestChannelsReceived;
+				latestChannelsReceived = 0;
+				IRQ_ENABLE_RESTORE();
+
+			    updateFailsafeWithNewChannels( newChannels );
+
 			    STM_EVAL_LEDToggle(LED3);
 				processStickPositions();
 			}

@@ -12,6 +12,7 @@
 #include <receiver_handler.h>
 #include <outputs.h>
 #include <stm32f3_discovery.h>
+#include <failsafe.h>
 
 typedef struct motorMixRatios_st
 {
@@ -28,6 +29,7 @@ typedef struct craftType_st
     uint_fast8_t 			nbMotors;
 } craftType_st;
 
+#define THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS	1050
 
 extern float RollAngFiltered, PitchAngFiltered, Heading;
 extern float filteredGyroValues[3];
@@ -109,54 +111,6 @@ void initMotorControl( void )
 		disarmedMotorValues[index] = 1000;
 }
 
-static bool craftIsArmed = false;
-void armCraft( void )
-{
-	printf("\narmed!");
-	craftIsArmed = true;
-	STM_EVAL_LEDOn(LED10);
-}
-
-void disarmCraft( void )
-{
-	craftIsArmed = false;
-	printf("\ndisarmed");
-	STM_EVAL_LEDOff(LED10);
-}
-
-static bool isCraftArmed( void )
-{
-	uint_fast16_t throttleChannel = readReceiverChannel(0);
-	uint_fast16_t yawChannel = readReceiverChannel(3);
-	static U32 lastChange;
-	U64 now;
-	bool canChange = false;
-
-	now = *CoGetOSTime2();
-	if ( throttleChannel > 750 && throttleChannel < 1050 && yawChannel > 750 && yawChannel < 1050 )
-	{
-		if ((now - lastChange) > CFG_SYSTICK_FREQ/2 )
-		{
-			canChange = true;
-			lastChange = now;
-		}
-	}
-	else
-	{
-		lastChange = now;
-	}
-
-	if ( canChange == true )
-	{
-		if ( craftIsArmed == false )
-			armCraft();
-		else
-			disarmCraft();
-	}
-
-	return craftIsArmed;
-}
-
 void updatePIDControlLoops( void )
 {
 	static U64 last_time;
@@ -171,7 +125,7 @@ void updatePIDControlLoops( void )
 	dT = (float)delta_time/CFG_SYSTICK_FREQ;
 
 	/* only if armed, and only if throttle is above minimum */
-	if ( isCraftArmed() == true && getThrottleSetpoint() > 1050 )
+	if ( isCraftArmed() == true && getThrottleSetpoint() > THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS )
 	{
 		if ( delta_time > 0 )
 		{
@@ -207,7 +161,7 @@ uint16_t getMotorValue( uint_fast8_t motorIndex )
 	return motorValue;
 }
 
-void setMotorDisarmed( uint_fast8_t motorIndex, uint_fast16_t value )
+void setMotorDisarmedValue( uint_fast8_t motorIndex, uint_fast16_t value )
 {
 	if (motorIndex < ARRAY_SIZE(disarmedMotorValues))
 		disarmedMotorValues[motorIndex] = limit( value, 1000, 2000 );
@@ -242,7 +196,7 @@ void updateMotorOutputs( void )
 	craft = &crafts[0];	// TODO configurable;
 	uint_fast16_t tempMotorValues[craft->nbMotors];
 
-	if ( isCraftArmed() )
+	if ( isCraftArmed() && hasFailsafeTriggered() == false )
 	{
 		motorMixRatios_st const * mixer;
 
@@ -251,7 +205,7 @@ void updateMotorOutputs( void )
 		{
 			tempMotorValues[motorIndex] = lrintf(getThrottleSetpoint() * mixer[motorIndex].throttle);
 			/* only add in PID control values once throttle is above 0 */
-			if ( getThrottleSetpoint() > 1050 )
+			if ( getThrottleSetpoint() > THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS )
 			{
 				// TODO: configurable
 				if (0)	/* angle mode */
@@ -276,7 +230,11 @@ void updateMotorOutputs( void )
 
 	for ( motorIndex=0; motorIndex < craft->nbMotors; motorIndex++ )
 	{
-		if ( isCraftArmed() )
+		if ( hasFailsafeTriggered() == true )
+		{
+			tempMotorValues[motorIndex] = getFailsafeMotorSpeed();
+		}
+		else if ( isCraftArmed() )
 		{
 			if ( maxMotorValue > 2000 )
 				tempMotorValues[motorIndex] -= (maxMotorValue - 2000);

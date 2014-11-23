@@ -585,7 +585,7 @@ static bool processInCommand(void)
     switch (currentPort->cmdMSP) {
     case MSP_SET_MOTOR:
         for (i = 0; i < 8; i++) // FIXME should this use MAX_MOTORS or MAX_SUPPORTED_MOTORS instead of 8
-            setMotorDisarmed( i, read16() );
+            setMotorDisarmedValue( i, read16() );
         break;
     default:
         // we do not know how to handle the (valid) message, indicate error MSP $M!
