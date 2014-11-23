@@ -104,6 +104,13 @@ void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroXrate, floa
 	pdata->compAngleX = (1.0f-CFX) * (pdata->compAngleX + rotationX) + CFX * roll; // Calculate the angle using a Complementary filter
 	pdata->compAngleY = (1.0f-CFY) * (pdata->compAngleY + rotationY) + CFY * pitch;
 
+	pdata->compAngleX2 += rotationX;
+	pdata->compAngleY2 += rotationY;
+
+	pdata->compAngleX2 = (pdata->compAngleX2 * 600 + roll) / 601.0f;
+	pdata->compAngleY2 = (pdata->compAngleY2 * 600 + pitch) / 601.0f;
+
+
 	pdata->roll = roll;
 	pdata->pitch = pitch;
 

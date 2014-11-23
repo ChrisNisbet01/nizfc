@@ -38,7 +38,8 @@ typedef enum roll_pitch_parameter_id_t
 	parameter_id_kD = 3,
 	parameter_id_integralLimit = 4,
 	parameter_id_dLimit = 5,
-	parameter_id_pidRange = 6
+	parameter_id_pidRange = 6,
+	parameter_id_maxStick = 7
 } roll_pitch_parameter_id_t;
 
 static char const * const parameter_name_mappings[] =
@@ -49,7 +50,8 @@ static char const * const parameter_name_mappings[] =
 	[parameter_id_kD] = "kd",
 	[parameter_id_integralLimit] = "ilimit",
 	[parameter_id_dLimit] = "dlimit",
-	[parameter_id_pidRange] = "pidrange"
+	[parameter_id_pidRange] = "pidrange",
+	[parameter_id_maxStick] = "maxstick"
 };
 
 static const parameterConfig_st roll_pitch_config_parameterConfigs[] =
@@ -88,6 +90,11 @@ static const parameterConfig_st roll_pitch_config_parameterConfigs[] =
 	.parameter_id = parameter_id_pidRange,
 	.data_type = config_data_type_float,
 	.offsetToData = offsetof(roll_pitch_configuration_st, pidRange),
+	},
+	{
+	.parameter_id = parameter_id_maxStick,
+	.data_type = config_data_type_float,
+	.offsetToData = offsetof(roll_pitch_configuration_st, maxStick),
 	}
 };
 

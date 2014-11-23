@@ -12,12 +12,15 @@
 #include <utils.h>
 #include <receiver.h>
 #include <receiver_configuration.h>
+#include <roll_pitch_configuration.h>
 
 typedef struct setpoint_st
 {
 	float throttle;
 	float roll_angle;
 	float pitch_angle;
+	float roll_rate;
+	float pitch_rate;
 	float yaw_rate;
 
 } setpoint_st;
@@ -41,7 +44,7 @@ static void determineRollAngleSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.roll_angle = scale(temp, 1000, 2000, -50.0f, 50.0f );
+	setpoints.roll_angle = scale(temp, 1000, 2000, -roll_configuration[0].maxStick, roll_configuration[0].maxStick );
 }
 
 static void determinePitchAngleSetpoint( uint_fast16_t channel )
@@ -52,8 +55,30 @@ static void determinePitchAngleSetpoint( uint_fast16_t channel )
 	// TODO: expo?
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.pitch_angle = scale(temp, 1000, 2000, -50.0f, 50.0f );
+	setpoints.pitch_angle = scale(temp, 1000, 2000, -pitch_configuration[0].maxStick, pitch_configuration[0].maxStick );
 }
+
+static void determineRollRateSetpoint( uint_fast16_t channel )
+{
+	int temp;
+	/* just return a value in the range 1000-2000 */
+	// TODO: scale between configured low/high limits
+	temp = limit( channel, 1000, 2000 );
+
+	setpoints.roll_rate = scale(temp, 1000, 2000, -roll_configuration[1].maxStick, roll_configuration[1].maxStick );
+}
+
+static void determinePitchRateSetpoint( uint_fast16_t channel )
+{
+	int temp;
+	/* just return a value in the range 1000-2000 */
+	// TODO: scale between configured low/high limits
+	// TODO: expo?
+	temp = limit( channel, 1000, 2000 );
+
+	setpoints.pitch_rate = scale(temp, 1000, 2000, -pitch_configuration[1].maxStick, pitch_configuration[1].maxStick );
+}
+
 
 static void determineYawRateSetpoint( uint_fast16_t channel )
 {
@@ -62,7 +87,7 @@ static void determineYawRateSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.yaw_rate = scale(temp, 1000, 2000, -10.0f, 10.0f );
+	setpoints.yaw_rate = scale(temp, 1000, 2000, -yaw_configuration[0].maxStick, yaw_configuration[0].maxStick );
 }
 
 
@@ -74,6 +99,8 @@ void processStickPositions( void )
 	determineThrottleSetpoint(readReceiverChannel(0));
 	determineRollAngleSetpoint(readReceiverChannel(1));
 	determinePitchAngleSetpoint(readReceiverChannel(2));
+	determineRollRateSetpoint(readReceiverChannel(1));
+	determinePitchRateSetpoint(readReceiverChannel(2));
 	determineYawRateSetpoint(readReceiverChannel(3));
 	// TODO: Arming, flight mode etc
 }
@@ -91,6 +118,16 @@ float getRollAngleSetpoint( void )
 float getPitchAngleSetpoint( void )
 {
 	return setpoints.pitch_angle;
+}
+
+float getRollRateSetpoint( void )
+{
+	return setpoints.roll_rate;
+}
+
+float getPitchRateSetpoint( void )
+{
+	return setpoints.pitch_rate;
 }
 
 float getYawRateSetpoint( void )

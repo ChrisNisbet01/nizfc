@@ -1,8 +1,8 @@
 #ifndef __ROLL_PITCH_CONFIGURATION_H__
 #define __ROLL_PITCH_CONFIGURATION_H__
 
-#define NB_ROLL_CONFIGURATIONS	1
-#define NB_PITCH_CONFIGURATIONS	1
+#define NB_ROLL_CONFIGURATIONS	2
+#define NB_PITCH_CONFIGURATIONS	2
 #define NB_YAW_CONFIGURATIONS	1
 
 typedef struct roll_pitch_configuration_st
@@ -14,6 +14,7 @@ typedef struct roll_pitch_configuration_st
 	float integralLimit;
 	float dLimit;
 	float pidRange;
+	float maxStick;
 } roll_pitch_configuration_st;
 
 

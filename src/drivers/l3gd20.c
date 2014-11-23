@@ -250,9 +250,9 @@ static bool l3gd20ReadGyro( void * pv, gyrometer_sensor_t *gyrometer )
 	if ( readRaw( buf ) == false )
 		goto done;
 
-    gyrometer[0] = (float)(buf[0]-l3gCtx->zero_bias[0]) / l3gCtx->gyroSensitivity;
-    gyrometer[1] = (float)(buf[1]-l3gCtx->zero_bias[1]) / l3gCtx->gyroSensitivity;
-    gyrometer[2] = (float)(buf[2]-l3gCtx->zero_bias[2]) / l3gCtx->gyroSensitivity;
+    gyrometer[0] = (float)(buf[0] - l3gCtx->zero_bias[0]) / l3gCtx->gyroSensitivity;
+    gyrometer[1] = (float)(buf[1] - l3gCtx->zero_bias[1]) / l3gCtx->gyroSensitivity;
+    gyrometer[2] = (float)(buf[2] - l3gCtx->zero_bias[2]) / l3gCtx->gyroSensitivity;
 
 	readGyro = true;
 done:
@@ -335,7 +335,7 @@ void * initL3GD20( sensorConfig_st *config, sensorCallback_st *callbacks )
 	if ( L3GD20_Init(&L3GD20_InitStructure) == false )
 		goto error;
 
-	L3GD20_FilterStructure.HighPassFilter_Mode_Selection =L3GD20_HPM_NORMAL_MODE_RES;
+	L3GD20_FilterStructure.HighPassFilter_Mode_Selection = L3GD20_HPM_NORMAL_MODE;
 	L3GD20_FilterStructure.HighPassFilter_CutOff_Frequency = L3GD20_HPFCF_0;
 	if ( L3GD20_FilterConfig(&L3GD20_FilterStructure) == false )
 		goto error;

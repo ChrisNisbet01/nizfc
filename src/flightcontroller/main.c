@@ -186,8 +186,8 @@ static void estimateAttitude( float dT )
     				filteredAccelerometerValues[1],
     				filteredAccelerometerValues[2] );
 
-    RollAngFiltered = imu_data.compAngleX;
-    PitchAngFiltered = imu_data.compAngleY;
+    RollAngFiltered = imu_data.compAngleX2;
+    PitchAngFiltered = imu_data.compAngleY2;
 	/* we have pitch and roll, determine heading */
 	Heading = calculateHeading( filteredMagnetometerValues, -RollAngFiltered, -PitchAngFiltered );
 }
@@ -349,13 +349,17 @@ static void cli_task( void *pv )
 			 	{
 					if (output_configuration[0].debug & 1 )
 					{
-						extern float getRollPIDOutput( void );
-						extern float getPitchPIDOutput( void );
+						extern float getRollAngleOutput( void );
+						extern float getPitchAnglePIDOutput( void );
+						extern float getRollRatePIDOutput( void );
+						extern float getPitchRatePIDOutput( void );
 
-				 		printf("\nthrottle: %d", (int)getThrottleSetpoint() );
-				 		printf("\nroll: %d:%g PID: %d", (int)getRollAngleSetpoint(), &RollAngFiltered, (int)getRollPIDOutput() );
-				 		printf("\npitch: %d:%g PID: %d", (int)getPitchAngleSetpoint(), &PitchAngFiltered, (int)getPitchPIDOutput() );
-				 		printf("\nheading: %g", &Heading );
+				 		//printf("\n\nthrottle: %d", (int)getThrottleSetpoint() );
+				 		//printf("\nroll: %d:%g PID: %d", (int)getRollAngleSetpoint(), &RollAngFiltered, (int)getRollAnglePIDOutput() );
+				 		//printf("\npitch: %d:%g PID: %d", (int)getPitchAngleSetpoint(), &PitchAngFiltered, (int)getPitchAnglePIDOutput() );
+				 		printf("\nroll rate: %d:%g PID: %d", (int)getRollRateSetpoint(), &filteredGyroValues[0], (int)getRollRatePIDOutput() );
+				 		printf("\npitch rate: %d:%g PID: %d", (int)getPitchRateSetpoint(), &filteredGyroValues[1], (int)getPitchRatePIDOutput() );
+				 		//printf("\nheading: %g", &Heading );
 					}
 					if (output_configuration[0].debug & 2 )
 					{

@@ -13,6 +13,9 @@ typedef struct IMU_DATA_ST
 	float compAngleX; 	// Calculated angle using a complementary filter
 	float compAngleY;
 
+	float compAngleX2; 	// Calculated angle using a complementary filter
+	float compAngleY2;
+
 	float kalAngleX; 	// Calculated angle using a Kalman filter
 	float kalAngleY;
 } IMU_DATA_ST;

@@ -58,6 +58,8 @@ int limit( int value, int lowLimit, int highLimit)
 
 float scale(int32_t value, int32_t srcMin, int32_t srcMax, float destMin, float destMax)
 {
+	value = limit( value, srcMin, srcMax );
+
 	return destMin + ((destMax - destMin)*(float)(value-srcMin))/(float)(srcMax-srcMin);
 }
 

@@ -34,14 +34,16 @@ extern float filteredGyroValues[3];
 
 static pid_st rollAnglePID;
 static pid_st pitchAnglePID;
+static pid_st rollRatePID;
+static pid_st pitchRatePID;
 static pid_st yawRatePID;
 
 static const motorMixRatios_st HQuadMixRatios[] =
 {
-    { .throttle = 1.0f, .roll = -1.0f, .pitch = 1.0f,  .yaw = -1.0f }, // right rear
-    { .throttle = 1.0f, .roll = -1.0f, .pitch = -1.0f, .yaw = 1.0f  }, // right front
-    { .throttle = 1.0f, .roll = 1.0f,  .pitch = 1.0f,  .yaw = 1.0f  }, // left rear
-    { .throttle = 1.0f, .roll = 1.0f,  .pitch = -1.0f, .yaw = -1.0f }, // left front
+    { .throttle = 1.0f, .roll = -1.0f, .pitch = 1.0f,  .yaw = 1.0f }, // right rear
+    { .throttle = 1.0f, .roll = -1.0f, .pitch = -1.0f, .yaw = -1.0f  }, // right front
+    { .throttle = 1.0f, .roll = 1.0f,  .pitch = 1.0f,  .yaw = -1.0f  }, // left rear
+    { .throttle = 1.0f, .roll = 1.0f,  .pitch = -1.0f, .yaw = 1.0f }, // left front
 };
 
 static const craftType_st crafts[] =
@@ -79,6 +81,22 @@ void initMotorControl( void )
 				pitch_configuration[0].integralLimit,
 				pitch_configuration[0].dLimit );
 
+	initPID( &rollRatePID,
+				roll_configuration[1].pidRange,
+				roll_configuration[1].kP,
+				roll_configuration[1].kI,
+				roll_configuration[1].kD,
+				roll_configuration[1].integralLimit,
+				roll_configuration[1].dLimit );
+
+	initPID( &pitchRatePID,
+				pitch_configuration[1].pidRange,
+				pitch_configuration[1].kP,
+				pitch_configuration[1].kI,
+				pitch_configuration[1].kD,
+				pitch_configuration[1].integralLimit,
+				pitch_configuration[1].dLimit );
+
 	initPID( &yawRatePID,
 				yaw_configuration[0].pidRange,
 				yaw_configuration[0].kP,
@@ -109,13 +127,13 @@ void disarmCraft( void )
 static bool isCraftArmed( void )
 {
 	uint_fast16_t throttleChannel = readReceiverChannel(0);
-	uint_fast16_t rollChannel = readReceiverChannel(3);
-	static U64 lastChange;
+	uint_fast16_t yawChannel = readReceiverChannel(3);
+	static U32 lastChange;
 	U64 now;
 	bool canChange = false;
 
-	now = CoGetOSTime();
-	if ( throttleChannel > 750 && throttleChannel < 1050 && rollChannel > 750 && rollChannel < 1050 )
+	now = *CoGetOSTime2();
+	if ( throttleChannel > 750 && throttleChannel < 1050 && yawChannel > 750 && yawChannel < 1050 )
 	{
 		if ((now - lastChange) > CFG_SYSTICK_FREQ/2 )
 		{
@@ -124,7 +142,9 @@ static bool isCraftArmed( void )
 		}
 	}
 	else
+	{
 		lastChange = now;
+	}
 
 	if ( canChange == true )
 	{
@@ -155,8 +175,10 @@ void updatePIDControlLoops( void )
 	{
 		if ( delta_time > 0 )
 		{
-			updatePID( &rollAnglePID, RollAngFiltered, getRollAngleSetpoint(), dT );
 			updatePID( &pitchAnglePID, PitchAngFiltered, getPitchAngleSetpoint(), dT );
+			updatePID( &rollAnglePID, RollAngFiltered, getRollAngleSetpoint(), dT );
+			updatePID( &pitchRatePID, -filteredGyroValues[0], getPitchRateSetpoint(), dT );
+			updatePID( &rollRatePID, filteredGyroValues[1], getRollRateSetpoint(), dT );
 			updatePID( &yawRatePID, filteredGyroValues[2], getYawRateSetpoint(), dT );
 		}
 	}
@@ -165,6 +187,9 @@ void updatePIDControlLoops( void )
 		/* reset the PIDs to prevent windup etc */
 		resetPID( &rollAnglePID );
 		resetPID( &pitchAnglePID );
+		resetPID( &rollRatePID );
+		resetPID( &pitchRatePID );
+		resetPID( &yawRatePID );
 	}
 }
 
@@ -188,14 +213,24 @@ void setMotorDisarmed( uint_fast8_t motorIndex, uint_fast16_t value )
 		disarmedMotorValues[motorIndex] = limit( value, 1000, 2000 );
 }
 
-float getRollPIDOutput( void )
+float getRollAnglePIDOutput( void )
 {
 	return rollAnglePID.outputValue;
 }
 
-float getPitchPIDOutput( void )
+float getPitchAnglePIDOutput( void )
 {
 	return pitchAnglePID.outputValue;
+}
+
+float getRollRatePIDOutput( void )
+{
+	return rollRatePID.outputValue;
+}
+
+float getPitchRatePIDOutput( void )
+{
+	return pitchRatePID.outputValue;
 }
 
 void updateMotorOutputs( void )
@@ -218,9 +253,21 @@ void updateMotorOutputs( void )
 			/* only add in PID control values once throttle is above 0 */
 			if ( getThrottleSetpoint() > 1050 )
 			{
-				tempMotorValues[motorIndex] += lrintf(pitchAnglePID.outputValue * mixer[motorIndex].pitch
-								+ rollAnglePID.outputValue * mixer[motorIndex].roll
-								+ yawRatePID.outputValue * mixer[motorIndex].yaw);
+				// TODO: configurable
+				if (0)	/* angle mode */
+				{
+				tempMotorValues[motorIndex] += lrintf(
+								pitchAnglePID.outputValue * mixer[motorIndex].pitch
+								+ rollAnglePID.outputValue * mixer[motorIndex].roll);
+				}
+				else	/* rate mode */
+				{
+				tempMotorValues[motorIndex] += lrintf(
+								pitchRatePID.outputValue * mixer[motorIndex].pitch
+								+ rollRatePID.outputValue * mixer[motorIndex].roll);
+				}
+				tempMotorValues[motorIndex] += lrintf(yawRatePID.outputValue * mixer[motorIndex].yaw);
+
 			}
 			if ( maxMotorValue < tempMotorValues[motorIndex] )
 				maxMotorValue = tempMotorValues[motorIndex];

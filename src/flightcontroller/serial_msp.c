@@ -503,7 +503,7 @@ static bool processOutCommand(uint8_t cmdMSP)
         for (i = 0; i < 3; i++)
 	        serialize16(lrintf(filteredAccelerometerValues[i]*512.0f));
         for (i = 0; i < 3; i++)
-            serialize16(lrintf(filteredGyroValues[i]*16.4f/4.0f));
+            serialize16(lrintf(gyroValues[i]*16.4f/4.0f));
         for (i = 0; i < 3; i++)
             serialize16(lrintf(filteredMagnetometerValues[i]*1090.0f));
         break;
