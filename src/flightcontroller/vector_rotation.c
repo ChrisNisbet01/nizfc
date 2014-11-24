@@ -43,9 +43,9 @@ void initVectorRotation( vectorRotation_st *matrix, float rollDegrees, float pit
 
 void applyVectorRotation( vectorRotation_st *matrix, float *vectors )
 {
-    int32_t x = vectors[0];
-    int32_t y = vectors[1];
-    int32_t z = vectors[2];
+    float x = vectors[0];
+    float y = vectors[1];
+    float z = vectors[2];
 
     vectors[0] = matrix->rotationMatrix[0][0] * x + matrix->rotationMatrix[1][0] * y + matrix->rotationMatrix[2][0] * z;
     vectors[1] = matrix->rotationMatrix[0][1] * x + matrix->rotationMatrix[1][1] * y + matrix->rotationMatrix[2][1] * z;

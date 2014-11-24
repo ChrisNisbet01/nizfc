@@ -176,7 +176,6 @@ static void cliPrintPrompt( cliCtx_st *pctx )
 void cliHandleNewChar( void *pv, char const ch )
 {
 	cliCtx_st *pctx = pv;
-	bool previousMSPMode = pctx->receivingMSP;
 
 	if ( pctx->receivingMSP == true )
 	{

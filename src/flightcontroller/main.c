@@ -11,7 +11,7 @@
 #include <spi_stm32f30x.h>
 #include <receiver.h>
 #include <outputs.h>
-#include <output_configuration.h>
+#include <board_configuration.h>
 #include <cli.h>
 #include <startup.h>
 #include <sensors.h>
@@ -280,7 +280,10 @@ static void main_task( void *pv )
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	failsafeTriggerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 
-	initBoardAlignment( 0.0f, 0.0f, 0.0f );	// TODO: configurable
+	initBoardAlignment(
+		board_configuration[0].boardOrientation[0],
+		board_configuration[0].boardOrientation[1],
+		board_configuration[0].boardOrientation[2] );
 	initFailsafe( failsafeTriggerCallback );
 	initMotorControl();
 	openReceiver( newReceiverDataCallback );
@@ -369,7 +372,7 @@ static void cli_task( void *pv )
 			 	}
 			 	if ( readyFlags & (1<<printTimerFlag) )
 			 	{
-					if (output_configuration[0].debug & 1 )
+					if (board_configuration[0].debug & 1 )
 					{
 						extern float getRollAngleOutput( void );
 						extern float getPitchAnglePIDOutput( void );
@@ -383,7 +386,7 @@ static void cli_task( void *pv )
 				 		printf("\npitch rate: %d:%g PID: %d", (int)getPitchRateSetpoint(), &filteredGyroValues[1], (int)getPitchRatePIDOutput() );
 				 		//printf("\nheading: %g", &Heading );
 					}
-					if (output_configuration[0].debug & 2 )
+					if (board_configuration[0].debug & 2 )
 					{
 						int motor;
 
@@ -391,7 +394,7 @@ static void cli_task( void *pv )
 						for (motor = 0; motor < 4; motor++ )
 							printf("  m-%d: %u", motor+1, (unsigned int)getMotorValue( motor ) );
 					}
-					if (output_configuration[0].debug & 8 )
+					if (board_configuration[0].debug & 8 )
 					{
 						printf( "\r\n\ndT: %g", &fIMUDelta );
 						printf( "\r\naccel" );

@@ -6,7 +6,6 @@
 typedef struct output_configuration_st
 {
 	uint16_t pwmrate;
-	uint16_t debug;
 }output_configuration_st;
 
 

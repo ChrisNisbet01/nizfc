@@ -12,7 +12,8 @@ typedef enum configuration_id_t
 	configuration_id_roll = 5,
 	configuration_id_pitch = 6,
 	configuration_id_yaw = 7,
-	configuration_id_failsafe = 8
+	configuration_id_failsafe = 8,
+	configuration_id_board = 9
 } configuration_id_t;
 
 /*
@@ -32,17 +33,6 @@ typedef enum config_data_types_t
 	config_data_type_string = 8,
 	config_data_type_enum = 9,				/* enumerated type. Accepts integer value or string matching one of the enumerated types. */
 	// TODO:
-#if 0
-	config_data_type_list_int8 = 10,			/* a set of int8 values */
-	config_data_type_list_uint8 = 11,		/* a set of uint8 values */
-	config_data_type_list_int16 = 12,		/* a set of int16 values */
-	config_data_type_list_uint16 = 13,		/* a set of uint16 values */
-	config_data_type_list_int32 = 14,		/* a set of int32 values */
-	config_data_type_list_uint32 = 15,		/* a set of uint32 values */
-	config_data_type_list_float = 16,		/* a set of float values */
-	config_data_type_list_string = 17,		/* a set of string values */
-	config_data_type_list_enum = 18			/* a set of enumerated types. Accepts integer values or strings matching one of the enumerated types. */
-#endif
 } config_data_types_t;
 
 typedef struct enum_mapping_st
