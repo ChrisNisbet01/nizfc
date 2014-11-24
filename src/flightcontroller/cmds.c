@@ -841,6 +841,7 @@ int runNonConfigCommandHandler( non_config_command_st const * commands, uint32_t
 
 	if ( (pcmd=findNonConfigCommand(commands, nb_commands, pcmd_data->argv[0])) != NULL )
 	{
+		pcmd_data->command = pcmd;
 		result = pcmd->handler( pcmd_data );
 	}
 	else

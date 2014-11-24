@@ -236,7 +236,7 @@ static int debugCommand( non_config_run_command_data_st *pcommand )
 
 	if ( show_usage == true )
 	{
-		cliPrintf( pcommand->cliCtx, "Format: %s off|0|1", pcommand->argv[0] );
+		cliPrintf( pcommand->cliCtx, "Format: %s off|0|1", pcommand->command->name );
 	}
 
 	return poll_result_ok;
@@ -276,8 +276,8 @@ static int showCommand( non_config_run_command_data_st *pcommand )
 
 	if ( result == poll_result_error )
 	{
-		cliPrintf( pcommand->cliCtx, "\nFormat: %s ?                                - show help for this command", argv[0] );
-		cliPrintf( pcommand->cliCtx, "\nFormat: %s <saved|current|unsaved|all>      - show configuration", argv[0] );
+		cliPrintf( pcommand->cliCtx, "\nFormat: %s ?                                - show help for this command", pcommand->command->name );
+		cliPrintf( pcommand->cliCtx, "\nFormat: %s <saved|current|unsaved|all>      - show configuration", pcommand->command->name );
 	}
 	return result;
 }

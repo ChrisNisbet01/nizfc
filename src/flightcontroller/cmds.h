@@ -41,6 +41,7 @@ struct non_config_run_command_data_st
 	void *cliCtx;
 	int argc;
 	char **argv;
+	non_config_command_st const * command;
 };
 
 typedef struct help_command_data_st
