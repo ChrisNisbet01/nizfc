@@ -9,6 +9,7 @@
 #include <polling.h>
 #include <cmds.h>
 #include <serial.h>
+#include <serial_msp.h>
 
 #define CLI_LINEBUFFER_SIZE 	64
 #define MAX_COMMAND_LINE_ARGS	6
@@ -34,7 +35,7 @@ typedef struct cliCtx_st
 	char			*commandArgs[MAX_COMMAND_LINE_ARGS];	/* will point into lineBuffer */
 
 	char			outputBuffer[CLI_OUTPUT_BUFFER_SIZE];
-
+	bool 			receivingMSP;
 } cliCtx_st;
 
 static cliCtx_st cli[2];
@@ -175,8 +176,18 @@ static void cliPrintPrompt( cliCtx_st *pctx )
 void cliHandleNewChar( void *pv, char const ch )
 {
 	cliCtx_st *pctx = pv;
+	bool previousMSPMode = pctx->receivingMSP;
 
-	if ( cliGetCommand( pctx, ch ) == true )
+	if ( pctx->receivingMSP == true )
+	{
+		if ( mspProcess( pctx->serialPort, ch ) == false )
+			pctx->receivingMSP = false;
+	}
+	else if ( pctx->linebuffer_cursor_position == 0 && mspProcess( pctx->serialPort, ch ) == true )
+	{
+		pctx->receivingMSP = true;
+	}
+	else if ( cliGetCommand( pctx, ch ) == true )
 	{
 		int argc;
 		/*
@@ -219,6 +230,7 @@ void *initCli( serial_port_st * serialPort )
 		{
 			pctx->linebuffer_cursor_position = 0;
 			pctx->serialPort = serialPort;
+			pctx->receivingMSP = false;
 
 			return pctx;
 		}

@@ -4,7 +4,7 @@
 #include <stm32f3_discovery.h>
 #include <coos.h>
 #include <serial.h>
-
+#include <utils.h>
 #include "usb_core.h"
 #include "usb_init.h"
 #include "hw_config.h"
@@ -98,6 +98,9 @@ serial_port_st * usbSerialOpen( serial_port_t port, uint32_t baudrate, serial_mo
 	usb_serial_ctx_st *pctx;
 	serial_port_st *serialPort = NULL;
 
+	UNUSED(baudrate);
+	UNUSED(mode);
+
 	if ( (usb_config=usbSerialPortLookup( port )) != NULL )
 	{
 		pctx = &usb_serial_ctxs[USB_IDX(usb_config)];
@@ -122,27 +125,29 @@ serial_port_st * usbSerialOpen( serial_port_t port, uint32_t baudrate, serial_mo
 
 static int usbRxReady(void *pv)
 {
-	usb_serial_ctx_st *pctx = pv;
+	extern __IO uint32_t usbReceiveLength;
 
-	extern volatile uint32_t receiveLength;
-    return receiveLength;
+	UNUSED(pv);
+
+    return usbReceiveLength;
 
 }
 
 static int usbTxBusy(void *pv)
 {
-	usb_serial_ctx_st *pctx = pv;
+	extern __IO uint32_t usbPacketSent;
 
-	extern volatile uint32_t packetSent;
+	UNUSED(pv);
 
-    return packetSent != 0;
+    return usbPacketSent != 0;
 
 }
 
 static int usbReadChar(void *pv)
 {
-	usb_serial_ctx_st *pctx = pv;
     uint8_t buf[1];
+
+	UNUSED(pv);
 
     CDC_Receive_DATA(buf, 1);	/* Note no waiting, or timeout */
 
@@ -158,10 +163,15 @@ static void usbWriteChar(void *pv, uint8_t ch)
     {
         return;
     }
-    // TODO: need to detect USB error, which might result in packetSent nevr being cleared
-	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, CFG_SYSTICK_FREQ/10 ) == E_OK || packetSent == 0 )
+    // TODO: need to detect USB error, which might result in usbPacketSent nevr being cleared
+	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, CFG_SYSTICK_FREQ/10 ) == E_OK || usbPacketSent == 0 )
 	{
-        CDC_Send_DATA((uint8_t*)&ch, 1);
+        if ( CDC_Send_DATA(&ch, 1) == 0 )
+        {
+        	/* transmit failed. set the flag again so we can try again quickly */
+        	CoSetFlag(pctx->usbTxCompleteFlag);
+			// TODO: increment a statistic?
+        }
 	}
 }
 
@@ -170,10 +180,16 @@ static int usbWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, ui
 	usb_serial_ctx_st *pctx = pv;
 	int result = -1;
 
-	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, max_millisecs_to_wait/(1000/CFG_SYSTICK_FREQ) ) == E_OK || packetSent == 0 )
+	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, max_millisecs_to_wait/(1000/CFG_SYSTICK_FREQ) ) == E_OK || usbPacketSent == 0 )
 	{
-        CDC_Send_DATA((uint8_t*)&ch, 1);
-        result = 0;
+        if ( CDC_Send_DATA(&ch, 1) == 0 )
+        {
+        	/* transmit failed. set the flag again so we can try again quickly */
+        	CoSetFlag(pctx->usbTxCompleteFlag);
+			// TODO: increment a statistic?
+        }
+        else
+        	result = 0;
 	}
 	else
 	{
@@ -193,9 +209,17 @@ static int usbWriteBulkBlockingWithTimeout(void * const pv, uint8_t const * buf,
 	do
 	{
 		if ( (max_millisecs_to_wait > 0 && CoWaitForSingleFlag( pctx->usbTxCompleteFlag, max_millisecs_to_wait/(1000/CFG_SYSTICK_FREQ) )) == E_OK
-			|| packetSent == 0 )
+			|| usbPacketSent == 0 )
 		{
-	        tosend -= CDC_Send_DATA(buf, tosend);
+			uint32_t written = CDC_Send_DATA(buf, tosend);
+
+			if ( written == 0 )
+			{
+				// TODO: increment a statistic?
+				result = -1;
+			}
+			else
+		        tosend -= written;
 		}
 		else
 		{

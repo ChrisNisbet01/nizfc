@@ -82,19 +82,12 @@ uint32_t __attribute__ ((noinline)) micros(void)
         if ( waiting == true && centiseconds != centiseconds2 )
         {
         	/* must mean that CoGetOSTime2 has finally rolled */
-        	STM_EVAL_LEDOn(LED9);
-        	printf("\r\ncnt %d", cycle_count );
         	break;
         }
     }
     while (centiseconds != centiseconds2
     	|| (( ticksPerSystickInterrupt - cycle_count) < numTicksToWaitForRollover && (waiting=true))
     );
-	if (waiting == true)
-	{
-		STM_EVAL_LEDOn( LED8);
-       	printf("\r\ncnt %d tpus %d", cycle_count, ticksPerMicrosecond );
-	}
 
 	microsValue = (centiseconds2 * (1000000/CFG_SYSTICK_FREQ)) + ( ticksPerSystickInterrupt - cycle_count) / ticksPerMicrosecond;
 

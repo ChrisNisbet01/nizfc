@@ -58,10 +58,10 @@
 /* Private variables ---------------------------------------------------------*/
 ErrorStatus HSEStartUpStatus;
 EXTI_InitTypeDef EXTI_InitStructure;
-__IO uint32_t packetSent;                                     // HJI
-extern __IO uint32_t receiveLength;                          // HJI
+__IO uint32_t usbPacketSent;                                 // HJI
+extern __IO uint32_t usbReceiveLength;                          // HJI
 
-uint8_t receiveBuffer[64];                                   // HJI
+uint8_t usbReceiveBuffer[64];                                   // HJI
 uint32_t sendLength;                                          // HJI
 static void IntToUnicode(uint32_t value, uint8_t *pbuf, uint8_t len);
 /* Extern variables ----------------------------------------------------------*/
@@ -76,6 +76,8 @@ static void IntToUnicode(uint32_t value, uint8_t *pbuf, uint8_t len);
  *******************************************************************************/
 void Set_System(void)
 {
+	extern void delay(uint32_t ms);
+
 #if !defined(STM32L1XX_MD) && !defined(STM32L1XX_HD) && !defined(STM32L1XX_MD_PLUS)
     GPIO_InitTypeDef GPIO_InitStructure;
 #endif /* STM32L1XX_MD && STM32L1XX_XD */
@@ -228,7 +230,7 @@ void USB_Interrupts_Config(void)
  *******************************************************************************/
 void USB_Cable_Config(FunctionalState NewState)
 {
-
+	(void)NewState;
 }
 
 /*******************************************************************************
@@ -285,10 +287,10 @@ static void IntToUnicode(uint32_t value, uint8_t *pbuf, uint8_t len)
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-uint32_t CDC_Send_DATA(uint8_t *ptrBuffer, uint8_t sendLength)
+uint32_t CDC_Send_DATA(uint8_t const * ptrBuffer, uint8_t sendLength)
 {
     /* Last transmission hasn't finished, abort */
-    if (packetSent) {
+    if (usbPacketSent) {
         return 0;
     }
 
@@ -301,7 +303,7 @@ uint32_t CDC_Send_DATA(uint8_t *ptrBuffer, uint8_t sendLength)
     if (sendLength) {
         UserToPMABufferCopy(ptrBuffer, ENDP1_TXADDR, sendLength);
         SetEPTxCount(ENDP1, sendLength);
-        packetSent += sendLength;
+        usbPacketSent += sendLength;
         SetEPTxValid(ENDP1);
     }
 
@@ -320,19 +322,19 @@ uint32_t CDC_Receive_DATA(uint8_t* recvBuf, uint32_t len)
     static uint8_t offset = 0;
     uint8_t i;
 
-    if (len > receiveLength) {
-        len = receiveLength;
+    if (len > usbReceiveLength) {
+        len = usbReceiveLength;
     }
 
     for (i = 0; i < len; i++) {
-        recvBuf[i] = (uint8_t)(receiveBuffer[i + offset]);
+        recvBuf[i] = (uint8_t)(usbReceiveBuffer[i + offset]);
     }
 
-    receiveLength -= len;
+    usbReceiveLength -= len;
     offset += len;
 
     /* re-enable the rx endpoint which we had set to receive 0 bytes */
-    if (receiveLength == 0) {
+    if (usbReceiveLength == 0) {
         SetEPRxCount(ENDP3, 64);
         SetEPRxStatus(ENDP3, EP_RX_VALID);
         offset = 0;

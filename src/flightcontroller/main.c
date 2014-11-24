@@ -5,7 +5,6 @@
 #include <coocox.h>
 #include <stm32f3_discovery.h>
 #include <serial.h>
-#include <serial_msp.h>
 #include <utils.h>
 #include <polling.h>
 #include <i2c_stm32f30x.h>
@@ -362,10 +361,7 @@ static void cli_task( void *pv )
 							uint8_t ch;
 
 							ch = cli_uart[uart_index]->methods->readChar( cli_uart[uart_index]->serialCtx );
-							if ( uart_index == 0)
-								cliHandleNewChar( pcli[uart_index], ch );
-							else
-								mspProcess( cli_uart[uart_index], ch );
+							cliHandleNewChar( pcli[uart_index], ch );
 						}
 					}
 			 	}

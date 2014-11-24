@@ -20,5 +20,5 @@
 // Each MSP port requires state and a receive buffer, revisit this default if someone needs more than 2 MSP ports.
 #define MAX_MSP_PORT_COUNT 1
 
-void mspProcess(serial_port_st *port, uint8_t c);
+bool mspProcess(serial_port_st *port, uint8_t c);
 

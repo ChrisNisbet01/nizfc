@@ -12,6 +12,10 @@ extern uint32_t IMUDelta;
 #define cycleTime IMUDelta
 #define serialPort_t	serial_port_st
 
+static const char MSPHeader[3] = {'$', 'M', '<'};
+
+
+
 /**
  * MSP Guidelines, emphasis is used to clarify.
  *
@@ -595,29 +599,32 @@ static bool processInCommand(void)
     return true;
 }
 
-static void mspProcessPort(uint8_t c)
+static bool mspProcessPort(uint8_t c)
 {
+	bool receivingMSP = true;
+
+	/* if the state is idle at the end of the function, receivingMSP will be set to false */
     {
         if (currentPort->c_state == IDLE) {
-            currentPort->c_state = (c == '$') ? HEADER_START : IDLE;
-            if (currentPort->c_state == IDLE )
-            {
-            }
+            currentPort->c_state = (c == MSPHeader[0]) ? HEADER_START : IDLE;
         } else if (currentPort->c_state == HEADER_START) {
-            currentPort->c_state = (c == 'M') ? HEADER_M : IDLE;
+            currentPort->c_state = (c == MSPHeader[1]) ? HEADER_M : IDLE;
         } else if (currentPort->c_state == HEADER_M) {
-            currentPort->c_state = (c == '<') ? HEADER_ARROW : IDLE;
+            currentPort->c_state = (c == MSPHeader[2]) ? HEADER_ARROW : IDLE;
         } else if (currentPort->c_state == HEADER_ARROW) {
-            if (c > INBUF_SIZE) {       // now we are expecting the payload size
+            if (c > INBUF_SIZE)
+            {       // now we are expecting the payload size
                 currentPort->c_state = IDLE;
-                return;
             }
-            currentPort->dataSize = c;
-            currentPort->offset = 0;
-            currentPort->checksum = 0;
-            currentPort->indRX = 0;
-            currentPort->checksum ^= c;
-            currentPort->c_state = HEADER_SIZE;      // the command is to follow
+            else
+            {
+	            currentPort->dataSize = c;
+	            currentPort->offset = 0;
+	            currentPort->checksum = 0;
+	            currentPort->indRX = 0;
+	            currentPort->checksum ^= c;
+	            currentPort->c_state = HEADER_SIZE;      // the command is to follow
+            }
         } else if (currentPort->c_state == HEADER_SIZE) {
             currentPort->cmdMSP = c;
             currentPort->checksum ^= c;
@@ -639,6 +646,11 @@ static void mspProcessPort(uint8_t c)
             currentPort->c_state = IDLE;
         }
     }
+
+    if (currentPort->c_state == IDLE )
+    	receivingMSP = false;
+
+    return receivingMSP;
 }
 
 void setCurrentPort(mspPort_t *port)
@@ -647,11 +659,11 @@ void setCurrentPort(mspPort_t *port)
     mspSerialPort = currentPort->serialPort;
 }
 
-void mspProcess(serial_port_st *port, uint8_t c)
+bool mspProcess(serial_port_st *port, uint8_t c)
 {
 	mspPorts[0].serialPort = port;
     setCurrentPort(&mspPorts[0]);
 
-    mspProcessPort(c);
+    return mspProcessPort(c);
 }
 
