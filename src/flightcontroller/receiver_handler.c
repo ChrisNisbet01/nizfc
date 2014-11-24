@@ -125,7 +125,7 @@ static void determineArmingState( void )
 				disarmCraft();
 			}
 		}
-		else if ( yawChannel < STICK_MAX_VALID_VALUE && yawChannel < STICK_HIGH_VALUE )
+		else if ( yawChannel < STICK_MAX_VALID_VALUE && yawChannel > STICK_HIGH_VALUE )
 		{
 			if ( timerRunning == false )
 			{
@@ -192,19 +192,24 @@ float getYawRateSetpoint( void )
 static bool craftIsArmed = false;
 void armCraft( void )
 {
-	if ( hasFailsafeTriggered() == false )
+	if ( hasFailsafeTriggered() == false && craftIsArmed == false )
 	{
 		printf("\narmed!");
 		craftIsArmed = true;
 		STM_EVAL_LEDOn(LED10);
+		enableFailsafe();
 	}
 }
 
 void disarmCraft( void )
 {
-	craftIsArmed = false;
-	printf("\ndisarmed");
-	STM_EVAL_LEDOff(LED10);
+	if ( craftIsArmed == true )
+	{
+		craftIsArmed = false;
+		printf("\ndisarmed");
+		STM_EVAL_LEDOff(LED10);
+		disableFailsafe();
+	}
 }
 
 bool isCraftArmed( void )

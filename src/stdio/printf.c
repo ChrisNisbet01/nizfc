@@ -19,7 +19,7 @@
  * @param  pStr	Storage string.
  * @param  c    Character to write.
  */
-extern serial_port_st *cli_uart[];
+extern serial_port_st *debug_port;
 
 /** Maximum string size allowed (in bytes). */
 #define MAX_STRING_SIZE         256
@@ -35,9 +35,9 @@ void PrintChar(char c)
 	   while(Transfer not completed);
 	   Transmit a char;
 	*/
-	if (cli_uart[0] != NULL)	// TODO: confgurable
+	if (debug_port != NULL)	// TODO: confgurable
 	{
-		cli_uart[0]->methods->writeCharBlockingWithTimeout( cli_uart[0]->serialCtx, (uint8_t)c, 2 );
+		debug_port->methods->writeCharBlockingWithTimeout( debug_port->serialCtx, (uint8_t)c, 2 );
 	}
 }
 
@@ -640,9 +640,9 @@ signed int fputs(const char *pStr, FILE *pStream)
 {
     signed int num = 0;
 
-	if (cli_uart[0] != NULL && cli_uart[0]->methods->writeBulkBlockingWithTimeout != NULL)	// TODO: confgurable
+	if (debug_port != NULL && debug_port->methods->writeBulkBlockingWithTimeout != NULL)	// TODO: configurable
 	{
-		cli_uart[0]->methods->writeBulkBlockingWithTimeout( cli_uart[0]->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 10 );
+		debug_port->methods->writeBulkBlockingWithTimeout( debug_port->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 50 );
 	}
 	else
 	{

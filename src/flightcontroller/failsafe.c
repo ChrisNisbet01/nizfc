@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#include <stm32f3_discovery.h>
 #include <coos.h>
 #include <failsafe_configuration.h>
 
@@ -17,8 +19,7 @@ static failsafe_st failsafe;
 
 static void startFailsafeTimer( void )
 {
-
-	failsafe.timerID = CoSetTmrCnt( failsafe.timerID, (failsafe_configuration[0].maxQuietTimeMs * CFG_SYSTICK_FREQ)/1000, 0 );
+	CoSetTmrCnt( failsafe.timerID, (failsafe_configuration[0].maxQuietTimeMs * CFG_SYSTICK_FREQ)/1000, 0 );
 	CoStartTmr( failsafe.timerID );
 
 }
@@ -30,14 +31,14 @@ static void stopFailsafeTimer( void )
 
 static void restartFailsafeTimer( void )
 {
-	failsafe.timerID = CoSetTmrCnt( failsafe.timerID, (failsafe_configuration[0].maxQuietTimeMs * CFG_SYSTICK_FREQ)/1000, 0 );
+	CoSetTmrCnt( failsafe.timerID, (failsafe_configuration[0].maxQuietTimeMs * CFG_SYSTICK_FREQ)/1000, 0 );
 }
 
 
 void failsafeTimeout( void )
 {
 	/* called from COOS systick ISR */
-	failsafe.triggered = true;
+	STM_EVAL_LEDOn(LED8);
 	if ( failsafe.failsafeTriggerCb != NULL )
 		failsafe.failsafeTriggerCb();
 }
@@ -45,13 +46,13 @@ void failsafeTimeout( void )
 void initFailsafe( void (*failsafeTriggerCb)( void ) )
 {
 	failsafe.failsafeTriggerCb = failsafeTriggerCb;
-	CoCreateTmr( TMR_TYPE_ONE_SHOT, 0, 0, failsafeTimeout );
+	failsafe.timerID = CoCreateTmr( TMR_TYPE_ONE_SHOT, 0, 0, failsafeTimeout );
 }
 
-void enable_failsafe( void )
+void enableFailsafe( void )
 {
 	/* called just after the board is armed */
-	if ( failsafe_configuration[0].enabled == false )
+	if ( failsafe_configuration[0].enabled == true && failsafe.enabled == false )
 	{
 		failsafe.enabled = true;
 		/* start the timer which will activate failsafe if it ever expires */
@@ -89,7 +90,7 @@ void updateFailsafeWithNewChannels( uint32_t newChannels )
 	}
 }
 
-void failsafeHasTriggered( void )
+void failsafeSetTriggered( void )
 {
 	failsafe.triggered = true;
 }

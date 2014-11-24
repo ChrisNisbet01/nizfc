@@ -33,14 +33,15 @@
 static OS_STK cli_task_stack[CLI_TASK_STACK_SIZE];
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE];
 
-serial_port_st *cli_uart[2];
-void *pcli[2];
-OS_FlagID cliUartFlag;
+static serial_port_st *cli_uart[2];
+serial_port_st *debug_port;
+static void *pcli[2];
+static OS_FlagID cliUartFlag;
 
-void *i2c_port;
-void *spi_port;
-void *lsm303dlhcDevice;
-void *l3gd20Device;
+static void *i2c_port;
+static void *spi_port;
+static void *lsm303dlhcDevice;
+static void *l3gd20Device;
 static sensorCallback_st sensorCallbacks;
 
 float RollAngFiltered, PitchAngFiltered, Heading;
@@ -297,7 +298,8 @@ static void main_task( void *pv )
 		{
 			if ( (ReadyFlags & (1<<failsafeTriggerFlag)) != 0 )
 			{
-				failsafeHasTriggered();
+				printf("\r\nfailsafe triggered");
+				failsafeSetTriggered();
 			}
 			if ( (ReadyFlags & (1<<IMUTimerFlag)) != 0 )
 			{
@@ -431,6 +433,7 @@ int main(void)
 	cli_uart[1] = serialOpen( SERIAL_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart[1] != NULL )
 		pcli[1] = initCli( cli_uart[1] );
+	debug_port = cli_uart[1];	// TODO: runtime configurable
 
 	initialiseCodeGroups();
 	loadSavedConfiguration();

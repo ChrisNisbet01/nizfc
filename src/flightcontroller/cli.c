@@ -44,7 +44,7 @@ static int clifputc(void *pv, signed int c)
 {
 	cliCtx_st *pctx	= pv;
 
-	return pctx->serialPort->methods->writeCharBlockingWithTimeout( pctx->serialPort->serialCtx, c, 10 );
+	return pctx->serialPort->methods->writeCharBlockingWithTimeout( pctx->serialPort->serialCtx, c, 50 );
 }
 
 static int clifputs(void *pv, const char *pStr)
@@ -54,7 +54,7 @@ static int clifputs(void *pv, const char *pStr)
 
 	if ( pctx->serialPort->methods->writeBulkBlockingWithTimeout != NULL )
 	{
-		return pctx->serialPort->methods->writeBulkBlockingWithTimeout( pctx->serialPort->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 10 );
+		return pctx->serialPort->methods->writeBulkBlockingWithTimeout( pctx->serialPort->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 50 );
 	}
 	else
 	{

@@ -265,7 +265,7 @@ void serialWrite( serial_port_st *port, uint8_t ch )
 	if ( port->methods->writeBulkBlockingWithTimeout == NULL )
 	{
 		/* write out each char */
-		port->methods->writeCharBlockingWithTimeout( port->serialCtx, ch, 10 );
+		port->methods->writeCharBlockingWithTimeout( port->serialCtx, ch, 50 );
 	}
 	else
 	{
@@ -275,7 +275,7 @@ void serialWrite( serial_port_st *port, uint8_t ch )
 		}
 		if ( currentPort->outIdx == INBUF_SIZE )
 		{
-			port->methods->writeBulkBlockingWithTimeout( port->serialCtx, currentPort->outBuf, currentPort->outIdx, 10 );
+			port->methods->writeBulkBlockingWithTimeout( port->serialCtx, currentPort->outBuf, currentPort->outIdx, 50 );
 			currentPort->outIdx = 0;
 		}
 	}
@@ -285,7 +285,7 @@ void serialFlush( serial_port_st *port )
 {
 	if ( port->methods->writeBulkBlockingWithTimeout != NULL && currentPort->outIdx > 0 )
 	{
-		port->methods->writeBulkBlockingWithTimeout( port->serialCtx, currentPort->outBuf, currentPort->outIdx, 10 );
+		port->methods->writeBulkBlockingWithTimeout( port->serialCtx, currentPort->outBuf, currentPort->outIdx, 50 );
 		currentPort->outIdx = 0;
 	}
 }

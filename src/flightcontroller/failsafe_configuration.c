@@ -19,7 +19,7 @@ static const failsafe_configuration_st default_failsafe_configuration =
 {
 	.enabled = false,
 	.nbRequiredChannels = 4,
-	.maxQuietTimeMs = 400,
+	.maxQuietTimeMs = 1000,
 	.motorOutput = 1000
 };
 
