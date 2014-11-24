@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -59,13 +60,8 @@ static const char MSPHeader[3] = {'$', 'M', '<'};
 
 #define API_VERSION_LENGTH                  2
 
-#define MULTIWII_IDENTIFIER "MWII";
-#define CLEANFLIGHT_IDENTIFIER "CLFL"
-#define BASEFLIGHT_IDENTIFIER "BAFL";
-#define TARGET_BOARD_IDENTIFIER "SDF3" // STM Discovery F3
-
 #define FLIGHT_CONTROLLER_IDENTIFIER_LENGTH 4
-static const char *flightControllerIdentifier = CLEANFLIGHT_IDENTIFIER; // 4 UPPER CASE alpha numeric characters that identify the flight controller.
+static const char flightControllerIdentifier[] = "NIZF"; // 4 UPPER CASE alpha numeric characters that identify the flight controller.
 
 #define FLIGHT_CONTROLLER_VERSION_LENGTH    3
 #define FLIGHT_CONTROLLER_VERSION_MASK      0xFFF

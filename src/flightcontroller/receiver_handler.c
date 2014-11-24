@@ -196,7 +196,7 @@ void armCraft( void )
 	{
 		printf("\narmed!");
 		craftIsArmed = true;
-		STM_EVAL_LEDOn(LED10);
+		STM_EVAL_LEDOn(ARMED_LED);
 		enableFailsafe();
 	}
 }
@@ -207,7 +207,7 @@ void disarmCraft( void )
 	{
 		craftIsArmed = false;
 		printf("\ndisarmed");
-		STM_EVAL_LEDOff(LED10);
+		STM_EVAL_LEDOff(ARMED_LED);
 		disableFailsafe();
 	}
 }

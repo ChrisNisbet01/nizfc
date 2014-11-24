@@ -11,6 +11,12 @@
 
 #define USB_TIMEOUT				50 /* ms * 10 */
 
+typedef struct serial_usb_statistics_st
+{
+	uint32_t txTimeout;
+	uint32_t txFail;
+} serial_usb_statistics_st;
+
 typedef struct usb_config_t
 {
 	serial_port_t port;
@@ -25,6 +31,8 @@ typedef struct usb_serial_ctx_st
 	usb_config_t				const * usb;
 	serial_port_st				serialPort;
 } usb_serial_ctx_st;
+
+static serial_usb_statistics_st serial_usb_statistics;
 
 static int usbRxReady(void *pv);
 static int usbTxBusy(void *pv);
@@ -170,8 +178,12 @@ static void usbWriteChar(void *pv, uint8_t ch)
         {
         	/* transmit failed. set the flag again so we can try again quickly */
         	CoSetFlag(pctx->usbTxCompleteFlag);
-			// TODO: increment a statistic?
+        	serial_usb_statistics.txFail++;
         }
+	}
+	else
+	{
+		serial_usb_statistics.txTimeout++;
 	}
 }
 
@@ -186,7 +198,7 @@ static int usbWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, ui
         {
         	/* transmit failed. set the flag again so we can try again quickly */
         	CoSetFlag(pctx->usbTxCompleteFlag);
-			// TODO: increment a statistic?
+        	serial_usb_statistics.txFail++;
         }
         else
         	result = 0;
@@ -194,7 +206,7 @@ static int usbWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, ui
 	else
 	{
 		result = -1;
-		// TODO: increment a statistic?
+		serial_usb_statistics.txTimeout++;
 	}
 
 	return result;
@@ -215,16 +227,19 @@ static int usbWriteBulkBlockingWithTimeout(void * const pv, uint8_t const * buf,
 
 			if ( written == 0 )
 			{
-				// TODO: increment a statistic?
+	        	serial_usb_statistics.txFail++;
 				result = -1;
 			}
 			else
+			{
+				buf += written;
 		        tosend -= written;
+			}
 		}
 		else
 		{
+			serial_usb_statistics.txTimeout++;
 			result = -1;
-			// TODO: increment a statistic?
 		}
 	}
 	while (tosend > 0 && result == 0);

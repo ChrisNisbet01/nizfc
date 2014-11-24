@@ -330,7 +330,7 @@ static void main_task( void *pv )
 
 			    updateFailsafeWithNewChannels( newChannels );
 
-			    STM_EVAL_LEDToggle(LED3);
+			    STM_EVAL_LEDToggle(RX_LED);
 				processStickPositions();
 			}
 		}
@@ -429,7 +429,7 @@ static void cli_task( void *pv )
 
 void _Default_Handler( void )
 {
-	STM_EVAL_LEDOn(LED8);
+	STM_EVAL_LEDOn(EXCEPTION_LED);
 	while( 1 );
 }
 

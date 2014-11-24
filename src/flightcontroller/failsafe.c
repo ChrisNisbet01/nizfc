@@ -38,7 +38,7 @@ static void restartFailsafeTimer( void )
 void failsafeTimeout( void )
 {
 	/* called from COOS systick ISR */
-	STM_EVAL_LEDOn(LED8);
+	STM_EVAL_LEDOn(FAILSAFE_LED);
 	if ( failsafe.failsafeTriggerCb != NULL )
 		failsafe.failsafeTriggerCb();
 }
@@ -108,4 +108,5 @@ uint_fast16_t getFailsafeMotorSpeed( void )
 void resetFailsafeTrigger( void )
 {
 	failsafe.triggered = false;
+	STM_EVAL_LEDOff(FAILSAFE_LED);
 }

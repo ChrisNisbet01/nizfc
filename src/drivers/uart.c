@@ -14,6 +14,11 @@
 static volatile uint8_t Usart2TxBuffer[USART2_TX_BUFFER_SIZE];
 static volatile uint8_t Usart2RxBuffer[USART2_RX_BUFFER_SIZE];
 
+typedef struct serial_uart_statistics_st
+{
+	uint32_t txTimeout;
+} serial_uart_statistics_st;
+
 typedef struct uart_ports_config_t
 {
 	serial_port_t port;
@@ -80,6 +85,7 @@ static const uart_ports_config_t uart_ports[] =
 #define UART_IDX(ptr)	((ptr)-uart_ports)
 
 static uart_ctx_st uart_ctxs[NB_UART_PORTS];
+static serial_uart_statistics_st serial_uart_statistics;
 
 static int getTxChar( void *pv )
 {
@@ -268,8 +274,8 @@ static int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, u
 	}
 	else
 	{
+		serial_uart_statistics.txTimeout++;
 		result = -1;
-		// TODO: increment a statistic?
 	}
 
 	return result;

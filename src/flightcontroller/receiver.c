@@ -50,9 +50,6 @@ static void NewReceiverChannelData( uint32_t * channels, uint_fast8_t first_inde
 
 	CoLeaveMutexSection( rx_signals.rx_signals_mutex );
 
-	// TODO: on a per channel basis
-	// TODO: don't forget about failsafe/timeouts
-	STM_EVAL_LEDToggle(LED7);
 	receiver_ctx.newDataCb(newChannelsReceived);
 }
 
