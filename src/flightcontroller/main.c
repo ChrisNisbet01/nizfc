@@ -168,6 +168,19 @@ static void updateSensorFilters( void )
 	}
 }
 
+bool setDebugPort( int port )
+{
+	bool debugPortAssigned = true;
+
+	if ( port < 0 )
+		debug_port = NULL;
+	else if ( port < ARRAY_SIZE(cli_uart) && cli_uart[port] != NULL )
+		debug_port = cli_uart[port];
+	else
+		debugPortAssigned = false;
+
+	return debugPortAssigned;
+}
 static void initIMU( void )
 {
     init_attitude_estimation( &imu_data, roll_configuration[0].lpf_factor, roll_configuration[0].lpf_factor );
@@ -233,6 +246,7 @@ static void IMUHandler( void )
 			alignVectorsToBoard( gyroValues, noRotation );			// TODO: configurable
 			alignVectorsToCraft( gyroValues );
 
+			// TODO: fix this
 			if (doneSensorInit == false)
 			{
 				doneSensorInit = true;
@@ -245,10 +259,6 @@ static void IMUHandler( void )
 		}
 	}
 
-
-	// TODO: process receiver signals on a per frame basis
-
-	updateMotorOutputs();
 
 	IMUExeTime = (now=micros()) - lastIMUTime;
 	if (IMUExeTime > 1000)
@@ -307,6 +317,7 @@ static void main_task( void *pv )
 			if ( (ReadyFlags & (1<<IMUTimerFlag)) != 0 )
 			{
 				IMUHandler();
+				updateMotorOutputs();
 			}
 			if ( (ReadyFlags & (1<<receiverFlag)) != 0 )
 			{
@@ -443,7 +454,6 @@ int main(void)
 	cli_uart[1] = serialOpen( SERIAL_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart[1] != NULL )
 		pcli[1] = initCli( cli_uart[1] );
-	debug_port = cli_uart[1];	// TODO: runtime configurable
 
 	initialiseCodeGroups();
 	loadSavedConfiguration();

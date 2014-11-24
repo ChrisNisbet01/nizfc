@@ -27,21 +27,21 @@ typedef struct non_config_command_st
 	int 				(* handler)(non_config_run_command_data_st *p);
 } non_config_command_st;
 
-typedef struct run_command_data_st
+struct run_command_data_st
 {
 	void *cliCtx;
 	int argc;
 	char **argv;
 	command_st const * command;
 	bool handled;
-} run_command_data_st;
+};
 
-typedef struct non_config_run_command_data_st
+struct non_config_run_command_data_st
 {
 	void *cliCtx;
 	int argc;
 	char **argv;
-} non_config_run_command_data_st;
+};
 
 typedef struct help_command_data_st
 {

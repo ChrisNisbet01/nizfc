@@ -711,10 +711,10 @@ int handleStandardCommand( run_command_data_st const * command_context )
 
 	if ( result == poll_result_error )
 	{
-		cliPrintf( cliCtx, "\nFormat: %s ?                               - print all parameter names", argv[0] );
-		cliPrintf( cliCtx, "\n        %s <0 -> %d> ?                      - print all parameter values", argv[0], command->nb_configuration_instance-1 );
-		cliPrintf( cliCtx, "\n        %s <0 -> %d> <parameter> ?          - print a single parameter value", argv[0], command->nb_configuration_instance-1 );
-		cliPrintf( cliCtx, "\n        %s <0 -> %d> <parameter> <value|!>  - set a parameter value (!) = default)", argv[0], command->nb_configuration_instance-1 );
+		cliPrintf( cliCtx, "\nFormat: %s ?                               - print all parameter names", command->name );
+		cliPrintf( cliCtx, "\n        %s <0 -> %d> ?                      - print all parameter values", command->name, command->nb_configuration_instance-1 );
+		cliPrintf( cliCtx, "\n        %s <0 -> %d> <parameter> ?          - print a single parameter value", command->name, command->nb_configuration_instance-1 );
+		cliPrintf( cliCtx, "\n        %s <0 -> %d> <parameter> <value|!>  - set a parameter value (!) = default)", command->name, command->nb_configuration_instance-1 );
 	}
 
 	return result;

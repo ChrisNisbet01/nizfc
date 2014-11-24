@@ -24,12 +24,7 @@ extern serial_port_st *debug_port;
 /** Maximum string size allowed (in bytes). */
 #define MAX_STRING_SIZE         256
 
-
-/** Required for proper compilation. */
-//struct _reent r = {0, (FILE *) 0, (FILE *) 1, (FILE *) 0};
-//struct _reent *_impure_ptr = &r;
-
-void PrintChar(char c)
+static void PrintChar(char c)
 {
 	/* Send a char like:
 	   while(Transfer not completed);
@@ -47,7 +42,7 @@ void PrintChar(char c)
  * @param  pStr	Storage string.
  * @param  c    Character to write.
  */
-signed int PutChar(char *pStr, char c)
+static signed int PutChar(char *pStr, char c)
 {
     *pStr = c;
     return 1;
@@ -61,7 +56,7 @@ signed int PutChar(char *pStr, char c)
  * @param  pSource  Source string.
  * @return  The size of the written
  */
-signed int PutString(char *pStr, char fill, signed int width, const char *pSource)
+static signed int PutString(char *pStr, char fill, signed int width, const char *pSource)
 {
     signed int num = 0;
 
@@ -97,7 +92,7 @@ signed int PutString(char *pStr, char fill, signed int width, const char *pSourc
  * @param  width  Minimum integer width.
  * @param  value  Integer value.
  */
-signed int PutUnsignedInt(
+static signed int PutUnsignedInt(
     char *pStr,
     char fill,
     signed int width,
@@ -143,7 +138,7 @@ signed int PutUnsignedInt(
  * @param width  Minimum integer width.
  * @param value  Signed integer value.
  */
-signed int PutSignedInt(
+static signed int PutSignedInt(
     char *pStr,
     char fill,
     signed int width,
@@ -222,7 +217,7 @@ signed int PutSignedInt(
  *
  * @return  The number of char written
  */
-signed int PutHexa(
+static signed int PutHexa(
     char *pStr,
     char fill,
     signed int width,
@@ -278,7 +273,7 @@ static char *_i2a(unsigned i, char *a, unsigned base)
     return a + 1;
 }
 
-char *itoa(int i, char *a, int base)
+static char *itoa(int i, char *a, int base)
 {
     if ((base < 2) || (base > 36))
         base = 10;
@@ -289,6 +284,7 @@ char *itoa(int i, char *a, int base)
         *_i2a(i, a, base) = 0;
     return a;
 }
+
 static char *ftoa(float x, char *floatString)
 {
     int32_t value;
@@ -337,7 +333,7 @@ static char *ftoa(float x, char *floatString)
     return floatString;
 }
 
-signed int PutFloat( char *pStr, float value )
+static signed int PutFloat( char *pStr, float value )
 {
 	ftoa( value, pStr );
 	return strlen( pStr );
@@ -516,20 +512,6 @@ signed int vfprintf(FILE *pStream, const char *pFormat, va_list ap)
     return fputs(pStr, pStream);
 }
 
-
-/**
- * @brief  Outputs a formatted string on the DBGU stream. Format arguments are given
- *         in a va_list instance.
- *
- * @param pFormat  Format string.
- * @param ap  Argument list.
- */
-signed int vprintf(const char *pFormat, va_list ap)
-{
-    return vfprintf(stdout, pFormat, ap);
-}
-
-
 /**
  * @brief  Outputs a formatted string on the given stream, using a variable
  *         number of arguments.
@@ -550,6 +532,74 @@ signed int fprintf(FILE *pStream, const char *pFormat, ...)
     return result;
 }
 
+/**
+ * @brief  Implementation of fputc using the DBGU as the standard output. Required
+ *         for printf().
+ *
+ * @param c        Character to write.
+ * @param pStream  Output stream.
+ * @param The character written if successful, or -1 if the output stream is
+ *        not stdout or stderr.
+ */
+signed int fputc(signed int c, FILE *pStream)
+{
+    if ((pStream == stdout) || (pStream == stderr)) {
+
+    	PrintChar(c);
+
+        return c;
+    }
+    else {
+
+        return EOF;
+    }
+}
+
+
+/**
+ * @brief  Implementation of fputs using the DBGU as the standard output. Required
+ *         for printf().
+ *
+ * @param pStr     String to write.
+ * @param pStream  Output stream.
+ *
+ * @return  Number of characters written if successful, or -1 if the output
+ *          stream is not stdout or stderr.
+ */
+signed int fputs(const char *pStr, FILE *pStream)
+{
+    signed int num = 0;
+
+	if (debug_port != NULL && debug_port->methods->writeBulkBlockingWithTimeout != NULL)	// TODO: configurable
+	{
+		debug_port->methods->writeBulkBlockingWithTimeout( debug_port->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 50 );
+	}
+	else
+	{
+	    while (*pStr != 0)
+	    {
+	        if (fputc(*pStr, pStream) == -1)
+	        {
+	            return -1;
+	        }
+	        num++;
+	        pStr++;
+	    }
+	}
+
+    return num;
+}
+/**
+ * @brief  Outputs a formatted string on the DBGU stream. Format arguments are given
+ *         in a va_list instance.
+ *
+ * @param pFormat  Format string.
+ * @param ap  Argument list.
+ */
+signed int vprintf(const char *pFormat, va_list ap)
+{
+    return vfprintf(stdout, pFormat, ap);
+}
 
 /**
  * @brief  Outputs a formatted string on the DBGU stream, using a variable number of
@@ -602,63 +652,4 @@ signed int puts(const char *pStr)
 }
 
 
-/**
- * @brief  Implementation of fputc using the DBGU as the standard output. Required
- *         for printf().
- *
- * @param c        Character to write.
- * @param pStream  Output stream.
- * @param The character written if successful, or -1 if the output stream is
- *        not stdout or stderr.
- */
-signed int fputc(signed int c, FILE *pStream)
-{
-    if ((pStream == stdout) || (pStream == stderr)) {
 
-    	PrintChar(c);
-
-        return c;
-    }
-    else {
-
-        return EOF;
-    }
-}
-
-
-/**
- * @brief  Implementation of fputs using the DBGU as the standard output. Required
- *         for printf().
- *
- * @param pStr     String to write.
- * @param pStream  Output stream.
- *
- * @return  Number of characters written if successful, or -1 if the output
- *          stream is not stdout or stderr.
- */
-signed int fputs(const char *pStr, FILE *pStream)
-{
-    signed int num = 0;
-
-	if (debug_port != NULL && debug_port->methods->writeBulkBlockingWithTimeout != NULL)	// TODO: configurable
-	{
-		debug_port->methods->writeBulkBlockingWithTimeout( debug_port->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 50 );
-	}
-	else
-	{
-	    while (*pStr != 0)
-	    {
-
-	        if (fputc(*pStr, pStream) == -1) {
-
-	            return -1;
-	        }
-	        num++;
-	        pStr++;
-	    }
-	}
-
-    return num;
-}
-
-/* --------------------------------- End Of File ------------------------------ */

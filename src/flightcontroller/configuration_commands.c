@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <utils.h>
 #include <config_structure.h>
 #include <polling.h>
@@ -19,6 +18,7 @@ static int helpCommand( non_config_run_command_data_st *pcommand );
 static int rebootCommand( non_config_run_command_data_st *pcommand );
 static int armCommand( non_config_run_command_data_st *pcommand );
 static int disarmCommand( non_config_run_command_data_st *pcommand );
+static int debugCommand( non_config_run_command_data_st *pcommand );
 
 static const non_config_command_st config_commands[] =
 {
@@ -28,7 +28,8 @@ static const non_config_command_st config_commands[] =
 	{ .name = "help",    .handler = helpCommand	},
 	{ .name = "reboot",  .handler = rebootCommand	},
 	{ .name = "arm",     .handler = armCommand	},
-	{ .name = "disarm",  .handler = disarmCommand	}
+	{ .name = "disarm",  .handler = disarmCommand	},
+	{ .name = "debug",   .handler = debugCommand	}
 };
 
 typedef enum printConfig_t
@@ -215,6 +216,28 @@ static int disarmCommand( non_config_run_command_data_st *pcommand )
 	UNUSED(pcommand);
 
 	disarmCraft();
+
+	return poll_result_ok;
+}
+
+static int debugCommand( non_config_run_command_data_st *pcommand )
+{
+	bool show_usage = true;
+
+	if ( pcommand->argc >= 1 )
+	{
+		unsigned int port;
+
+		if ( strncasecmp( pcommand->argv[1], "off", strlen( pcommand->argv[1] ) ) == 0 )
+			show_usage = setDebugPort( -1 ) == false;	/* XXX use invalid port number */
+		else if ( strtoint( pcommand->argv[1], &port ) )
+			show_usage = setDebugPort( port ) == false;
+	}
+
+	if ( show_usage == true )
+	{
+		cliPrintf( pcommand->cliCtx, "Format: %s off|0|1", pcommand->argv[0] );
+	}
 
 	return poll_result_ok;
 }

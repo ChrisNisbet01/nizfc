@@ -32,7 +32,6 @@ typedef enum config_data_types_t
 	config_data_type_float = 7,
 	config_data_type_string = 8,
 	config_data_type_enum = 9,				/* enumerated type. Accepts integer value or string matching one of the enumerated types. */
-	// TODO:
 } config_data_types_t;
 
 typedef struct enum_mapping_st
