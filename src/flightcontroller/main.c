@@ -393,12 +393,19 @@ static void cli_task( void *pv )
 					}
 					if (output_configuration[0].debug & 8 )
 					{
-						cliPrintf( pcli[0], "\ndT: %d ar %g ap %g gr %g gp %g fr %g fp %g kr %g kp %g", &fIMUDelta,
-							&imu_data.roll, &imu_data.pitch,
-							&imu_data.gyroXangle, &imu_data.gyroYangle,
-							&RollAngFiltered, &PitchAngFiltered,
-							&imu_data.kalAngleX, &imu_data.kalAngleY
-							);
+						printf( "\r\n\ndT: %g", &fIMUDelta );
+						printf( "\r\naccel" );
+						printf( "\r\n        roll %g", &imu_data.roll );
+						printf( "\r\n        pit  %g", &imu_data.pitch );
+						printf( "\r\ngyro" );
+						printf( "\r\n        roll %g", &imu_data.gyroXangle );
+						printf( "\r\n        pit  %g", &imu_data.gyroYangle );
+						printf( "\r\nkalman" );
+						printf( "\r\n        roll %g", &imu_data.kalAngleX );
+						printf( "\r\n        pit  %g", &imu_data.kalAngleY );
+						printf( "\r\nfiltered" );
+						printf( "\r\n        roll %g", &RollAngFiltered );
+						printf( "\r\n        pit  %g", &PitchAngFiltered );
 					}
 			 	}
 			}
