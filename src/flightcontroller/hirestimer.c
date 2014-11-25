@@ -76,12 +76,12 @@ uint32_t __attribute__ ((noinline)) micros(void)
 
     do
     {
-        centiseconds = *CoGetOSTime2();
+        centiseconds = CoGetOSTime32();
         cycle_count = SysTick->VAL;
-        centiseconds2 = *CoGetOSTime2();
+        centiseconds2 = CoGetOSTime32();
         if ( waiting == true && centiseconds != centiseconds2 )
         {
-        	/* must mean that CoGetOSTime2 has finally rolled */
+        	/* must mean that CoGetOSTime32() has finally rolled */
         	break;
         }
     }

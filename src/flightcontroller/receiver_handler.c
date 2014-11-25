@@ -17,16 +17,28 @@
 #include <roll_pitch_configuration.h>
 #include <failsafe.h>
 
-typedef struct setpoint_st
-{
-	float throttle;
-	float roll_angle;
-	float pitch_angle;
-	float roll_rate;
-	float pitch_rate;
-	float yaw_rate;
+#define MAX_AUX_SWITCHES			4u
+#define FIRST_AUX_SWITCH_CHANNEL	4u
 
-} setpoint_st;
+typedef enum aux_switch_position_t
+{
+	aux_switch_low,
+	aux_switch_middle,
+	aux_switch_high,
+	aux_switch_invalid
+} aux_switch_position_t;
+
+typedef struct receiver_state_st
+{
+	float throttle_position;
+	float roll_angle_setpoint;
+	float pitch_angle_setpoint;
+	float roll_rate_setpoint;
+	float pitch_rate_setpoint;
+	float yaw_rate_setpoint;
+
+	aux_switch_position_t	aux_switch[MAX_AUX_SWITCHES];
+} receiver_state_st;
 
 /* TODO: configurable */
 #define STICK_MIN_VALID_VALUE	750
@@ -36,7 +48,20 @@ typedef struct setpoint_st
 #define STICK_HIGH_VALUE		1950
 #define STICK_MAX_VALID_VALUE	2250
 
-static setpoint_st setpoints;
+static receiver_state_st receiver_state;
+
+static void determineAuxSwitchPosition( unsigned int aux_switch, uint_fast16_t channel )
+{
+	if ( channel < STICK_MIN_VALID_VALUE || channel > STICK_MAX_VALID_VALUE )
+		receiver_state.aux_switch[aux_switch] = aux_switch_invalid;
+	else if ( channel < STICK_LOW_VALUE )
+		receiver_state.aux_switch[aux_switch] = aux_switch_low;
+	else if ( channel > STICK_MID_LOW_VALUE && channel < STICK_MID_HIGH_VALUE )
+		receiver_state.aux_switch[aux_switch] = aux_switch_middle;
+	else if ( channel > STICK_HIGH_VALUE )
+		receiver_state.aux_switch[aux_switch] = aux_switch_high;
+	/* else leave the switch in its previous state */
+}
 
 static void determineThrottleSetpoint( uint_fast16_t channel )
 {
@@ -45,7 +70,7 @@ static void determineThrottleSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.throttle = scale(temp, 1000, 2000, 1000, 2000 );
+	receiver_state.throttle_position = scale(temp, 1000, 2000, 1000, 2000 );
 }
 
 static void determineRollAngleSetpoint( uint_fast16_t channel )
@@ -55,7 +80,7 @@ static void determineRollAngleSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.roll_angle = scale(temp, 1000, 2000, -roll_configuration[0].maxStick, roll_configuration[0].maxStick );
+	receiver_state.roll_angle_setpoint = scale(temp, 1000, 2000, -roll_configuration[0].maxStick, roll_configuration[0].maxStick );
 }
 
 static void determinePitchAngleSetpoint( uint_fast16_t channel )
@@ -66,7 +91,7 @@ static void determinePitchAngleSetpoint( uint_fast16_t channel )
 	// TODO: expo?
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.pitch_angle = scale(temp, 1000, 2000, -pitch_configuration[0].maxStick, pitch_configuration[0].maxStick );
+	receiver_state.pitch_angle_setpoint = scale(temp, 1000, 2000, -pitch_configuration[0].maxStick, pitch_configuration[0].maxStick );
 }
 
 static void determineRollRateSetpoint( uint_fast16_t channel )
@@ -76,7 +101,7 @@ static void determineRollRateSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.roll_rate = scale(temp, 1000, 2000, -roll_configuration[1].maxStick, roll_configuration[1].maxStick );
+	receiver_state.roll_rate_setpoint = scale(temp, 1000, 2000, -roll_configuration[1].maxStick, roll_configuration[1].maxStick );
 }
 
 static void determinePitchRateSetpoint( uint_fast16_t channel )
@@ -87,7 +112,7 @@ static void determinePitchRateSetpoint( uint_fast16_t channel )
 	// TODO: expo?
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.pitch_rate = scale(temp, 1000, 2000, -pitch_configuration[1].maxStick, pitch_configuration[1].maxStick );
+	receiver_state.pitch_rate_setpoint = scale(temp, 1000, 2000, -pitch_configuration[1].maxStick, pitch_configuration[1].maxStick );
 }
 
 
@@ -98,7 +123,7 @@ static void determineYawRateSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	setpoints.yaw_rate = scale(temp, 1000, 2000, -yaw_configuration[0].maxStick, yaw_configuration[0].maxStick );
+	receiver_state.yaw_rate_setpoint = scale(temp, 1000, 2000, -yaw_configuration[0].maxStick, yaw_configuration[0].maxStick );
 }
 
 static void determineArmingState( void )
@@ -109,7 +134,7 @@ static void determineArmingState( void )
 	static bool timerRunning = false;
 	U32 now;
 
-	now = *CoGetOSTime2();
+	now = CoGetOSTime32();
 	if ( throttleChannel > STICK_MIN_VALID_VALUE && throttleChannel < STICK_LOW_VALUE )
 	{
 		if ( yawChannel > STICK_MIN_VALID_VALUE && yawChannel < STICK_LOW_VALUE )
@@ -144,8 +169,11 @@ static void determineArmingState( void )
 		timerRunning = false;
 }
 
-void processStickPositions( void )
+
+void processReceiverSignals( void )
 {
+	unsigned int aux_switch_channel, aux_switch_index;
+
 	/* from the various input values, determine things like arming, angle setpoints etc. */
 	// TODO: receiver channel mappings. For now, we have TAER
 	// TODO: read all channel values in one go.
@@ -154,39 +182,42 @@ void processStickPositions( void )
 	determinePitchAngleSetpoint(readReceiverChannel(2));
 	determineRollRateSetpoint(readReceiverChannel(1));
 	determinePitchRateSetpoint(readReceiverChannel(2));
+	for ( aux_switch_index = 0, aux_switch_channel = FIRST_AUX_SWITCH_CHANNEL; aux_switch_channel < FIRST_AUX_SWITCH_CHANNEL + MAX_AUX_SWITCHES; aux_switch_index++, aux_switch_channel++ )
+		determineAuxSwitchPosition(aux_switch_index, readReceiverChannel(aux_switch_channel));
+
 	determineYawRateSetpoint(readReceiverChannel(3));
+
 	determineArmingState();
-	// TODO: Arming, flight mode etc
 }
 
 float getThrottleSetpoint( void )
 {
-	return setpoints.throttle;
+	return receiver_state.throttle_position;
 }
 
 float getRollAngleSetpoint( void )
 {
-	return setpoints.roll_angle;
+	return receiver_state.roll_angle_setpoint;
 }
 
 float getPitchAngleSetpoint( void )
 {
-	return setpoints.pitch_angle;
+	return receiver_state.pitch_angle_setpoint;
 }
 
 float getRollRateSetpoint( void )
 {
-	return setpoints.roll_rate;
+	return receiver_state.roll_rate_setpoint;
 }
 
 float getPitchRateSetpoint( void )
 {
-	return setpoints.pitch_rate;
+	return receiver_state.pitch_rate_setpoint;
 }
 
 float getYawRateSetpoint( void )
 {
-	return setpoints.yaw_rate;
+	return receiver_state.yaw_rate_setpoint;
 }
 
 static bool craftIsArmed = false;

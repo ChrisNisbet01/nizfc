@@ -180,9 +180,9 @@ U64 CoGetOSTime(void)
     return OSTickCnt;                   /* Get system time(tick)              */
 }
 
-volatile U32 * __attribute__ ((noinline)) CoGetOSTime2(void)
+U32 __attribute__ ((noinline)) CoGetOSTime32(void)
 {
-    return &OSTickCnt2;                   /* Get system time(tick)              */
+    return OSTickCnt2;                   /* Get system time(tick)              */
 }
 
 /**

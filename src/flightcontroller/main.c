@@ -174,7 +174,7 @@ bool setDebugPort( int port )
 
 	if ( port < 0 )
 		debug_port = NULL;
-	else if ( port < ARRAY_SIZE(cli_uart) && cli_uart[port] != NULL )
+	else if ( (unsigned)port < ARRAY_SIZE(cli_uart) && cli_uart[port] != NULL )
 		debug_port = cli_uart[port];
 	else
 		debugPortAssigned = false;
@@ -331,7 +331,7 @@ static void main_task( void *pv )
 			    updateFailsafeWithNewChannels( newChannels );
 
 			    STM_EVAL_LEDToggle(RX_LED);
-				processStickPositions();
+				processReceiverSignals();
 			}
 		}
 	}
