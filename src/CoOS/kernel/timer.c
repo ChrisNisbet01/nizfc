@@ -264,7 +264,7 @@ StatusType CoStartTmr(OS_TCID tmrID)
 
 /**
  *******************************************************************************
- * @brief      Stop countering for a spcify timer
+ * @brief      Stop counting for a specified timer
  * @param[in]  tmrID    Specify a timer which stopped.
  * @param[out] None
  * @retval     E_INVALID_ID  The timer id passed was invalid, stop failure.
@@ -396,7 +396,7 @@ StatusType CoSetTmrCnt(OS_TCID tmrID,U32 tmrCnt,U32 tmrReload)
 
     if(TmrTbl[tmrID].tmrState == TMR_STATE_RUNNING)   /* Is timer running?    */
     {
-        RemoveTmrList(tmrID);           /* Yes,reorder timer in timer list    */
+        RemoveTmrList(tmrID);           /* Yes, reorder timer in timer list    */
         InsertTmrList(tmrID);
     }
     return E_OK;                        /* Return OK                          */
