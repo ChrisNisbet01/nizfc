@@ -391,13 +391,17 @@ StatusType CoSetTmrCnt(OS_TCID tmrID,U32 tmrCnt,U32 tmrReload)
         return E_INVALID_ID;
     }
 #endif
-    TmrTbl[tmrID].tmrCnt    = tmrCnt; /* Reset timer counter and reload value */
-    TmrTbl[tmrID].tmrReload = tmrReload;
-
     if(TmrTbl[tmrID].tmrState == TMR_STATE_RUNNING)   /* Is timer running?    */
     {
         RemoveTmrList(tmrID);           /* Yes, reorder timer in timer list    */
+	    TmrTbl[tmrID].tmrCnt    = tmrCnt; /* Reset timer counter and reload value */
+	    TmrTbl[tmrID].tmrReload = tmrReload;
         InsertTmrList(tmrID);
+    }
+    else
+    {
+	    TmrTbl[tmrID].tmrCnt    = tmrCnt; /* Reset timer counter and reload value */
+	    TmrTbl[tmrID].tmrReload = tmrReload;
     }
     return E_OK;                        /* Return OK                          */
 }

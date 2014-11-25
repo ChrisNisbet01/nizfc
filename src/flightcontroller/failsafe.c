@@ -31,10 +31,7 @@ static void stopFailsafeTimer( void )
 
 static void restartFailsafeTimer( void )
 {
-	stopFailsafeTimer();
-	startFailsafeTimer();
-	// XXX bug in COOS timers? The following doesn't work.
-	//CoSetTmrCnt( failsafe.timerID, (failsafe_configuration[0].maxQuietTimeMs * CFG_SYSTICK_FREQ)/1000, 0 );
+	CoSetTmrCnt( failsafe.timerID, (failsafe_configuration[0].maxQuietTimeMs * CFG_SYSTICK_FREQ)/1000, 0 );
 }
 
 
