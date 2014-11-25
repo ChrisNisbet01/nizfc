@@ -145,7 +145,10 @@ void printParameterValue( void const * pconfig_data,
 		}
 		case config_data_type_float:
 		{
-			cliPrintf(cliCtx, "%g", pconfig_data);
+			/* floats must be aligned, and the source data may not be (e.g. config stored in flash). */
+			float tf;
+			memcpy( &tf, pconfig_data, sizeof tf );
+			cliPrintf(cliCtx, "%g", &tf);
 			break;
 		}
 		case config_data_type_string:

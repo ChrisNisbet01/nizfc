@@ -101,7 +101,7 @@ done:
 
 static int printUnsavedConfig( non_config_run_command_data_st *pcommand )
 {
-	int result = poll_result_error;
+	int result;
 	show_config_data_st show_config_data;
 
 	memset( &show_config_data, 0, sizeof show_config_data );
@@ -115,7 +115,7 @@ static int printUnsavedConfig( non_config_run_command_data_st *pcommand )
 
 static int printCurrentConfig( non_config_run_command_data_st *pcommand, printConfig_t whatToPrint )
 {
-	int result = poll_result_error;
+	int result;
 	show_config_data_st show_config_data;
 
 	memset( &show_config_data, 0, sizeof show_config_data );
@@ -165,14 +165,8 @@ static int printSavedConfig( non_config_run_command_data_st *pcommand )
 				break;
 			}
 
-			if ( pollCodeGroups( poll_id_show_configuration, &show_config_data, true ) != poll_result_ok )
-			{
-				cliPrintf( pcommand->cliCtx, "\nUnprocessed configuration item" );
-				cliPrintf( pcommand->cliCtx, "\ng:%d i:%d p:%d",
-							show_config_data.configuration_id,
-							show_config_data.instance,
-							show_config_data.parameter_id );
-			}
+			/* poll the item arount to everybody */
+			(void)pollCodeGroups( poll_id_show_configuration, &show_config_data, true );
 
 			/* move to next item */
 			show_config_data.pcfg = (char *)show_config_data.pcfg + data_length;
