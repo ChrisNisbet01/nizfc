@@ -66,7 +66,7 @@ static const char flightControllerIdentifier[] = "NIZF"; // 4 UPPER CASE alpha n
 #define FLIGHT_CONTROLLER_VERSION_LENGTH    3
 #define FLIGHT_CONTROLLER_VERSION_MASK      0xFFF
 
-const char *boardIdentifier = TARGET_BOARD_IDENTIFIER;
+const char boardIdentifier[] = "SDF3";
 #define BOARD_IDENTIFIER_LENGTH             4 // 4 UPPER CASE alpha numeric characters that identify the board being used.
 #define BOARD_HARDWARE_REVISION_LENGTH      2
 
