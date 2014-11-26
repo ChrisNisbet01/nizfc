@@ -30,7 +30,7 @@ typedef struct craftType_st
     uint_fast8_t 			nbMotors;
 } craftType_st;
 
-#define THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS	1050
+#define THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS	1050	// TODO: configurable
 
 extern float RollAngFiltered, PitchAngFiltered, Heading;
 extern float filteredGyroValues[3];
@@ -43,10 +43,10 @@ static pid_st yawRatePID;
 
 static const motorMixRatios_st HQuadMixRatios[] =
 {
-    { .throttle = 1.0f, .roll = -1.0f, .pitch = 1.0f,  .yaw = 1.0f },   // right rear
-    { .throttle = 1.0f, .roll = -1.0f, .pitch = -1.0f, .yaw = -1.0f  }, // right front
-    { .throttle = 1.0f, .roll = 1.0f,  .pitch = 1.0f,  .yaw = -1.0f  }, // left rear
-    { .throttle = 1.0f, .roll = 1.0f,  .pitch = -1.0f, .yaw = 1.0f },   // left front
+    { .throttle = 1.0f, .roll = -1.0f, .pitch = 1.0f,  .yaw = 1.0f  }, // right rear
+    { .throttle = 1.0f, .roll = -1.0f, .pitch = -1.0f, .yaw = -1.0f }, // right front
+    { .throttle = 1.0f, .roll = 1.0f,  .pitch = 1.0f,  .yaw = -1.0f }, // left rear
+    { .throttle = 1.0f, .roll = 1.0f,  .pitch = -1.0f, .yaw = 1.0f  },  // left front
 };
 
 static const craftType_st crafts[] =
@@ -172,11 +172,9 @@ void updatePIDControlLoops( void )
 
 uint16_t getMotorValue( uint_fast8_t motorIndex )
 {
-	craftType_st const * craft;
 	uint16_t motorValue;
 
-	craft = &crafts[0];	// TODO configurable;
-	if ( motorIndex < craft->nbMotors)
+	if ( currentCraft != NULL && motorIndex < currentCraft->nbMotors)
 		motorValue = motorValues[motorIndex];
 	else
 		motorValue = 0;
@@ -216,61 +214,64 @@ void updateMotorOutputs( void )
 	uint_fast16_t maxMotorValue = 0;
 	craftType_st const * craft;
 
-	craft = &crafts[0];	// TODO configurable;
-	uint_fast16_t tempMotorValues[craft->nbMotors];
-
-	if ( isCraftArmed() && hasFailsafeTriggered() == false )
+	craft = currentCraft;
+	if ( craft != NULL )
 	{
-		motorMixRatios_st const * mixer;
+		uint_fast16_t tempMotorValues[craft->nbMotors];
 
-		mixer = craft->motorRatios;
+		if ( isCraftArmed() && hasFailsafeTriggered() == false )
+		{
+			motorMixRatios_st const * mixer;
+
+			mixer = craft->motorRatios;
+			for ( motorIndex=0; motorIndex < craft->nbMotors; motorIndex++ )
+			{
+				tempMotorValues[motorIndex] = lrintf(getThrottleSetpoint() * mixer[motorIndex].throttle);
+				/* only add in PID control values once throttle is above 0 */
+				if ( getThrottleSetpoint() > THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS )
+				{
+					// TODO: configurable
+					if (0)	/* angle mode */
+					{
+					tempMotorValues[motorIndex] += lrintf(
+									pitchAnglePID.outputValue * mixer[motorIndex].pitch
+									+ rollAnglePID.outputValue * mixer[motorIndex].roll);
+					}
+					else	/* rate mode */
+					{
+					tempMotorValues[motorIndex] += lrintf(
+									pitchRatePID.outputValue * mixer[motorIndex].pitch
+									+ rollRatePID.outputValue * mixer[motorIndex].roll);
+					}
+					tempMotorValues[motorIndex] += lrintf(yawRatePID.outputValue * mixer[motorIndex].yaw);
+
+				}
+				if ( maxMotorValue < tempMotorValues[motorIndex] )
+					maxMotorValue = tempMotorValues[motorIndex];
+			}
+		}
+
 		for ( motorIndex=0; motorIndex < craft->nbMotors; motorIndex++ )
 		{
-			tempMotorValues[motorIndex] = lrintf(getThrottleSetpoint() * mixer[motorIndex].throttle);
-			/* only add in PID control values once throttle is above 0 */
-			if ( getThrottleSetpoint() > THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS )
+			if ( hasFailsafeTriggered() == true )
 			{
-				// TODO: configurable
-				if (0)	/* angle mode */
-				{
-				tempMotorValues[motorIndex] += lrintf(
-								pitchAnglePID.outputValue * mixer[motorIndex].pitch
-								+ rollAnglePID.outputValue * mixer[motorIndex].roll);
-				}
-				else	/* rate mode */
-				{
-				tempMotorValues[motorIndex] += lrintf(
-								pitchRatePID.outputValue * mixer[motorIndex].pitch
-								+ rollRatePID.outputValue * mixer[motorIndex].roll);
-				}
-				tempMotorValues[motorIndex] += lrintf(yawRatePID.outputValue * mixer[motorIndex].yaw);
-
+				tempMotorValues[motorIndex] = getFailsafeMotorSpeed();
 			}
-			if ( maxMotorValue < tempMotorValues[motorIndex] )
-				maxMotorValue = tempMotorValues[motorIndex];
-		}
-	}
+			else if ( isCraftArmed() )
+			{
+				if ( maxMotorValue > 2000 )
+					tempMotorValues[motorIndex] -= (maxMotorValue - 2000);
+			}
+			else
+			{
+				tempMotorValues[motorIndex] = disarmedMotorValues[motorIndex];	// TODO: configurable value
+			}
+			/* store so that the output value can be displayed */
+			motorValues[motorIndex] = limit(tempMotorValues[motorIndex], 1000, 2000);	// TODO: configurable limits
 
-	for ( motorIndex=0; motorIndex < craft->nbMotors; motorIndex++ )
-	{
-		if ( hasFailsafeTriggered() == true )
-		{
-			tempMotorValues[motorIndex] = getFailsafeMotorSpeed();
+			/* update the output to the motor esc */
+			setMotorOutput( motorIndex, motorValues[motorIndex] );
 		}
-		else if ( isCraftArmed() )
-		{
-			if ( maxMotorValue > 2000 )
-				tempMotorValues[motorIndex] -= (maxMotorValue - 2000);
-		}
-		else
-		{
-			tempMotorValues[motorIndex] = disarmedMotorValues[motorIndex];	// TODO: configurable value
-		}
-		/* store so that the output value can be displayed */
-		motorValues[motorIndex] = limit(tempMotorValues[motorIndex], 1000, 2000);
-
-		/* update the output to the motor esc */
-		setMotorOutput( motorIndex, motorValues[motorIndex] );
 	}
 }
 

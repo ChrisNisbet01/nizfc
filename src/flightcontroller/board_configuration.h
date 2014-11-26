@@ -6,10 +6,9 @@
 typedef struct board_configuration_st
 {
 	uint8_t			craftType;
-
 	float  			boardOrientation[3];
-
 	uint32_t 		debug;			/* debug flags */
+	uint32_t		updateTime;		/* time between updates of the IMU, motor outputs etc. */
 }board_configuration_st;
 
 

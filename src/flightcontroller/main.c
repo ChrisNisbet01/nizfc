@@ -180,19 +180,19 @@ bool setDebugPort( int port )
 
 	return debugPortAssigned;
 }
-static void initIMU( void )
+static void initIMU( uint32_t updatePeriod )
 {
     init_attitude_estimation( &imu_data, roll_configuration[0].lpf_factor, roll_configuration[0].lpf_factor );
 
 	IMUTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	/* start a three millisecond timer */
-	initHiResTimer( 3000, IMUCallback );
+	initHiResTimer( updatePeriod, IMUCallback );
 
 	/*
 		we get an interrupt almost immediately after we start the timer.
 		Pretend we've processed the loop one cycle ago.
 	*/
-	lastIMUTime = micros()-3000;
+	lastIMUTime = micros() - updatePeriod;
 
 
 }
@@ -297,7 +297,7 @@ static void main_task( void *pv )
 	initMotorControl(board_configuration[0].craftType);
 	openReceiver( newReceiverDataCallback );
 
-	initIMU();
+	initIMU(board_configuration[0].updateTime);
 
 	while (1)
 	{
@@ -345,6 +345,63 @@ void newUartData( void *pv )
 	CoExitISR();
 }
 
+static void handleNewSerialData( void )
+{
+	unsigned int uart_index;
+	for (uart_index = 0; uart_index < ARRAY_SIZE(cli_uart) && cli_uart[uart_index] != NULL; uart_index++ )
+	{
+		while ( cli_uart[uart_index]->methods->rxReady( cli_uart[uart_index]->serialCtx ) )
+		{
+			uint8_t ch;
+
+			ch = cli_uart[uart_index]->methods->readChar( cli_uart[uart_index]->serialCtx );
+			cliHandleNewChar( pcli[uart_index], ch );
+		}
+	}
+}
+
+static void doDebugOutput( void )
+{
+	if (board_configuration[0].debug & 1 )
+	{
+		extern float getRollAngleOutput( void );
+		extern float getPitchAnglePIDOutput( void );
+		extern float getRollRatePIDOutput( void );
+		extern float getPitchRatePIDOutput( void );
+
+ 		//printf("\n\nthrottle: %d", (int)getThrottleSetpoint() );
+ 		//printf("\nroll: %d:%g PID: %d", (int)getRollAngleSetpoint(), &RollAngFiltered, (int)getRollAnglePIDOutput() );
+ 		//printf("\npitch: %d:%g PID: %d", (int)getPitchAngleSetpoint(), &PitchAngFiltered, (int)getPitchAnglePIDOutput() );
+ 		printf("\nroll rate: %d:%g PID: %d", (int)getRollRateSetpoint(), &filteredGyroValues[0], (int)getRollRatePIDOutput() );
+ 		printf("\npitch rate: %d:%g PID: %d", (int)getPitchRateSetpoint(), &filteredGyroValues[1], (int)getPitchRatePIDOutput() );
+ 		//printf("\nheading: %g", &Heading );
+	}
+	if (board_configuration[0].debug & 2 )
+	{
+		int motor;
+
+		printf("\r\n");
+		for (motor = 0; motor < 4; motor++ )
+			printf("  m-%d: %u", motor+1, (unsigned int)getMotorValue( motor ) );
+	}
+	if (board_configuration[0].debug & 8 )
+	{
+		printf( "\r\n\ndT: %g", &fIMUDelta );
+		printf( "\r\naccel" );
+		printf( "\r\n        roll %g", &imu_data.roll );
+		printf( "\r\n        pit  %g", &imu_data.pitch );
+		printf( "\r\ngyro" );
+		printf( "\r\n        roll %g", &imu_data.gyroXangle );
+		printf( "\r\n        pit  %g", &imu_data.gyroYangle );
+		printf( "\r\nkalman" );
+		printf( "\r\n        roll %g", &imu_data.kalAngleX );
+		printf( "\r\n        pit  %g", &imu_data.kalAngleY );
+		printf( "\r\nfiltered" );
+		printf( "\r\n        roll %g", &RollAngFiltered );
+		printf( "\r\n        pit  %g", &PitchAngFiltered );
+	}
+}
+
 static void cli_task( void *pv )
 {
 	OS_TCID printTimerID;
@@ -359,69 +416,15 @@ static void cli_task( void *pv )
 
 	while (1)
 	{
-		{
-			{
-				StatusType err;
-				U32 readyFlags;
+		StatusType err;
+		U32 readyFlags;
 
-				readyFlags = CoWaitForMultipleFlags( (1<<printTimerFlag)|(1<<cliUartFlag), OPT_WAIT_ANY, 0, &err );
-			 	if ( readyFlags & (1<<cliUartFlag) )
-			 	{
-					unsigned int uart_index;
-					for (uart_index = 0; uart_index < ARRAY_SIZE(cli_uart) && cli_uart[uart_index] != NULL; uart_index++ )
-					{
-						while ( cli_uart[uart_index]->methods->rxReady( cli_uart[uart_index]->serialCtx ) )
-						{
-							uint8_t ch;
+		readyFlags = CoWaitForMultipleFlags( (1<<printTimerFlag)|(1<<cliUartFlag), OPT_WAIT_ANY, 0, &err );
+	 	if ( readyFlags & (1<<cliUartFlag) )
+	 		handleNewSerialData();
 
-							ch = cli_uart[uart_index]->methods->readChar( cli_uart[uart_index]->serialCtx );
-							cliHandleNewChar( pcli[uart_index], ch );
-						}
-					}
-			 	}
-			 	if ( readyFlags & (1<<printTimerFlag) )
-			 	{
-					if (board_configuration[0].debug & 1 )
-					{
-						extern float getRollAngleOutput( void );
-						extern float getPitchAnglePIDOutput( void );
-						extern float getRollRatePIDOutput( void );
-						extern float getPitchRatePIDOutput( void );
-
-				 		//printf("\n\nthrottle: %d", (int)getThrottleSetpoint() );
-				 		//printf("\nroll: %d:%g PID: %d", (int)getRollAngleSetpoint(), &RollAngFiltered, (int)getRollAnglePIDOutput() );
-				 		//printf("\npitch: %d:%g PID: %d", (int)getPitchAngleSetpoint(), &PitchAngFiltered, (int)getPitchAnglePIDOutput() );
-				 		printf("\nroll rate: %d:%g PID: %d", (int)getRollRateSetpoint(), &filteredGyroValues[0], (int)getRollRatePIDOutput() );
-				 		printf("\npitch rate: %d:%g PID: %d", (int)getPitchRateSetpoint(), &filteredGyroValues[1], (int)getPitchRatePIDOutput() );
-				 		//printf("\nheading: %g", &Heading );
-					}
-					if (board_configuration[0].debug & 2 )
-					{
-						int motor;
-
-						printf("\r\n");
-						for (motor = 0; motor < 4; motor++ )
-							printf("  m-%d: %u", motor+1, (unsigned int)getMotorValue( motor ) );
-					}
-					if (board_configuration[0].debug & 8 )
-					{
-						printf( "\r\n\ndT: %g", &fIMUDelta );
-						printf( "\r\naccel" );
-						printf( "\r\n        roll %g", &imu_data.roll );
-						printf( "\r\n        pit  %g", &imu_data.pitch );
-						printf( "\r\ngyro" );
-						printf( "\r\n        roll %g", &imu_data.gyroXangle );
-						printf( "\r\n        pit  %g", &imu_data.gyroYangle );
-						printf( "\r\nkalman" );
-						printf( "\r\n        roll %g", &imu_data.kalAngleX );
-						printf( "\r\n        pit  %g", &imu_data.kalAngleY );
-						printf( "\r\nfiltered" );
-						printf( "\r\n        roll %g", &RollAngFiltered );
-						printf( "\r\n        pit  %g", &PitchAngFiltered );
-					}
-			 	}
-			}
-		}
+	 	if ( readyFlags & (1<<printTimerFlag) )
+	 		doDebugOutput();
 	}
 }
 
@@ -433,6 +436,7 @@ void _Default_Handler( void )
 
 int main(void)
 {
+	// TODO: LED task
 	STM_EVAL_LEDInit(LED3);
 	STM_EVAL_LEDInit(LED4);
 	STM_EVAL_LEDInit(LED5);

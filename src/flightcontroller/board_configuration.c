@@ -36,6 +36,7 @@ static const board_configuration_st default_board_configuration =
 	.boardOrientation[0] = 0.0f,
 	.boardOrientation[1] = 0.0f,
 	.boardOrientation[2] = 0.0f,
+	.updateTime          = 3000,	/* microseconds */
 	.debug               = 0
 };
 
@@ -45,7 +46,8 @@ typedef enum board_parameter_id_t
 	board_parameter_id_boardOrientationX = 1,
 	board_parameter_id_boardOrientationY = 2,
 	board_parameter_id_boardOrientationZ = 3,
-	board_parameter_id_debug = 4
+	board_parameter_id_debug = 4,
+	board_parameter_id_updateTime = 5
 } board_parameter_id_t;
 
 
@@ -55,6 +57,7 @@ static char const * const board_parameter_name_mappings[] =
 	[board_parameter_id_boardOrientationX] = "roll",
 	[board_parameter_id_boardOrientationY] = "pitch",
 	[board_parameter_id_boardOrientationZ] = "yaw",
+	[board_parameter_id_updateTime]        = "updatetime",
 	[board_parameter_id_debug]             = "debug"
 };
 
@@ -81,6 +84,11 @@ static const parameterConfig_st board_config_parameterConfigs[] =
 	.parameter_id = board_parameter_id_boardOrientationZ,
 	.data_type = config_data_type_float,
 	.offsetToData = offsetof(board_configuration_st, boardOrientation[2]),
+	},
+	{
+	.parameter_id = board_parameter_id_updateTime,
+	.data_type = config_data_type_uint32,
+	.offsetToData = offsetof(board_configuration_st, updateTime),
 	},
 	{
 	.parameter_id = board_parameter_id_debug,
