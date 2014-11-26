@@ -10,7 +10,6 @@
 #include <i2c_stm32f30x.h>
 #include <spi_stm32f30x.h>
 #include <receiver.h>
-#include <outputs.h>
 #include <board_configuration.h>
 #include <cli.h>
 #include <startup.h>
@@ -295,9 +294,8 @@ static void main_task( void *pv )
 		board_configuration[0].boardOrientation[1],
 		board_configuration[0].boardOrientation[2] );
 	initFailsafe( failsafeTriggerCallback );
-	initMotorControl();
+	initMotorControl(board_configuration[0].craftType);
 	openReceiver( newReceiverDataCallback );
-	openOutputs();
 
 	initIMU();
 

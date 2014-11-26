@@ -5,43 +5,25 @@
 
 #include <stm32f3_discovery.h>
 #include <coos.h>
-#include <pins.h>
+#include <pwm_inputs.h>
 
 #include <receiver.h>
 #include "pwm_rx_stm32f30x.h"
 
-static const pin_st pwm_pins[] =
+static const pwm_input_id_t pwm_pinIDs[] =
 {
-	{
-		.pin = GPIO_Pin_8,
-		.gpio = GPIOA,
-	},
-	{
-		.pin = GPIO_Pin_9,
-		.gpio = GPIOA,
-	},
-	{
-		.pin = GPIO_Pin_6,
-		.gpio = GPIOC,
-	},
-	{
-		.pin = GPIO_Pin_7,
-		.gpio = GPIOC,
-	},
-	{
-		.pin = GPIO_Pin_8,
-		.gpio = GPIOC,
-	},
-	{
-		.pin = GPIO_Pin_9,
-		.gpio = GPIOC
-	}
+	pwm_input_1,
+	pwm_input_2,
+	pwm_input_3,
+	pwm_input_4,
+	pwm_input_5,
+	pwm_input_6
 };
-#define NB_PWM_PINS	(sizeof(pwm_pins)/sizeof(pwm_pins[0]))
+#define NB_PWM_PINS	(sizeof(pwm_pinIDs)/sizeof(pwm_pinIDs[0]))
 
 typedef struct pwm_channel_ctx_st
 {
-	int dummy;
+	uint8_t dummy;
 } pwm_channel_ctx_st;
 
 static pwm_channel_ctx_st 		pwm_channel_ctxs[NB_PWM_PINS];
@@ -70,7 +52,7 @@ void initPWMRx( NewReceiverChannelDataCB newReceiverChannelDataCb )
 	NewReceiverChannelDataCallback = newReceiverChannelDataCb;
 	for( pwm_idx = 0; pwm_idx < NB_PWM_PINS; pwm_idx++ )
 	{
-		openPwmTimer( &pwm_pins[pwm_idx], pwm_mode, newPWMPulse, &pwm_channel_ctxs[pwm_idx] );
+		openPwmTimer( pwm_pinIDs[pwm_idx], pwm_mode, newPWMPulse, &pwm_channel_ctxs[pwm_idx] );
 	}
 
 }

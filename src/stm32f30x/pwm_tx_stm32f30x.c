@@ -10,7 +10,7 @@
 #include <stm32f3_discovery.h>
 #include <coos.h>
 
-#include "pwm_rx_stm32f30x.h"
+#include "pwm_outputs.h"
 
 typedef uint32_t capture_t;
 
@@ -19,26 +19,28 @@ typedef uint32_t capture_t;
 typedef struct pwm_timer_config_st
 {
 	/* GPIO settings */
-	uint_fast16_t	pin;
-	uint_fast8_t	pinSource;
-	uint_fast8_t	pinAF;
-	uint_fast8_t	pinOutputType;
-	uint_fast8_t	pinPuPd;
+	pwm_output_id_t  pinID;
+	uint_fast16_t	 pin;
+	uint_fast8_t	 pinSource;
+	uint_fast8_t	 pinAF;
+	uint_fast8_t	 pinOutputType;
+	uint_fast8_t	 pinPuPd;
 
-	GPIO_TypeDef	*gpio;
-	uint_fast32_t	RCC_AHBPeriph;
+	GPIO_TypeDef	 * gpio;
+	uint_fast32_t	 RCC_AHBPeriph;
 
 	/* Associated timer settings */
-	void 			(*RCC_APBPeriphClockCmd)(uint32_t RCC_APBPeriph, FunctionalState NewState);
-	uint_fast32_t	RCC_APBPeriph;
-    TIM_TypeDef 	*tim;
-    uint_fast8_t 	channel;
+	void 			 (* RCC_APBPeriphClockCmd)(uint32_t RCC_APBPeriph, FunctionalState NewState);
+	uint_fast32_t	 RCC_APBPeriph;
+    TIM_TypeDef 	 * tim;
+    uint_fast8_t 	 channel;
 
 } pwm_timer_config_st;
 
 static const pwm_timer_config_st pwm_tx_timer_configs[] =
 {
 	{
+		.pinID = pwm_output_1,
 		.pin = GPIO_Pin_12,
 		.pinSource = GPIO_PinSource12,
 		.pinAF = GPIO_AF_2,
@@ -54,6 +56,7 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 		.channel = TIM_Channel_1
 	},
 	{
+		.pinID = pwm_output_2,
 		.pin = GPIO_Pin_13,
 		.pinSource = GPIO_PinSource13,
 		.pinAF = GPIO_AF_2,
@@ -69,6 +72,7 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 		.channel = TIM_Channel_2
 	},
 	{
+		.pinID = pwm_output_3,
 		.pin = GPIO_Pin_14,
 		.pinSource = GPIO_PinSource14,
 		.pinAF = GPIO_AF_2,
@@ -84,6 +88,7 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 		.channel = TIM_Channel_3
 	},
 	{
+		.pinID = pwm_output_4,
 		.pin = GPIO_Pin_15,
 		.pinSource = GPIO_PinSource15,
 		.pinAF = GPIO_AF_2,
@@ -99,6 +104,7 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 		.channel = TIM_Channel_4
 	},
 	{
+		.pinID = pwm_output_5,
 		.pin = GPIO_Pin_1,
 		.pinSource = GPIO_PinSource1,
 		.pinAF = GPIO_AF_1,
@@ -114,6 +120,7 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 		.channel = TIM_Channel_1
 	},
 	{
+		.pinID = pwm_output_6,
 		.pin = GPIO_Pin_2,
 		.pinSource = GPIO_PinSource2,
 		.pinAF = GPIO_AF_1,
@@ -239,13 +246,13 @@ static void enablePWMTx( pwm_timer_config_st const * timer_config, uint_fast16_t
     TIM_Cmd(timer_config->tim, ENABLE);
 }
 
-static pwm_timer_config_st const *pwmTimerConfigLookup( pin_st const * pin )
+static pwm_timer_config_st const *pwmTimerConfigLookup( pwm_output_id_t pinID )
 {
 	uint_fast8_t index;
 
 	for (index = 0; index < NB_PWM_TX_PORTS; index++)
 	{
-		if (pin->pin == pwm_tx_timer_configs[index].pin && pin->gpio == pwm_tx_timer_configs[index].gpio)
+		if (pinID == pwm_tx_timer_configs[index].pinID)
 			return &pwm_tx_timer_configs[index];
 	}
 
@@ -259,12 +266,12 @@ void setPwmTxPulseWidth( void const * const pv, unsigned int pulseWidthMillsecs 
 	*pctx->capture_register = pulseWidthMillsecs;
 }
 
-void * openPwmTxTimer( pin_st const * const pin, unsigned int pulseRateHz, unsigned int initialValue )
+void * openPwmTxTimer( pwm_output_id_t pinID, unsigned int pulseRateHz, unsigned int initialValue )
 {
 	pwm_timer_st *pctx = NULL;
 	pwm_timer_config_st const * timer_config;
 
-	timer_config = pwmTimerConfigLookup(pin);
+	timer_config = pwmTimerConfigLookup(pinID);
 
 	if (timer_config == NULL)
 		goto done;

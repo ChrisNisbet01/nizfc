@@ -14,24 +14,25 @@
 #include <cmds.h>
 #include <configuration_commands.h>
 #include <cli.h>
+#include <craft_types.h>
 #include <board_configuration.h>
 
 
 static int board_command( run_command_data_st *pcommand );
 static char const * boardParameterNameLookup( unsigned int parameterID );
 
-static const enum_mapping_st board_type_mappings[] =
+static const enum_mapping_st craft_type_mappings[] =
 {
 	{
-		.name = "quadx",
-		.value = (uint8_t)board_type_quadx
+		.name = "quadh",
+		.value = (uint8_t)craft_type_quadh
 	}
 };
 
 board_configuration_st board_configuration[NB_BOARD_CONFIGURATIONS];
 static const board_configuration_st default_board_configuration =
 {
-	.boardType = (int8_t)board_type_quadx,
+	.craftType = (uint8_t)craft_type_quadh,
 	.boardOrientation[0] = 0.0f,
 	.boardOrientation[1] = 0.0f,
 	.boardOrientation[2] = 0.0f,
@@ -40,7 +41,7 @@ static const board_configuration_st default_board_configuration =
 
 typedef enum board_parameter_id_t
 {
-	board_parameter_id_boardType = 0,
+	board_parameter_id_craftType = 0,
 	board_parameter_id_boardOrientationX = 1,
 	board_parameter_id_boardOrientationY = 2,
 	board_parameter_id_boardOrientationZ = 3,
@@ -50,7 +51,7 @@ typedef enum board_parameter_id_t
 
 static char const * const board_parameter_name_mappings[] =
 {
-	[board_parameter_id_boardType]         = "type",
+	[board_parameter_id_craftType]         = "type",
 	[board_parameter_id_boardOrientationX] = "roll",
 	[board_parameter_id_boardOrientationY] = "pitch",
 	[board_parameter_id_boardOrientationZ] = "yaw",
@@ -60,11 +61,11 @@ static char const * const board_parameter_name_mappings[] =
 static const parameterConfig_st board_config_parameterConfigs[] =
 {
 	{
-	.parameter_id = board_parameter_id_boardType,
+	.parameter_id = board_parameter_id_craftType,
 	.data_type = config_data_type_enum,
-	.offsetToData = offsetof(board_configuration_st, boardType),
-	.type_specific.enum_data.mappings = board_type_mappings,
-	.type_specific.enum_data.num_mappings = ARRAY_SIZE(board_type_mappings)
+	.offsetToData = offsetof(board_configuration_st, craftType),
+	.type_specific.enum_data.mappings = craft_type_mappings,
+	.type_specific.enum_data.num_mappings = ARRAY_SIZE(craft_type_mappings)
 	},
 	{
 	.parameter_id = board_parameter_id_boardOrientationX,

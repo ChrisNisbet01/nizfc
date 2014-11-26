@@ -3,14 +3,9 @@
 
 #define NB_BOARD_CONFIGURATIONS	1u
 
-typedef enum board_type_type
-{
-	board_type_quadx = 0
-} board_type_type;
-
 typedef struct board_configuration_st
 {
-	uint8_t			boardType;
+	uint8_t			craftType;
 
 	float  			boardOrientation[3];
 

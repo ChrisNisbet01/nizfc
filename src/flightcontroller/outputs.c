@@ -10,37 +10,19 @@
 #include <stm32f3_discovery.h>
 #include <coos.h>
 #include <utils.h>
-#include <pins.h>
 #include <pwm_tx_stm32f30x.h>
+#include <pwm_outputs.h>
 #include <outputs.h>
 #include <output_configuration.h>
 
-static const pin_st pwm_tx_pins[] =
+static const pwm_output_id_t pwm_tx_pinIDs[] =
 {
-	{
-		.pin = GPIO_Pin_12,
-		.gpio = GPIOD
-	},
-	{
-		.pin = GPIO_Pin_13,
-		.gpio = GPIOD
-	},
-	{
-		.pin = GPIO_Pin_14,
-		.gpio = GPIOD
-	},
-	{
-		.pin = GPIO_Pin_15,
-		.gpio = GPIOD
-	},
-	{
-		.pin = GPIO_Pin_1,
-		.gpio = GPIOA
-	},
-	{
-		.pin = GPIO_Pin_2,
-		.gpio = GPIOA
-	}
+	pwm_output_1,
+	pwm_output_2,
+	pwm_output_3,
+	pwm_output_4,
+	pwm_output_5,
+	pwm_output_6
 };
 
 typedef struct pwmOutput_st
@@ -49,26 +31,24 @@ typedef struct pwmOutput_st
 	void *pwmTimerCtx;
 } pwmOutput_st;
 
-static pwmOutput_st pwmOutputs[ARRAY_SIZE(pwm_tx_pins)];
+static pwmOutput_st pwmOutputs[ARRAY_SIZE(pwm_tx_pinIDs)];
 
 void setMotorOutput( unsigned int motor, unsigned int pulseWidthMillsecs )
 {
-	if (motor < ARRAY_SIZE(pwm_tx_pins) && pwmOutputs[motor].used == true)
+	if (motor < ARRAY_SIZE(pwm_tx_pinIDs) && pwmOutputs[motor].used == true)
 	{
 		setPwmTxPulseWidth( pwmOutputs[motor].pwmTimerCtx, pulseWidthMillsecs );
 	}
 }
 
-void openOutputs( void )
+void openOutputs( unsigned int nbMotors )
 {
-	unsigned int motor;
+	unsigned int motorIndex;
 
-	// TODO: lookup number of outputs from configuration/profile
-
-	for (motor = 0; motor < ARRAY_SIZE(pwm_tx_pins); motor++ )
+	for (motorIndex = 0; motorIndex < nbMotors && motorIndex < ARRAY_SIZE(pwm_tx_pinIDs); motorIndex++ )
 	{
-		pwmOutputs[motor].used = true;
-		pwmOutputs[motor].pwmTimerCtx = openPwmTxTimer( &pwm_tx_pins[motor], output_configuration[0].pwmrate, 0 );
+		pwmOutputs[motorIndex].used = true;
+		pwmOutputs[motorIndex].pwmTimerCtx = openPwmTxTimer( pwm_tx_pinIDs[motorIndex], output_configuration[0].pwmrate, 0 );
 	}
 
 }

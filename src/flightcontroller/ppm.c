@@ -5,8 +5,7 @@
 
 #include <stm32f3_discovery.h>
 #include <coos.h>
-#include <pins.h>
-
+#include <pwm_inputs.h>
 #include <receiver.h>
 #include "pwm_rx_stm32f30x.h"
 
@@ -36,12 +35,9 @@ typedef struct ppm_ctx_st
 	This table defines the pins we use as PPM inputs.
 */
 // TODO: support a configurable pin/s specified by the caller to initPPMRx.
-static const pin_st ppm_pins[] =
+static const pwm_input_id_t ppm_pins[] =
 {
-	{
-		.pin = GPIO_Pin_8,
-		.gpio = GPIOA
-	}
+	pwm_input_1	/* Mapped to A8 on the STM32F3Discovery board */
 };
 #define NB_PPM_PINS	(sizeof(ppm_pins)/sizeof(ppm_pins[0]))
 
@@ -154,7 +150,7 @@ void initPPMRx( NewReceiverChannelDataCB newReceiverChannelDataCb )
 
 	initPPMContext( pctx );
 
-	openPwmTimer( &ppm_pins[0], ppm_mode, newPPMPulse, pctx );
+	openPwmTimer( ppm_pins[0], ppm_mode, newPPMPulse, pctx );
 
 }
 

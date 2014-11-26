@@ -4,22 +4,17 @@
 
 #include <vector_rotation.h>
 
-void initVectorRotation( vectorRotation_st *matrix, float rollDegrees, float pitchDegrees, float yawDegrees )
+void initVectorRotationRadians( vectorRotation_st * matrix, float rollRadians, float pitchRadians, float yawRadians )
 {
-    float roll, pitch, yaw;
     float cosx, sinx, cosy, siny, cosz, sinz;
     float coszcosx, coszcosy, sinzcosx, coszsinx, sinzsinx;
 
-    roll = rollDegrees * M_PI / 180.0f;
-    pitch = pitchDegrees * M_PI / 180.0f;
-    yaw = yawDegrees * M_PI / 180.0f;
-
-    cosx = cosf(roll);
-    sinx = sinf(roll);
-    cosy = cosf(pitch);
-    siny = sinf(pitch);
-    cosz = cosf(yaw);
-    sinz = sinf(yaw);
+    cosx = cosf(rollRadians);
+    sinx = sinf(rollRadians);
+    cosy = cosf(pitchRadians);
+    siny = sinf(pitchRadians);
+    cosz = cosf(yawRadians);
+    sinz = sinf(yawRadians);
 
     coszcosx = cosz * cosx;
     coszcosy = cosz * cosy;
@@ -27,7 +22,7 @@ void initVectorRotation( vectorRotation_st *matrix, float rollDegrees, float pit
     coszsinx = sinx * cosz;
     sinzsinx = sinx * sinz;
 
-    // define rotation matrix
+    // define the rotation matrix
     matrix->rotationMatrix[0][0] = coszcosy;
     matrix->rotationMatrix[0][1] = -cosy * sinz;
     matrix->rotationMatrix[0][2] = siny;
@@ -41,7 +36,18 @@ void initVectorRotation( vectorRotation_st *matrix, float rollDegrees, float pit
     matrix->rotationMatrix[2][2] = cosy * cosx;
 }
 
-void applyVectorRotation( vectorRotation_st *matrix, float *vectors )
+void initVectorRotationDegrees( vectorRotation_st * matrix, float rollDegrees, float pitchDegrees, float yawDegrees )
+{
+    float roll, pitch, yaw;
+
+    roll = rollDegrees * M_PI / 180.0f;
+    pitch = pitchDegrees * M_PI / 180.0f;
+    yaw = yawDegrees * M_PI / 180.0f;
+
+	initVectorRotationRadians( matrix, roll, pitch, yaw );
+}
+
+void applyVectorRotation( vectorRotation_st * matrix, float *vectors )
 {
     float x = vectors[0];
     float y = vectors[1];

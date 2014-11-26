@@ -13,6 +13,7 @@
 #include <outputs.h>
 #include <stm32f3_discovery.h>
 #include <failsafe.h>
+#include <craft_types.h>
 
 typedef struct motorMixRatios_st
 {
@@ -24,7 +25,7 @@ typedef struct motorMixRatios_st
 
 typedef struct craftType_st
 {
-	const char              * name;
+	uint8_t                 craftType;
     const motorMixRatios_st * motorRatios;
     uint_fast8_t 			nbMotors;
 } craftType_st;
@@ -42,16 +43,16 @@ static pid_st yawRatePID;
 
 static const motorMixRatios_st HQuadMixRatios[] =
 {
-    { .throttle = 1.0f, .roll = -1.0f, .pitch = 1.0f,  .yaw = 1.0f }, // right rear
+    { .throttle = 1.0f, .roll = -1.0f, .pitch = 1.0f,  .yaw = 1.0f },   // right rear
     { .throttle = 1.0f, .roll = -1.0f, .pitch = -1.0f, .yaw = -1.0f  }, // right front
     { .throttle = 1.0f, .roll = 1.0f,  .pitch = 1.0f,  .yaw = -1.0f  }, // left rear
-    { .throttle = 1.0f, .roll = 1.0f,  .pitch = -1.0f, .yaw = 1.0f }, // left front
+    { .throttle = 1.0f, .roll = 1.0f,  .pitch = -1.0f, .yaw = 1.0f },   // left front
 };
 
 static const craftType_st crafts[] =
 {
 	{
-	.name = "hquad",
+	.craftType = (uint8_t)craft_type_quadh,
 	.motorRatios = HQuadMixRatios,
 	.nbMotors = ARRAY_SIZE(HQuadMixRatios)
 	}
@@ -59,13 +60,29 @@ static const craftType_st crafts[] =
 
 static uint_fast16_t motorValues[6];	// TODO: defined limit
 static uint_fast16_t disarmedMotorValues[6];	// TODO: defined limit
+static craftType_st const * currentCraft;
 
+static void assignCraftType( craft_type_t craftType )
+{
+	unsigned int craftIndex;
 
-void initMotorControl( void )
+	/* forget the old craft assignment */
+	currentCraft = NULL;
+
+	for (craftIndex = 0; craftIndex < ARRAY_SIZE(crafts); craftIndex++ )
+	{
+		if ( crafts[craftIndex].craftType == craftType )
+		{
+			currentCraft = &crafts[craftIndex];
+			break;
+		}
+	}
+}
+
+void initMotorControl( craft_type_t craftType )
 {
 	unsigned int index;
 
-	// TODO: separate config for roll and pitch
 	// TODO: runtime update of PID settings.
 	initPID( &rollAnglePID,
 				roll_configuration[0].pidRange,
@@ -109,6 +126,12 @@ void initMotorControl( void )
 
 	for (index = 0; index < ARRAY_SIZE(disarmedMotorValues); index++ )
 		disarmedMotorValues[index] = 1000;
+
+	assignCraftType( craftType );
+	if ( currentCraft != NULL )
+	{
+		openOutputs(currentCraft->nbMotors);
+	}
 }
 
 void updatePIDControlLoops( void )

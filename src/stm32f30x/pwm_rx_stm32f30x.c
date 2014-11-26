@@ -47,19 +47,20 @@ typedef enum pin_state_t
 typedef struct pwm_timer_config_st
 {
 	/* GPIO settings */
+	pwm_input_id_t  pinID;
 	uint_fast16_t	pin;
 	uint_fast8_t	pinSource;
 	uint_fast8_t	pinAF;
 	uint_fast8_t	pinOutputType;
 	uint_fast8_t	pinPuPd;
 
-	GPIO_TypeDef	*gpio;
+	GPIO_TypeDef	* gpio;
 	uint_fast32_t	RCC_AHBPeriph;
 
 	/* Associated timer settings */
-	void 			(*RCC_APBPeriphClockCmd)(uint32_t RCC_APBPeriph, FunctionalState NewState);
+	void 			(* RCC_APBPeriphClockCmd)(uint32_t RCC_APBPeriph, FunctionalState NewState);
 	uint_fast32_t	RCC_APBPeriph;
-    TIM_TypeDef 	*tim;
+    TIM_TypeDef 	* tim;
     uint_fast8_t 	channel;
     uint_fast8_t	irq;
     uint_fast8_t	secondary_irq;	/* some timers use two interrupts */
@@ -85,6 +86,7 @@ static const channel_config_st channel_configs[] = {
 static const pwm_timer_config_st pwm_timer_configs[] =
 {
 	{
+		.pinID = pwm_input_1,
 		.pin = GPIO_Pin_8,
 		.pinSource = GPIO_PinSource8,
 		.pinAF = GPIO_AF_6,
@@ -104,6 +106,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH1_IDX
 	},
 	{
+		.pinID = pwm_input_2,
 		.pin = GPIO_Pin_9,
 		.pinSource = GPIO_PinSource9,
 		.pinAF = GPIO_AF_6,
@@ -123,6 +126,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH2_IDX
 	},
 	{
+		.pinID = pwm_input_3,
 		.pin = GPIO_Pin_6,
 		.pinSource = GPIO_PinSource6,
 		.pinAF = GPIO_AF_4,
@@ -142,6 +146,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH1_IDX
 	},
 	{
+		.pinID = pwm_input_4,
 		.pin = GPIO_Pin_8,
 		.pinSource = GPIO_PinSource8,
 		.pinAF = GPIO_AF_4,
@@ -161,6 +166,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH3_IDX
 	},
 	{
+		.pinID = pwm_input_5,
 		.pin = GPIO_Pin_6,
 		.pinSource = GPIO_PinSource6,
 		.pinAF = GPIO_AF_2,
@@ -180,6 +186,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH1_IDX
 	},
 	{
+		.pinID = pwm_input_6,
 		.pin = GPIO_Pin_7,
 		.pinSource = GPIO_PinSource7,
 		.pinAF = GPIO_AF_2,
@@ -199,6 +206,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH2_IDX
 	},
 	{
+		.pinID = pwm_input_7,
 		.pin = GPIO_Pin_8,
 		.pinSource = GPIO_PinSource8,
 		.pinAF = GPIO_AF_2,
@@ -218,6 +226,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH3_IDX
 	},
 	{
+		.pinID = pwm_input_8,
 		.pin = GPIO_Pin_9,
 		.pinSource = GPIO_PinSource9,
 		.pinAF = GPIO_AF_2,
@@ -464,23 +473,23 @@ static void enablePWMTiming( pwm_timer_config_st const * timer_config, uint_fast
     TIM_Cmd(timer_config->tim, ENABLE);
 }
 
-static pwm_timer_config_st const *pwmTimerConfigLookup( pin_st const * pin )
+static pwm_timer_config_st const *pwmTimerConfigLookup( pwm_input_id_t pinID )
 {
 	uint_fast8_t index;
 
 	for (index = 0; index < NB_PWM_PORTS; index++)
 	{
-		if (pin->pin == pwm_timer_configs[index].pin && pin->gpio == pwm_timer_configs[index].gpio)
+		if (pinID == pwm_timer_configs[index].pinID)
 			return &pwm_timer_configs[index];
 	}
 
 	return NULL;
 }
-void openPwmTimer( pin_st const * const pin, pwm_mode_t mode, void (*newPulseCb)( void *pv, uint32_t const pulse_width_us ), void *pv )
+void openPwmTimer( pwm_input_id_t pinID, pwm_mode_t mode, void (*newPulseCb)( void *pv, uint32_t const pulse_width_us ), void *pv )
 {
 	pwm_timer_config_st const * timer_config;
 
-	timer_config = pwmTimerConfigLookup(pin);
+	timer_config = pwmTimerConfigLookup(pinID);
 
 	if (timer_config == NULL)
 		goto done;

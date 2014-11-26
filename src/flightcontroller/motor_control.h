@@ -1,7 +1,9 @@
 #ifndef __MOTOR_CONTROL_H__
 #define __MOTOR_CONTROL_H__
 
-void initMotorControl( void );
+#include <craft_types.h>
+
+void initMotorControl( craft_type_t craftType );
 void updatePIDControlLoops( void );
 void updateMotorOutputs( void );
 uint16_t getMotorValue( uint_fast8_t motorIndex );

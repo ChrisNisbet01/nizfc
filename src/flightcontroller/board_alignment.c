@@ -15,7 +15,7 @@ void initBoardAlignment(float rollDegrees, float pitchDegrees, float yawDegrees)
 
     boardAlignmentRequired = true;
 
-	initVectorRotation( &boardRotationMatrix, rollDegrees, pitchDegrees, yawDegrees );
+	initVectorRotationDegrees( &boardRotationMatrix, rollDegrees, pitchDegrees, yawDegrees );
 }
 
 void alignVectorsToCraft(float *vectors)
