@@ -14,6 +14,7 @@
 #include <stm32f3_discovery.h>
 #include <failsafe.h>
 #include <craft_types.h>
+#include <aux_configuration.h>
 
 typedef struct motorMixRatios_st
 {
@@ -46,7 +47,7 @@ static const motorMixRatios_st HQuadMixRatios[] =
     { .throttle = 1.0f, .roll = -1.0f, .pitch = 1.0f,  .yaw = 1.0f  }, // right rear
     { .throttle = 1.0f, .roll = -1.0f, .pitch = -1.0f, .yaw = -1.0f }, // right front
     { .throttle = 1.0f, .roll = 1.0f,  .pitch = 1.0f,  .yaw = -1.0f }, // left rear
-    { .throttle = 1.0f, .roll = 1.0f,  .pitch = -1.0f, .yaw = 1.0f  },  // left front
+    { .throttle = 1.0f, .roll = 1.0f,  .pitch = -1.0f, .yaw = 1.0f  }, // left front
 };
 
 static const craftType_st crafts[] =
@@ -230,15 +231,18 @@ void updateMotorOutputs( void )
 				/* only add in PID control values once throttle is above 0 */
 				if ( getThrottleSetpoint() > THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS )
 				{
-					// TODO: configurable
-					if (0)	/* angle mode */
+					/* If not in rate mode, default to angle mode. Angle mode overrides rate mode */
+					// TODO: reset PID state on change of mode
+					if (isFunctionEnabled(aux_function_angle_mode) == true || isFunctionEnabled(aux_function_rate_mode) == false)
 					{
+					STM_EVAL_LEDOn(ANGLE_MODE_LED);
 					tempMotorValues[motorIndex] += lrintf(
 									pitchAnglePID.outputValue * mixer[motorIndex].pitch
 									+ rollAnglePID.outputValue * mixer[motorIndex].roll);
 					}
 					else	/* rate mode */
 					{
+					STM_EVAL_LEDOff(ANGLE_MODE_LED);
 					tempMotorValues[motorIndex] += lrintf(
 									pitchRatePID.outputValue * mixer[motorIndex].pitch
 									+ rollRatePID.outputValue * mixer[motorIndex].roll);

@@ -122,7 +122,9 @@ typedef enum
 #define ARMED_LED		LED10
 #define FAILSAFE_LED	LED8
 #define EXCEPTION_LED   LED9
+#define ANGLE_MODE_LED  LED4
 #define RX_LED			LED3
+
 /**
   * @}
   */

@@ -13,7 +13,8 @@ typedef enum configuration_id_t
 	configuration_id_pitch = 6,
 	configuration_id_yaw = 7,
 	configuration_id_failsafe = 8,
-	configuration_id_board = 9
+	configuration_id_board = 9,
+	configuration_id_aux = 10
 } configuration_id_t;
 
 /*
@@ -45,6 +46,8 @@ typedef struct enumDataType_st
 		enum_mapping_st         const * mappings;			/* pointer to table of enums vs names */
 		uint_fast8_t			num_mappings;
 } enumDataType_st;
+
+typedef void (* customParameterSetValueFn)( unsigned int parameter_id, void * value );
 
 typedef struct parameterConfig_st
 {

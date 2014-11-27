@@ -24,6 +24,7 @@
 #include <kalman.h>
 #include <board_alignment.h>
 #include <failsafe.h>
+#include <aux_configuration.h>
 
 
 #define MAIN_TASK_STACK_SIZE 0x200
@@ -330,6 +331,7 @@ static void main_task( void *pv )
 
 			    STM_EVAL_LEDToggle(RX_LED);
 				processReceiverSignals();
+				updateFunctionEnables();
 			}
 		}
 	}
@@ -399,6 +401,14 @@ static void doDebugOutput( void )
 		printf( "\r\nfiltered" );
 		printf( "\r\n        roll %g", &RollAngFiltered );
 		printf( "\r\n        pit  %g", &PitchAngFiltered );
+	}
+	if (board_configuration[0].debug & 16 )
+	{
+		int channel;
+
+		printf("\r\n");
+		for (channel = 4; channel < 8; channel++ )
+			printf("  aux-%d: %u", channel+1, (unsigned int)readReceiverChannel(channel));
 	}
 }
 
