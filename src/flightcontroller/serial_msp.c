@@ -5,7 +5,7 @@
 #include <string.h>
 #include <math.h>
 #include <stm32f3_discovery.h>
-
+#include <receiver.h>
 #include <uart.h>
 #include "serial_msp.h"
 
@@ -511,6 +511,21 @@ static bool processOutCommand(uint8_t cmdMSP)
         headSerialReply(16);
         for (i = 0; i < 8; i++)
 	        serialize16(getMotorValue(i));
+        break;
+    case MSP_RC:
+        headSerialReply(2 * 8);
+        for (i = 0; i < 8; i++)
+            serialize16(readReceiverChannel(i));
+        break;
+    case MSP_RC_TUNING:
+        headSerialReply(7);
+        serialize8(0);
+        serialize8(0);
+        serialize8(0);
+        serialize8(0);
+        serialize8(0);
+        serialize8(0);
+        serialize8(0);
         break;
     case MSP_SERVO:
         headSerialReply(16);
