@@ -13,7 +13,7 @@ void resetPID( pid_st *pid )
 	pid->nbUpdates = 0;
 }
 
-void initPID( pid_st *pid, float maximumRange, float kP, float kI, float kD, float intergralLimit, float dTermLimit )
+void initPID( pid_st *pid, float *maximumRange, float *kP, float *kI, float *kD, float *intergralLimit, float *dTermLimit )
 {
 	resetPID( pid );
 	pid->maximumRange = maximumRange;
@@ -32,16 +32,16 @@ void updatePID( pid_st *pid, float pv, float setpoint, float dt )
 	float iTerm;
 	float dTerm;
 
-	pTerm = error * pid->kP;
+	pTerm = error * *pid->kP;
 	/* limit P term to maximum range? */
 
 	/* I term */
-	if ( pid->kI != 0.0f )
+	if ( *pid->kI != 0.0f )
 	{
-		pid->integralOffset += error * dt * pid->kI;
+		pid->integralOffset += error * dt * *pid->kI;
 		/* ensure that the iterm stays within limits (if specified) */
-		if ( pid->integralLimit != 0.0f )
-			pid->integralOffset = limitFloat( pid->integralOffset, -pid->integralLimit, pid->integralLimit );
+		if ( *pid->integralLimit != 0.0f )
+			pid->integralOffset = limitFloat( pid->integralOffset, -(*pid->integralLimit), *pid->integralLimit );
 
 		iTerm = pid->integralOffset;
 	}
@@ -50,7 +50,7 @@ void updatePID( pid_st *pid, float pv, float setpoint, float dt )
 
 	/* D term. Based upon changes in pv, not changes in error. */
 	// TODO: based upon mode selection
-	if ( pid->kD != 0.0f )
+	if ( *pid->kD != 0.0f )
 	{
 		if ( pid->nbUpdates > 0 )
 		{
@@ -59,9 +59,9 @@ void updatePID( pid_st *pid, float pv, float setpoint, float dt )
 			delta = pv - pid->last_pv;
 			delta /= dt;	/* account for changes in update frequency */
 			// TODO: filter
-			dTerm = delta * pid->kD;
-			if ( pid->dTermLimit != 0.0f )
-				dTerm = limitFloat( dTerm, -pid->dTermLimit, pid->dTermLimit );
+			dTerm = delta * *pid->kD;
+			if ( *pid->dTermLimit != 0.0f )
+				dTerm = limitFloat( dTerm, -(*pid->dTermLimit), *pid->dTermLimit );
 		}
 		else
 		{
@@ -74,6 +74,6 @@ void updatePID( pid_st *pid, float pv, float setpoint, float dt )
 		dTerm = 0.0f;
 
 	pid->outputValue = pTerm + iTerm - dTerm;
-	if ( pid->maximumRange != 0.0f )
-		pid->outputValue = limitFloat( pid->outputValue, -1.0f * pid->maximumRange, pid->maximumRange );
+	if ( *pid->maximumRange != 0.0f )
+		pid->outputValue = limitFloat( pid->outputValue, -(*pid->maximumRange), *pid->maximumRange );
 }

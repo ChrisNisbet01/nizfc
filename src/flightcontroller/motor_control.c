@@ -88,44 +88,44 @@ void initMotorControl( craft_type_t craftType )
 
 	// TODO: runtime update of PID settings.
 	initPID( &rollAnglePID,
-				angle_mode_configuration[0].roll_pidRange,
-				angle_mode_configuration[0].roll_kP,
-				angle_mode_configuration[0].roll_kI,
-				angle_mode_configuration[0].roll_kD,
-				angle_mode_configuration[0].roll_integralLimit,
-				angle_mode_configuration[0].roll_dLimit );
+				&angle_mode_configuration[0].roll_pidRange,
+				&angle_mode_configuration[0].roll_kP,
+				&angle_mode_configuration[0].roll_kI,
+				&angle_mode_configuration[0].roll_kD,
+				&angle_mode_configuration[0].roll_integralLimit,
+				&angle_mode_configuration[0].roll_dLimit );
 
 	initPID( &pitchAnglePID,
-				angle_mode_configuration[0].pitch_pidRange,
-				angle_mode_configuration[0].pitch_kP,
-				angle_mode_configuration[0].pitch_kI,
-				angle_mode_configuration[0].pitch_kD,
-				angle_mode_configuration[0].pitch_integralLimit,
-				angle_mode_configuration[0].pitch_dLimit );
+				&angle_mode_configuration[0].pitch_pidRange,
+				&angle_mode_configuration[0].pitch_kP,
+				&angle_mode_configuration[0].pitch_kI,
+				&angle_mode_configuration[0].pitch_kD,
+				&angle_mode_configuration[0].pitch_integralLimit,
+				&angle_mode_configuration[0].pitch_dLimit );
 
 	initPID( &rollRatePID,
-				rate_mode_configuration[0].roll_pidRange,
-				rate_mode_configuration[0].roll_kP,
-				rate_mode_configuration[0].roll_kI,
-				rate_mode_configuration[0].roll_kD,
-				rate_mode_configuration[0].roll_integralLimit,
-				rate_mode_configuration[0].roll_dLimit );
+				&rate_mode_configuration[0].roll_pidRange,
+				&rate_mode_configuration[0].roll_kP,
+				&rate_mode_configuration[0].roll_kI,
+				&rate_mode_configuration[0].roll_kD,
+				&rate_mode_configuration[0].roll_integralLimit,
+				&rate_mode_configuration[0].roll_dLimit );
 
 	initPID( &pitchRatePID,
-				rate_mode_configuration[0].pitch_pidRange,
-				rate_mode_configuration[0].pitch_kP,
-				rate_mode_configuration[0].pitch_kI,
-				rate_mode_configuration[0].pitch_kD,
-				rate_mode_configuration[0].pitch_integralLimit,
-				rate_mode_configuration[0].pitch_dLimit );
+				&rate_mode_configuration[0].pitch_pidRange,
+				&rate_mode_configuration[0].pitch_kP,
+				&rate_mode_configuration[0].pitch_kI,
+				&rate_mode_configuration[0].pitch_kD,
+				&rate_mode_configuration[0].pitch_integralLimit,
+				&rate_mode_configuration[0].pitch_dLimit );
 
 	initPID( &yawRatePID,
-				yaw_configuration[0].pidRange,
-				yaw_configuration[0].kP,
-				yaw_configuration[0].kI,
-				yaw_configuration[0].kD,
-				yaw_configuration[0].integralLimit,
-				yaw_configuration[0].dLimit );
+				&yaw_configuration[0].pidRange,
+				&yaw_configuration[0].kP,
+				&yaw_configuration[0].kI,
+				&yaw_configuration[0].kD,
+				&yaw_configuration[0].integralLimit,
+				&yaw_configuration[0].dLimit );
 
 	for (index = 0; index < ARRAY_SIZE(disarmedMotorValues); index++ )
 		disarmedMotorValues[index] = 1000;
