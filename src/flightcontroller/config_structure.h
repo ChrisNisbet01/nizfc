@@ -14,7 +14,10 @@ typedef enum configuration_id_t
 	configuration_id_yaw = 7,
 	configuration_id_failsafe = 8,
 	configuration_id_board = 9,
-	configuration_id_aux = 10
+	configuration_id_aux = 10,
+	configuration_id_acc = 11,
+	configuration_id_gyro = 12,
+	configuration_id_mag = 13
 } configuration_id_t;
 
 /*

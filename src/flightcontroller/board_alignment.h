@@ -16,7 +16,7 @@ typedef enum orientation_t
 
 void initBoardAlignment(float rollDegrees, float pitchDegrees, float yawDegrees);
 void alignVectorsToCraft(float *vectors);
-void alignVectorsToBoard(float *vectors, orientation_t sensorOrientation);
+void alignVectorsToFlightController(float *vectors, orientation_t sensorOrientation);
 
 #endif
 

@@ -26,7 +26,7 @@ void alignVectorsToCraft(float *vectors)
 	}
 }
 
-void alignVectorsToBoard(float *vectors, orientation_t sensorOrientation)
+void alignVectorsToFlightController(float *vectors, orientation_t sensorOrientation)
 {
 	float temp[3];
 

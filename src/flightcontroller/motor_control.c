@@ -33,7 +33,7 @@ typedef struct craftType_st
 
 #define THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS	1050	// TODO: configurable
 
-extern float RollAngFiltered, PitchAngFiltered, Heading;
+extern float RollAngle, PitchAngle, Heading;
 extern float filteredGyroValues[3];
 
 static pid_st rollAnglePID;
@@ -153,8 +153,8 @@ void updatePIDControlLoops( void )
 	{
 		if ( delta_time > 0 )
 		{
-			updatePID( &pitchAnglePID, PitchAngFiltered, getPitchAngleSetpoint(), dT );
-			updatePID( &rollAnglePID, RollAngFiltered, getRollAngleSetpoint(), dT );
+			updatePID( &pitchAnglePID, PitchAngle, getPitchAngleSetpoint(), dT );
+			updatePID( &rollAnglePID, RollAngle, getRollAngleSetpoint(), dT );
 			updatePID( &pitchRatePID, -filteredGyroValues[0], getPitchRateSetpoint(), dT );
 			updatePID( &rollRatePID, filteredGyroValues[1], getRollRateSetpoint(), dT );
 			updatePID( &yawRatePID, filteredGyroValues[2], getYawRateSetpoint(), dT );

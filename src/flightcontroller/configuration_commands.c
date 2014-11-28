@@ -11,6 +11,7 @@
 #include <configuration_commands.h>
 #include <stm32f30x_misc.h>
 #include <motor_control.h>
+#include <main.h>
 
 static int saveCommand( non_config_run_command_data_st *pcommand );
 static int showCommand( non_config_run_command_data_st *pcommand );

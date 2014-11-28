@@ -25,7 +25,8 @@
 #include <board_alignment.h>
 #include <failsafe.h>
 #include <aux_configuration.h>
-
+#include <filter.h>
+#include <sensor_filters.h>
 
 #define MAIN_TASK_STACK_SIZE 0x200
 #define CLI_TASK_STACK_SIZE 0x200
@@ -44,7 +45,7 @@ static void *lsm303dlhcDevice;
 static void *l3gd20Device;
 static sensorCallback_st sensorCallbacks;
 
-float RollAngFiltered, PitchAngFiltered, Heading;
+float RollAngle, PitchAngle, Heading;
 
 int uartPutChar( void * port, int ch )
 {
@@ -65,23 +66,23 @@ static float calculateHeading(float *magValues, float roll, float pitch)
 	float heading;
 	static float filteredHeading;
 
-    cos_roll = cosf((roll*M_PI)/180.0f);
-    sin_roll = sinf((roll*M_PI)/180.0f);
-    cos_pitch = cosf((pitch*M_PI)/180.0f);
-    sin_pitch = sinf((pitch*M_PI)/180.0f);
+    cos_roll = cosf((roll * M_PI)/180.0f);
+    sin_roll = sinf((roll * M_PI)/180.0f);
+    cos_pitch = cosf((pitch * M_PI)/180.0f);
+    sin_pitch = sinf((pitch * M_PI)/180.0f);
 
     // Tilt compensated magnetic field X component:
     headX = magValues[1] * sin_roll * sin_pitch + magValues[0] * cos_pitch + magValues[2] * cos_roll * sin_pitch;
     // Tilt compensated magnetic field Y component:
     headY = magValues[1] * cos_roll - magValues[2] * sin_roll;
+
     // magnetic heading
     heading = atan2f(-headY,-headX) * 180.0f/M_PI;
 
 	// TODO: apply declination
 	/* is heading instability due to loss of resolution when converting mag values to floats? */
 	/* temp debug */
-	// TODO: lpf of r heading value.
-	filteredHeading = filteredHeading * 0.95 + heading * 0.05;
+	filteredHeading = filterValue( filteredHeading, heading, 20 );	// TODO: configurable
 
 	heading = filteredHeading;
 	if ( heading < 0.0f)
@@ -136,38 +137,6 @@ float filteredAccelerometerValues[3];
 float filteredGyroValues[3];
 float filteredMagnetometerValues[3];
 
-kalman_state accelerometerKalman[3];
-kalman_state gyroKalman[3];
-kalman_state magnetometerKalman[3];
-
-static void initSensorFilters( void )
-{
-	int index;
-
-	/* init kalman filters */
-	for (index=0; index < 3; index++)
-	{
-		kalman_init( &accelerometerKalman[index], 0.05f, 30.0f, 1.0f, accelerometerValues[index] );
-		kalman_init( &gyroKalman[index], 0.125f, 10.0f, 1.0f, gyroValues[index] );
-		kalman_init( &magnetometerKalman[index], 0.125f, 10.0f, 1.0f, magnetometerValues[index] );
-	}
-}
-
-static void updateSensorFilters( void )
-{
-	int index;
-
-	/* init kalman filters */
-	for (index=0; index < 3; index++)
-	{
-		float factor = 0.99f;
-		filteredAccelerometerValues[index] = filteredAccelerometerValues[index] * factor + accelerometerValues[index] * (1-factor);;
-		//filteredAccelerometerValues[index] = kalman_update( &accelerometerKalman[index], accelerometerValues[index] );
-		filteredGyroValues[index] = kalman_update( &gyroKalman[index], gyroValues[index] );
-		filteredMagnetometerValues[index] = kalman_update( &magnetometerKalman[index], magnetometerValues[index] );
-	}
-}
-
 bool setDebugPort( int port )
 {
 	bool debugPortAssigned = true;
@@ -181,10 +150,9 @@ bool setDebugPort( int port )
 
 	return debugPortAssigned;
 }
+
 static void initIMU( uint32_t updatePeriod )
 {
-    init_attitude_estimation( &imu_data, roll_configuration[0].lpf_factor, roll_configuration[0].lpf_factor );
-
 	IMUTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	/* start a three millisecond timer */
 	initHiResTimer( updatePeriod, IMUCallback );
@@ -194,8 +162,6 @@ static void initIMU( uint32_t updatePeriod )
 		Pretend we've processed the loop one cycle ago.
 	*/
 	lastIMUTime = micros() - updatePeriod;
-
-
 }
 
 
@@ -210,10 +176,10 @@ static void estimateAttitude( float dT )
     				filteredAccelerometerValues[1],
     				filteredAccelerometerValues[2] );
 
-    RollAngFiltered = imu_data.compAngleX2;
-    PitchAngFiltered = imu_data.compAngleY2;
+    RollAngle = imu_data.compAngleX;
+    PitchAngle = imu_data.compAngleY;
 	/* we have pitch and roll, determine heading */
-	Heading = calculateHeading( filteredMagnetometerValues, -RollAngFiltered, -PitchAngFiltered );
+	Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
 }
 
 static void IMUHandler( void )
@@ -228,7 +194,8 @@ static void IMUHandler( void )
 	/* calculate time between iterations */
 	fIMUDelta = (float)IMUDelta/1000000.0f;
 
-	if ( lsm303dlhcDevice )
+	/* XXX needs fixing. */
+	if ( lsm303dlhcDevice != NULL && l3gd20Device != NULL )
 	{
 		if ( sensorCallbacks.readAccelerometer != NULL
 			&& sensorCallbacks.readMagnetometer != NULL
@@ -237,22 +204,18 @@ static void IMUHandler( void )
 			&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true
 			&& sensorCallbacks.readGyro( l3gd20Device, gyroValues ) == true)
 		{
-			alignVectorsToBoard( accelerometerValues, noRotation );	// TODO: configurable
+			alignVectorsToFlightController( accelerometerValues, noRotation );	// TODO: configurable
 			alignVectorsToCraft( accelerometerValues );
+			filterAccValues( accelerometerValues, filteredAccelerometerValues );
 
-			alignVectorsToBoard( magnetometerValues, noRotation );	// TODO: configurable
-			alignVectorsToCraft( magnetometerValues );
-
-			alignVectorsToBoard( gyroValues, noRotation );			// TODO: configurable
+			alignVectorsToFlightController( gyroValues, noRotation );			// TODO: configurable
 			alignVectorsToCraft( gyroValues );
+			filterGyroValues( gyroValues, filteredGyroValues );
 
-			// TODO: fix this
-			if (doneSensorInit == false)
-			{
-				doneSensorInit = true;
-				initSensorFilters();
-			}
-			updateSensorFilters();
+			alignVectorsToFlightController( magnetometerValues, noRotation );	// TODO: configurable
+			alignVectorsToCraft( magnetometerValues );
+			filterMagValues( magnetometerValues, filteredMagnetometerValues );
+
 			estimateAttitude( fIMUDelta );
 
 			updatePIDControlLoops();
@@ -372,8 +335,8 @@ static void doDebugOutput( void )
 		extern float getPitchRatePIDOutput( void );
 
  		//printf("\n\nthrottle: %d", (int)getThrottleSetpoint() );
- 		//printf("\nroll: %d:%g PID: %d", (int)getRollAngleSetpoint(), &RollAngFiltered, (int)getRollAnglePIDOutput() );
- 		//printf("\npitch: %d:%g PID: %d", (int)getPitchAngleSetpoint(), &PitchAngFiltered, (int)getPitchAnglePIDOutput() );
+ 		//printf("\nroll: %d:%g PID: %d", (int)getRollAngleSetpoint(), &RollAngle, (int)getRollAnglePIDOutput() );
+ 		//printf("\npitch: %d:%g PID: %d", (int)getPitchAngleSetpoint(), &PitchAngle, (int)getPitchAnglePIDOutput() );
  		printf("\nroll rate: %d:%g PID: %d", (int)getRollRateSetpoint(), &filteredGyroValues[0], (int)getRollRatePIDOutput() );
  		printf("\npitch rate: %d:%g PID: %d", (int)getPitchRateSetpoint(), &filteredGyroValues[1], (int)getPitchRatePIDOutput() );
  		//printf("\nheading: %g", &Heading );
@@ -395,12 +358,9 @@ static void doDebugOutput( void )
 		printf( "\r\ngyro" );
 		printf( "\r\n        roll %g", &imu_data.gyroXangle );
 		printf( "\r\n        pit  %g", &imu_data.gyroYangle );
-		printf( "\r\nkalman" );
-		printf( "\r\n        roll %g", &imu_data.kalAngleX );
-		printf( "\r\n        pit  %g", &imu_data.kalAngleY );
 		printf( "\r\nfiltered" );
-		printf( "\r\n        roll %g", &RollAngFiltered );
-		printf( "\r\n        pit  %g", &PitchAngFiltered );
+		printf( "\r\n        roll %g", &RollAngle );
+		printf( "\r\n        pit  %g", &PitchAngle );
 	}
 	if (board_configuration[0].debug & 16 )
 	{

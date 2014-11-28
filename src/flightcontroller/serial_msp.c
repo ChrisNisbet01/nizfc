@@ -254,7 +254,7 @@ static mspPort_t mspPorts[MAX_MSP_PORT_COUNT];
 static mspPort_t *currentPort;
 #define mspSerialPort currentPort->serialPort
 
-extern float RollAngFiltered, PitchAngFiltered, Heading;
+extern float RollAngle, PitchAngle, Heading;
 
 void serialWrite( serial_port_st *port, uint8_t ch )
 {
@@ -534,8 +534,8 @@ static bool processOutCommand(uint8_t cmdMSP)
         break;
     case MSP_ATTITUDE:
         headSerialReply(6);
-        serialize16(lrintf(RollAngFiltered*10.0f));
-        serialize16(lrintf(PitchAngFiltered*10.0f));
+        serialize16(lrintf(RollAngle*10.0f));
+        serialize16(lrintf(PitchAngle*10.0f));
         serialize16(lrintf(Heading));
         break;
     case MSP_ANALOG:
