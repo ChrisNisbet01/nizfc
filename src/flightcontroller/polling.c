@@ -9,26 +9,26 @@
 extern int outputPollHandler( poll_id_t poll_id, void *pv );
 extern int receiverPollHandler( poll_id_t poll_id, void *pv );
 extern int configPollHandler( poll_id_t poll_id, void *pv );
-extern int rollPitchPollHandler( poll_id_t poll_id, void *pv );
 extern int failsafePollHandler( poll_id_t poll_id, void *pv );
 extern int boardPollHandler( poll_id_t poll_id, void *pv );
 extern int auxPollHandler( poll_id_t poll_id, void *pv );
 extern int sensorPollHandler( poll_id_t poll_id, void *pv );
 extern int anglePollHandler( poll_id_t poll_id, void *pv );
 extern int ratePollHandler( poll_id_t poll_id, void *pv );
+extern int yawPollHandler( poll_id_t poll_id, void *pv );
 
 static const code_group_mappings_st code_groups[] =
 {
 	{ .pollHandler = outputPollHandler },
 	{ .pollHandler = receiverPollHandler },
 	{ .pollHandler = configPollHandler },
-	{ .pollHandler = rollPitchPollHandler },
 	{ .pollHandler = failsafePollHandler },
 	{ .pollHandler = boardPollHandler },
 	{ .pollHandler = auxPollHandler },
 	{ .pollHandler = sensorPollHandler },
 	{ .pollHandler = anglePollHandler },
-	{ .pollHandler = ratePollHandler }
+	{ .pollHandler = ratePollHandler },
+	{ .pollHandler = yawPollHandler },
 };
 
 poll_result_t pollCodeGroups( poll_id_t poll_id, void *pv, bool poll_all_groups )

@@ -16,7 +16,9 @@
 #include <sensors.h>
 #include <lsm303dlhc.h>
 #include <l3gd20.h>
-#include <roll_pitch_configuration.h>
+#include <angle_mode_configuration.h>
+#include <rate_mode_configuration.h>
+#include <yaw_configuration.h>
 #include <receiver_handler.h>
 #include <motor_control.h>
 #include <hirestimer.h>

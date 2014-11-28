@@ -7,7 +7,9 @@
 #include <coos.h>
 #include <utils.h>
 #include <pid.h>
-#include <roll_pitch_configuration.h>
+#include <angle_mode_configuration.h>
+#include <rate_mode_configuration.h>
+#include <yaw_configuration.h>
 #include <receiver.h>
 #include <receiver_handler.h>
 #include <outputs.h>
@@ -86,36 +88,36 @@ void initMotorControl( craft_type_t craftType )
 
 	// TODO: runtime update of PID settings.
 	initPID( &rollAnglePID,
-				roll_configuration[0].pidRange,
-				roll_configuration[0].kP,
-				roll_configuration[0].kI,
-				roll_configuration[0].kD,
-				roll_configuration[0].integralLimit,
-				roll_configuration[0].dLimit );
+				angle_mode_configuration[0].roll_pidRange,
+				angle_mode_configuration[0].roll_kP,
+				angle_mode_configuration[0].roll_kI,
+				angle_mode_configuration[0].roll_kD,
+				angle_mode_configuration[0].roll_integralLimit,
+				angle_mode_configuration[0].roll_dLimit );
 
 	initPID( &pitchAnglePID,
-				pitch_configuration[0].pidRange,
-				pitch_configuration[0].kP,
-				pitch_configuration[0].kI,
-				pitch_configuration[0].kD,
-				pitch_configuration[0].integralLimit,
-				pitch_configuration[0].dLimit );
+				angle_mode_configuration[0].pitch_pidRange,
+				angle_mode_configuration[0].pitch_kP,
+				angle_mode_configuration[0].pitch_kI,
+				angle_mode_configuration[0].pitch_kD,
+				angle_mode_configuration[0].pitch_integralLimit,
+				angle_mode_configuration[0].pitch_dLimit );
 
 	initPID( &rollRatePID,
-				roll_configuration[1].pidRange,
-				roll_configuration[1].kP,
-				roll_configuration[1].kI,
-				roll_configuration[1].kD,
-				roll_configuration[1].integralLimit,
-				roll_configuration[1].dLimit );
+				rate_mode_configuration[0].roll_pidRange,
+				rate_mode_configuration[0].roll_kP,
+				rate_mode_configuration[0].roll_kI,
+				rate_mode_configuration[0].roll_kD,
+				rate_mode_configuration[0].roll_integralLimit,
+				rate_mode_configuration[0].roll_dLimit );
 
 	initPID( &pitchRatePID,
-				pitch_configuration[1].pidRange,
-				pitch_configuration[1].kP,
-				pitch_configuration[1].kI,
-				pitch_configuration[1].kD,
-				pitch_configuration[1].integralLimit,
-				pitch_configuration[1].dLimit );
+				rate_mode_configuration[0].pitch_pidRange,
+				rate_mode_configuration[0].pitch_kP,
+				rate_mode_configuration[0].pitch_kI,
+				rate_mode_configuration[0].pitch_kD,
+				rate_mode_configuration[0].pitch_integralLimit,
+				rate_mode_configuration[0].pitch_dLimit );
 
 	initPID( &yawRatePID,
 				yaw_configuration[0].pidRange,

@@ -14,7 +14,9 @@
 #include <receiver.h>
 #include <receiver_configuration.h>
 #include <receiver_handler.h>
-#include <roll_pitch_configuration.h>
+#include <angle_mode_configuration.h>
+#include <rate_mode_configuration.h>
+#include <yaw_configuration.h>
 #include <failsafe.h>
 
 #define MAX_AUX_SWITCHES			4u
@@ -80,7 +82,7 @@ static void determineRollAngleSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.roll_angle_setpoint = scale(temp, 1000, 2000, -roll_configuration[0].maxStick, roll_configuration[0].maxStick );
+	receiver_state.roll_angle_setpoint = scale(temp, 1000, 2000, -angle_mode_configuration[0].roll_maxAngle, angle_mode_configuration[0].roll_maxAngle );
 }
 
 static void determinePitchAngleSetpoint( uint_fast16_t channel )
@@ -91,7 +93,7 @@ static void determinePitchAngleSetpoint( uint_fast16_t channel )
 	// TODO: expo?
 	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.pitch_angle_setpoint = scale(temp, 1000, 2000, -pitch_configuration[0].maxStick, pitch_configuration[0].maxStick );
+	receiver_state.pitch_angle_setpoint = scale(temp, 1000, 2000, -angle_mode_configuration[0].pitch_maxAngle, angle_mode_configuration[0].pitch_maxAngle );
 }
 
 static void determineRollRateSetpoint( uint_fast16_t channel )
@@ -101,7 +103,7 @@ static void determineRollRateSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.roll_rate_setpoint = scale(temp, 1000, 2000, -roll_configuration[1].maxStick, roll_configuration[1].maxStick );
+	receiver_state.roll_rate_setpoint = scale(temp, 1000, 2000, -rate_mode_configuration[0].roll_maxRate, rate_mode_configuration[0].roll_maxRate );
 }
 
 static void determinePitchRateSetpoint( uint_fast16_t channel )
@@ -112,7 +114,7 @@ static void determinePitchRateSetpoint( uint_fast16_t channel )
 	// TODO: expo?
 	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.pitch_rate_setpoint = scale(temp, 1000, 2000, -pitch_configuration[1].maxStick, pitch_configuration[1].maxStick );
+	receiver_state.pitch_rate_setpoint = scale(temp, 1000, 2000, -rate_mode_configuration[0].pitch_maxRate, rate_mode_configuration[0].pitch_maxRate );
 }
 
 
@@ -123,7 +125,7 @@ static void determineYawRateSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.yaw_rate_setpoint = scale(temp, 1000, 2000, -yaw_configuration[0].maxStick, yaw_configuration[0].maxStick );
+	receiver_state.yaw_rate_setpoint = scale(temp, 1000, 2000, -yaw_configuration[0].maxRate, yaw_configuration[0].maxRate );
 }
 
 static void determineArmingState( void )

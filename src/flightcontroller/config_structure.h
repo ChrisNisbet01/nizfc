@@ -9,17 +9,15 @@ typedef enum configuration_id_t
 	configuration_id_save = 2,
 	configuration_id_show = 3,
 	configuration_id_output = 4,
-	configuration_id_roll = 5,
-	configuration_id_pitch = 6,
-	configuration_id_yaw = 7,
-	configuration_id_failsafe = 8,
-	configuration_id_board = 9,
-	configuration_id_aux = 10,
-	configuration_id_acc = 11,
-	configuration_id_gyro = 12,
-	configuration_id_mag = 13,
-	configuration_id_angle = 14,
-	configuration_id_rate = 15
+	configuration_id_failsafe = 5,
+	configuration_id_board = 6,
+	configuration_id_aux = 7,
+	configuration_id_acc = 8,
+	configuration_id_gyro = 9,
+	configuration_id_mag = 10,
+	configuration_id_angle = 11,
+	configuration_id_rate = 12,
+	configuration_id_yaw = 13
 } configuration_id_t;
 
 /*
