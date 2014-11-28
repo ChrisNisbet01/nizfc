@@ -7,11 +7,11 @@ typedef struct IMU_DATA_ST
 	float roll;		    // angle from accelerometer only */
 	float pitch;
 
-	float gyroXangle; 	// Angle calculated using the gyro only
-	float gyroYangle;
+	float gyroRollAngle; 	// Angle calculated using the gyro only
+	float gyroPitchAngle;
 
-	float compAngleX; 	// Calculated angle using a complementary filter
-	float compAngleY;
+	float compRollAngle; 	// Calculated angle using a complementary filter
+	float compPitchAngle;
 
 } IMU_DATA_ST;
 

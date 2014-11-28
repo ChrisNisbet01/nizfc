@@ -16,6 +16,7 @@ extern int sensorPollHandler( poll_id_t poll_id, void *pv );
 extern int anglePollHandler( poll_id_t poll_id, void *pv );
 extern int ratePollHandler( poll_id_t poll_id, void *pv );
 extern int yawPollHandler( poll_id_t poll_id, void *pv );
+extern int attitudePollHandler( poll_id_t poll_id, void *pv );
 
 static const code_group_mappings_st code_groups[] =
 {
@@ -29,6 +30,7 @@ static const code_group_mappings_st code_groups[] =
 	{ .pollHandler = anglePollHandler },
 	{ .pollHandler = ratePollHandler },
 	{ .pollHandler = yawPollHandler },
+	{ .pollHandler = attitudePollHandler }
 };
 
 poll_result_t pollCodeGroups( poll_id_t poll_id, void *pv, bool poll_all_groups )

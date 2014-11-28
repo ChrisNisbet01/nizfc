@@ -128,7 +128,7 @@ void initMotorControl( craft_type_t craftType )
 				&yaw_configuration[0].dLimit );
 
 	for (index = 0; index < ARRAY_SIZE(disarmedMotorValues); index++ )
-		disarmedMotorValues[index] = 1000;
+		disarmedMotorValues[index] = 1000;	// TODO: configurable
 
 	assignCraftType( craftType );
 	if ( currentCraft != NULL )
@@ -270,7 +270,7 @@ void updateMotorOutputs( void )
 			}
 			else
 			{
-				tempMotorValues[motorIndex] = disarmedMotorValues[motorIndex];	// TODO: configurable value
+				tempMotorValues[motorIndex] = disarmedMotorValues[motorIndex];
 			}
 			/* store so that the output value can be displayed */
 			motorValues[motorIndex] = limit(tempMotorValues[motorIndex], 1000, 2000);	// TODO: configurable limits

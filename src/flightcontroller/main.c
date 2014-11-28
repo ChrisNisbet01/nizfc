@@ -23,6 +23,7 @@
 #include <motor_control.h>
 #include <hirestimer.h>
 #include <attitude_estimation.h>
+#include <attitude_configuration.h>
 #include <kalman.h>
 #include <board_alignment.h>
 #include <failsafe.h>
@@ -82,9 +83,7 @@ static float calculateHeading(float *magValues, float roll, float pitch)
     heading = atan2f(-headY,-headX) * 180.0f/M_PI;
 
 	// TODO: apply declination
-	/* is heading instability due to loss of resolution when converting mag values to floats? */
-	/* temp debug */
-	filteredHeading = filterValue( filteredHeading, heading, 20 );	// TODO: configurable
+	filteredHeading = filterValue( filteredHeading, heading, attitude_configuration[0].heading_lpf );
 
 	heading = filteredHeading;
 	if ( heading < 0.0f)
@@ -178,8 +177,8 @@ static void estimateAttitude( float dT )
     				filteredAccelerometerValues[1],
     				filteredAccelerometerValues[2] );
 
-    RollAngle = imu_data.compAngleX;
-    PitchAngle = imu_data.compAngleY;
+    RollAngle = imu_data.compRollAngle;
+    PitchAngle = imu_data.compPitchAngle;
 	/* we have pitch and roll, determine heading */
 	Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
 }
@@ -188,7 +187,6 @@ static void IMUHandler( void )
 {
 	uint32_t temp;
 	uint32_t now = micros();
-	static bool doneSensorInit = false;
 	IMUDelta = now - lastIMUTime;
 	temp = lastIMUTime;
 	lastIMUTime = now;
@@ -358,8 +356,8 @@ static void doDebugOutput( void )
 		printf( "\r\n        roll %g", &imu_data.roll );
 		printf( "\r\n        pit  %g", &imu_data.pitch );
 		printf( "\r\ngyro" );
-		printf( "\r\n        roll %g", &imu_data.gyroXangle );
-		printf( "\r\n        pit  %g", &imu_data.gyroYangle );
+		printf( "\r\n        roll %g", &imu_data.gyroRollAngle );
+		printf( "\r\n        pit  %g", &imu_data.gyroPitchAngle );
 		printf( "\r\nfiltered" );
 		printf( "\r\n        roll %g", &RollAngle );
 		printf( "\r\n        pit  %g", &PitchAngle );

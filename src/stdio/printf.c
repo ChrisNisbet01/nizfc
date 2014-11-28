@@ -30,7 +30,7 @@ static void PrintChar(char c)
 	   while(Transfer not completed);
 	   Transmit a char;
 	*/
-	if (debug_port != NULL)	// TODO: confgurable
+	if (debug_port != NULL)
 	{
 		debug_port->methods->writeCharBlockingWithTimeout( debug_port->serialCtx, (uint8_t)c, 2 );
 	}
@@ -570,7 +570,7 @@ signed int fputs(const char *pStr, FILE *pStream)
 {
     signed int num = 0;
 
-	if (debug_port != NULL && debug_port->methods->writeBulkBlockingWithTimeout != NULL)	// TODO: configurable
+	if (debug_port != NULL && debug_port->methods->writeBulkBlockingWithTimeout != NULL)
 	{
 		debug_port->methods->writeBulkBlockingWithTimeout( debug_port->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 50 );
 	}
@@ -609,13 +609,18 @@ signed int vprintf(const char *pFormat, va_list ap)
  */
 signed int printf(const char *pFormat, ...)
 {
-    va_list ap;
     signed int result;
+	if ( debug_port != NULL )
+	{
+	    va_list ap;
 
-    /* Forward call to vprintf */
-    va_start(ap, pFormat);
-    result = vprintf(pFormat, ap);
-    va_end(ap);
+	    /* Forward call to vprintf */
+	    va_start(ap, pFormat);
+	    result = vprintf(pFormat, ap);
+	    va_end(ap);
+	}
+	else
+		result = -1;
 
     return result;
 }

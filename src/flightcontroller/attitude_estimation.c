@@ -2,6 +2,7 @@
 #include <string.h>
 #include <math.h>
 #include <filter.h>
+#include <attitude_configuration.h>
 #include "attitude_estimation.h"
 
 #define RAD_TO_DEG	(180.0f/M_PI)
@@ -13,13 +14,13 @@ void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroXrate, floa
 	float rotationX, rotationY;
 
 	// This fixes the transition problem when the accelerometer angle jumps between -180 and 180 degrees
-	if ((roll < -90.0f && pdata->compAngleX > 90.0f) || (roll > 90.0f && pdata->compAngleX < -90.0f))
+	if ((roll < -90.0f && pdata->compRollAngle > 90.0f) || (roll > 90.0f && pdata->compRollAngle < -90.0f))
 	{
-		pdata->compAngleX = roll;
-		pdata->gyroXangle = roll;
+		pdata->compRollAngle = roll;
+		pdata->gyroRollAngle = roll;
 	}
 
-	if (fabsf(pdata->compAngleX) > 90.0f)
+	if (fabsf(pdata->compRollAngle) > 90.0f)
 		gyroYrate = -gyroYrate; // Invert rate, so it fits the restricted accelerometer reading
 
 	/* determine rotation for this period */
@@ -27,20 +28,19 @@ void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroXrate, floa
 	rotationY = gyroYrate * dt;
 
 	/* integrate it */
-	pdata->gyroXangle += rotationX;
-	pdata->gyroYangle += rotationY;
+	pdata->gyroRollAngle += rotationX;
+	pdata->gyroPitchAngle += rotationY;
 
 	/* Reset the gyro angle when it has drifted too much */
-	if (pdata->gyroXangle < -180.0f || pdata->gyroXangle > 180.0f)
-		pdata->gyroXangle = pdata->compAngleX;
-	if (pdata->gyroYangle < -180.0f || pdata->gyroYangle > 180.0f)
-		pdata->gyroYangle = pdata->compAngleY;
+	if (pdata->gyroRollAngle < -180.0f || pdata->gyroRollAngle > 180.0f)
+		pdata->gyroRollAngle = pdata->compRollAngle;
+	if (pdata->gyroPitchAngle < -180.0f || pdata->gyroPitchAngle > 180.0f)
+		pdata->gyroPitchAngle = pdata->compPitchAngle;
 
 
-	// TODO: configurable
 	// Calculate the angle using a Complementary filter
-	pdata->compAngleX = filterValue( pdata->compAngleX + rotationX, roll, 200 );
-	pdata->compAngleY = filterValue( pdata->compAngleY + rotationY, pitch, 200 );
+	pdata->compRollAngle = filterValue( pdata->compRollAngle + rotationX, roll, attitude_configuration[0].roll_lpf );
+	pdata->compPitchAngle = filterValue( pdata->compPitchAngle + rotationY, pitch, attitude_configuration[0].pitch_lpf );
 
 	pdata->roll = roll;
 	pdata->pitch = pitch;
