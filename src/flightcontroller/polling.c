@@ -14,6 +14,7 @@ extern int failsafePollHandler( poll_id_t poll_id, void *pv );
 extern int boardPollHandler( poll_id_t poll_id, void *pv );
 extern int auxPollHandler( poll_id_t poll_id, void *pv );
 extern int sensorPollHandler( poll_id_t poll_id, void *pv );
+extern int anglePollHandler( poll_id_t poll_id, void *pv );
 
 static const code_group_mappings_st code_groups[] =
 {
@@ -24,7 +25,8 @@ static const code_group_mappings_st code_groups[] =
 	{ .pollHandler = failsafePollHandler },
 	{ .pollHandler = boardPollHandler },
 	{ .pollHandler = auxPollHandler },
-	{ .pollHandler = sensorPollHandler }
+	{ .pollHandler = sensorPollHandler },
+	{ .pollHandler = anglePollHandler }
 };
 
 poll_result_t pollCodeGroups( poll_id_t poll_id, void *pv, bool poll_all_groups )

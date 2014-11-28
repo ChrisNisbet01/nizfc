@@ -17,7 +17,9 @@ typedef enum configuration_id_t
 	configuration_id_aux = 10,
 	configuration_id_acc = 11,
 	configuration_id_gyro = 12,
-	configuration_id_mag = 13
+	configuration_id_mag = 13,
+	configuration_id_angle = 14,
+	configuration_id_rate = 15
 } configuration_id_t;
 
 /*
