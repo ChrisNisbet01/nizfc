@@ -227,8 +227,7 @@ static void IMUHandler( void )
 
 
 	IMUExeTime = (now=micros()) - lastIMUTime;
-	if (IMUExeTime > 1000)
-		printf("\r\nlong %u %u %u", IMUExeTime, now, lastIMUTime);
+
 }
 
 static void main_task( void *pv )
