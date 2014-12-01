@@ -10,10 +10,10 @@ CO_FLASH     = /cygdrive/c/CooCox/CoIDE/bin/coflash.exe
 
 # indicate which platform we're building for
 TARGET ?= STM32F3_Discovery
-TARGETS = STM32F3_Discovery
+TARGETS = NAZE32 STM32F3_Discovery
 
 # check for valid target
-ifeq ($(filter $(TARGET),$(TARGETS)),)
+ifeq ($(TARGET),$(filter $(TARGET),$(TARGETS)),)
 $(error Invalid Target '$(TARGET)'. Valid targets are $(TARGETS))
 endif
 
@@ -38,21 +38,25 @@ COMMON_CFLAGS = -ffunction-sections \
 
 OPTIMISE_FLAGS = -O3
 
-INCLUDE_DIRS = $(SRC_DIR)/cmsis_boot/startup \
-				$(SRC_DIR)/cmsis_boot \
-				$(SRC_DIR)/cmsis_lib/include \
-				$(SRC_DIR)/cmsis \
-				$(SRC_DIR)/drivers \
+
+INCLUDE_DIRS = 	$(SRC_DIR)/drivers \
 				$(SRC_DIR)/flightcontroller \
 				$(COOS_DIR) \
 				$(COOS_DIR)/portable \
 				$(COOS_DIR)/kernel \
 				$(SRC_DIR)/STM32_USB-FS-Device_Driver/inc \
 				$(SRC_DIR)/vcp \
-				$(SRC_DIR)/STM32F3_Discovery \
 				$(SRC_DIR)/stm32f30x
 
 ifeq ($(TARGET),STM32F3_Discovery)
+INCLUDE_DIRS := $(INCLUDE_DIRS) \
+				$(SRC_DIR)/cmsis_boot/startup \
+				$(SRC_DIR)/cmsis_boot \
+				$(SRC_DIR)/cmsis_lib/include \
+				$(SRC_DIR)/cmsis \
+				$(SRC_DIR)/STM32F3_Discovery
+
+
 CPU_FLAGS = -mcpu=cortex-m4 -mthumb
 CPU_DEFINES = -DSTM32F303VC -DSTM32F30X
 
@@ -62,8 +66,44 @@ FPU_DEFINES = -D__FPU_USED
 PLATFORM_FLAGS = STM32F303xC STM32F303
 
 PLATFORM_DIR = $(SRC_DIR)/STM32F3_Discovery
-PLATFORM_SRC = $(PLATFORM_DIR)/stm32f3_discovery.c \
-               $(SRC_DIR)/stm32f30x/*.c
+PLATFORM_SRC = $(PLATFORM_DIR)/stm32f3_discovery.c
+
+LINK_SCRIPT = $(ROOT)/arm-gcc-link-stm32f3-nizfc.ld
+CO_FLASH_PROCESSOR_TYPE = STM32F303VC
+
+CMSIS_BOOT_SRC = $(SRC_DIR)/cmsis_boot/startup/startup_stm32f30x.S \
+                 $(SRC_DIR)/cmsis_boot/*.c
+
+CMSIS_LIB_SRC = $(SRC_DIR)/cmsis_lib/source/*.c
+
+TARGET_SRC = $(CMSIS_BOOT_SRC) \
+             $(CMSIS_LIB_SRC)
+
+else ifeq ($(TARGET),NAZE32)
+INCLUDE_DIRS := $(INCLUDE_DIRS) \
+				$(SRC_DIR)/cmsis/CM3/CoreSupport \
+				$(SRC_DIR)/cmsis/CM3/DeviceSupport/ST/STM32F10x \
+				$(SRC_DIR)/STM32F10x_StdPeriph_Driver/inc
+
+CPU_FLAGS	 = -mthumb -mcpu=cortex-m3
+CPU_DEFINES = -DSTM32F10X_MD -DSTM32F10X
+
+LINK_SCRIPT = $(ROOT)/arm-gcc-link-stm32f103_128k.ld
+
+STD_PERIPH_SRC = $(SRC_DIR)/STM32F10x_StdPeriph_Driver/src/*.c
+
+CMSIS_BOOT_SRC = $(SRC_DIR)/cmsis_boot/startup/startup_stm32f10x_md_gcc.S
+
+CMSIS_SRC	 = $(SRC_DIR)/cmsis/CM3/CoreSupport/*.c \
+			   $(SRC_DIR)/cmsis/CM3/DeviceSupport/ST/STM32F10x/*.c
+
+TARGET_SRC = $(STD_PERIPH_SRC) \
+			 $(CMSIS_BOOT_SRC) \
+			 $(CMSIS_SRC)
+
+endif
+
+STM32_SRC = $(SRC_DIR)/stm32f30x/*.c
 
 USB_DIR = $(SRC_DIR)/STM32_USB-FS-Device_Driver/src
 USB_SRC = $(USB_DIR)/*.c
@@ -71,11 +111,6 @@ USB_SRC = $(USB_DIR)/*.c
 VCP_DIR = $(SRC_DIR)/vcp
 VCP_SRC = $(VCP_DIR)/*.c
 
-
-LINK_SCRIPT = $(ROOT)/arm-gcc-link-stm32f3-nizfc.ld
-CO_FLASH_PROCESSOR_TYPE = STM32F303VC
-
-endif
 
 LTO_FLAGS	 = -flto -fuse-linker-plugin
 
@@ -119,16 +154,12 @@ COOS_SRC = $(COOS_DIR)/kernel/*.c \
 
 COOS_SRC_NO_LTO = $(wildcard $(COOS_DIR)/portable/gcc/*.c)
 
-CMSIS_BOOT_SRC = $(SRC_DIR)/cmsis_boot/startup/*.S \
-                 $(SRC_DIR)/cmsis_boot/*.c
-
-CMSIS_LIB_SRC = $(SRC_DIR)/cmsis_lib/source/*.c
 
 SRC_FILES = $(COMMON_SRC) \
-            $(CMSIS_BOOT_SRC) \
+            $(TARGET_SRC) \
             $(PLATFORM_SRC) \
+            $(STM32_SRC) \
             $(COOS_SRC) \
-            $(CMSIS_LIB_SRC) \
             $(USB_SRC) \
             $(VCP_SRC)
 
