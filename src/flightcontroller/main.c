@@ -7,7 +7,7 @@
 #include <serial.h>
 #include <utils.h>
 #include <polling.h>
-#include <i2c_stm32f30x.h>
+#include <i2c.h>
 #include <spi_stm32f30x.h>
 #include <receiver.h>
 #include <board_configuration.h>

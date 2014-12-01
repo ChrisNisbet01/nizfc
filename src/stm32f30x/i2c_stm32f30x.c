@@ -7,7 +7,7 @@
 #include <stm32f30x_rcc.h>
 #include <stm32f30x_misc.h>
 
-#include "i2c_stm32f30x.h"
+#include <i2c.h>
 
 #define I2C_SHORT_TIMEOUT             ((uint32_t)0x1000)
 #define I2C_LONG_TIMEOUT             ((uint32_t)(10 * I2C_SHORT_TIMEOUT))

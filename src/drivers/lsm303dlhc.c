@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <utils.h>
-#include <i2c_stm32f30x.h>
+#include <i2c.h>
 #include <sensors.h>
 #include <lsm303dlhc.h>
 
