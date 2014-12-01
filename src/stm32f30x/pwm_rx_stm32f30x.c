@@ -129,46 +129,6 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.pinID = pwm_input_3,
 		.pin = GPIO_Pin_6,
 		.pinSource = GPIO_PinSource6,
-		.pinAF = GPIO_AF_4,
-		.pinOutputType = GPIO_OType_PP,
-		.pinPuPd = GPIO_PuPd_DOWN,
-		.gpio = GPIOC,
-		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOC,
-
-		/* Timer related */
-		.RCC_APBPeriphClockCmd = RCC_APB2PeriphClockCmd,
-		.RCC_APBPeriph = RCC_APB2Periph_TIM8,
-		.tim = TIM8,
-		.channel = TIM_Channel_1,
-		.irq = TIM8_CC_IRQn,
-		.secondary_irq = TIM8_UP_IRQn,
-		.timer_index = TIM8_IDX,
-		.channel_index = CH1_IDX
-	},
-	{
-		.pinID = pwm_input_4,
-		.pin = GPIO_Pin_8,
-		.pinSource = GPIO_PinSource8,
-		.pinAF = GPIO_AF_4,
-		.pinOutputType = GPIO_OType_PP,
-		.pinPuPd = GPIO_PuPd_DOWN,
-		.gpio = GPIOC,
-		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOC,
-
-		/* Timer related */
-		.RCC_APBPeriphClockCmd = RCC_APB2PeriphClockCmd,
-		.RCC_APBPeriph = RCC_APB2Periph_TIM8,
-		.tim = TIM8,
-		.channel = TIM_Channel_3,
-		.irq = TIM8_CC_IRQn,
-		.secondary_irq = TIM8_UP_IRQn,
-		.timer_index = TIM8_IDX,
-		.channel_index = CH3_IDX
-	},
-	{
-		.pinID = pwm_input_5,
-		.pin = GPIO_Pin_6,
-		.pinSource = GPIO_PinSource6,
 		.pinAF = GPIO_AF_2,
 		.pinOutputType = GPIO_OType_PP,
 		.pinPuPd = GPIO_PuPd_DOWN,
@@ -186,7 +146,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH1_IDX
 	},
 	{
-		.pinID = pwm_input_6,
+		.pinID = pwm_input_4,
 		.pin = GPIO_Pin_7,
 		.pinSource = GPIO_PinSource7,
 		.pinAF = GPIO_AF_2,
@@ -206,7 +166,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH2_IDX
 	},
 	{
-		.pinID = pwm_input_7,
+		.pinID = pwm_input_5,
 		.pin = GPIO_Pin_8,
 		.pinSource = GPIO_PinSource8,
 		.pinAF = GPIO_AF_2,
@@ -226,7 +186,7 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.channel_index = CH3_IDX
 	},
 	{
-		.pinID = pwm_input_8,
+		.pinID = pwm_input_6,
 		.pin = GPIO_Pin_9,
 		.pinSource = GPIO_PinSource9,
 		.pinAF = GPIO_AF_2,

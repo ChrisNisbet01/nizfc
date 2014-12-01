@@ -125,7 +125,7 @@ static void determineYawRateSetpoint( uint_fast16_t channel )
 	// TODO: scale between configured low/high limits
 	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.yaw_rate_setpoint = scale(temp, 1000, 2000, -yaw_configuration[0].maxRate, yaw_configuration[0].maxRate );
+	receiver_state.yaw_rate_setpoint = scale(temp, 1000, 2000, yaw_configuration[0].maxRate, -yaw_configuration[0].maxRate );
 }
 
 static void determineArmingState( void )
