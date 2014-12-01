@@ -266,7 +266,7 @@ typedef struct
 }
 #endif
 
-void * initL3GD20( sensorConfig_st *config, sensorCallback_st *callbacks );
+void initL3GD20( sensorConfig_st *config, sensorCallback_st *callbacks );
 
 
 #endif /* __STM32F3_DISCOVERY_L3GD20_H */

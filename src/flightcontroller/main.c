@@ -45,8 +45,6 @@ static OS_FlagID cliUartFlag;
 
 static void *i2c_port;
 static void *spi_port;
-static void *lsm303dlhcDevice;
-static void *l3gd20Device;
 static sensorCallback_st sensorCallbacks;
 
 float RollAngle, PitchAngle, Heading;
@@ -180,8 +178,6 @@ static void estimateAttitude( float dT )
 
     RollAngle = imu_data.compRollAngle;
     PitchAngle = imu_data.compPitchAngle;
-	/* we have pitch and roll, determine heading */
-	Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
 }
 
 static void IMUHandler( void )
@@ -195,32 +191,38 @@ static void IMUHandler( void )
 	/* calculate time between iterations */
 	fIMUDelta = (float)IMUDelta/1000000.0f;
 
-	/* XXX needs fixing. */
-	if ( lsm303dlhcDevice != NULL && l3gd20Device != NULL )
+	if ( sensorCallbacks.readAccelerometer != NULL
+		&& sensorCallbacks.readGyro != NULL
+		&& sensorCallbacks.readAccelerometer( sensorCallbacks.accelerometerCtx, accelerometerValues ) == true
+		&& sensorCallbacks.readGyro( sensorCallbacks.gyroCtx, gyroValues ) == true)
 	{
-		if ( sensorCallbacks.readAccelerometer != NULL
-			&& sensorCallbacks.readMagnetometer != NULL
-			&& sensorCallbacks.readGyro != NULL
-			&& sensorCallbacks.readAccelerometer( lsm303dlhcDevice, accelerometerValues ) == true
-			&& sensorCallbacks.readMagnetometer( lsm303dlhcDevice, magnetometerValues ) == true
-			&& sensorCallbacks.readGyro( l3gd20Device, gyroValues ) == true)
+		alignVectorsToFlightController( accelerometerValues, noRotation );	// TODO: configurable
+		alignVectorsToCraft( accelerometerValues );
+		filterAccValues( accelerometerValues, filteredAccelerometerValues );
+
+		alignVectorsToFlightController( gyroValues, noRotation );			// TODO: configurable
+		alignVectorsToCraft( gyroValues );
+		filterGyroValues( gyroValues, filteredGyroValues );
+
+		alignVectorsToFlightController( magnetometerValues, noRotation );	// TODO: configurable
+		alignVectorsToCraft( magnetometerValues );
+		filterMagValues( magnetometerValues, filteredMagnetometerValues );
+
+		estimateAttitude( fIMUDelta );
+
+		if ( sensorCallbacks.readMagnetometer != NULL
+			&& sensorCallbacks.readMagnetometer( sensorCallbacks.magnetometerCtx, magnetometerValues ) == true )
 		{
-			alignVectorsToFlightController( accelerometerValues, noRotation );	// TODO: configurable
-			alignVectorsToCraft( accelerometerValues );
-			filterAccValues( accelerometerValues, filteredAccelerometerValues );
-
-			alignVectorsToFlightController( gyroValues, noRotation );			// TODO: configurable
-			alignVectorsToCraft( gyroValues );
-			filterGyroValues( gyroValues, filteredGyroValues );
-
 			alignVectorsToFlightController( magnetometerValues, noRotation );	// TODO: configurable
 			alignVectorsToCraft( magnetometerValues );
 			filterMagValues( magnetometerValues, filteredMagnetometerValues );
 
-			estimateAttitude( fIMUDelta );
+			/* we have pitch and roll, determine heading */
+			Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
 
-			updatePIDControlLoops();
 		}
+
+		updatePIDControlLoops();
 	}
 
 
@@ -241,14 +243,14 @@ static void main_task( void *pv )
 		sensorConfig_st sensorConfig;
 
 		sensorConfig.i2cCtx = i2c_port;
-		lsm303dlhcDevice = initLSM303DLHC( &sensorConfig, &sensorCallbacks );
+		initLSM303DLHC( &sensorConfig, &sensorCallbacks );
 	}
 	if (spi_port != NULL )
 	{
 		sensorConfig_st sensorConfig;
 
 		sensorConfig.spiCtx = spi_port;
-		l3gd20Device = initL3GD20( &sensorConfig, &sensorCallbacks );
+		initL3GD20( &sensorConfig, &sensorCallbacks );
 	}
 
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );

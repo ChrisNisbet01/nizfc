@@ -239,7 +239,7 @@ done:
 	return readAccelerometer;
 }
 
-void * initLSM303DLHC( sensorConfig_st *config, sensorCallback_st *callbacks )
+void initLSM303DLHC( sensorConfig_st *config, sensorCallback_st *callbacks )
 {
 	lsm303dlhcContext_st *lsmCtx = &lsm303dlhcCtx;
 
@@ -253,10 +253,11 @@ void * initLSM303DLHC( sensorConfig_st *config, sensorCallback_st *callbacks )
 		goto error;
 
 	callbacks->readAccelerometer = readLSM303dlhcAccelerometer;
+	callbacks->accelerometerCtx = lsmCtx;
 	callbacks->readMagnetometer = readLSM303dlhcMagnetometer;
+	callbacks->magnetometerCtx = lsmCtx;
 
-	return lsmCtx;
 error:
-	return NULL;
+	return;
 }
 

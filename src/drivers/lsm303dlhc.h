@@ -443,7 +443,7 @@ typedef struct
 /** @defgroup Mag_Working_Mode
   * @{
   */
-#define LSM303DLHC_CONTINUOUS_CONVERSION      ((uint8_t) 0x00)   /*!< Continuous-Conversion Mode */
+#define LSM303DLHC_CONTINUOUS_CONVERSION     ((uint8_t) 0x00)   /*!< Continuous-Conversion Mode */
 #define LSM303DLHC_SINGLE_CONVERSION         ((uint8_t) 0x01)   /*!< Single-Conversion Mode */
 #define LSM303DLHC_SLEEP                     ((uint8_t) 0x02)   /*!< Sleep Mode */
 /**
@@ -463,24 +463,8 @@ typedef struct
 }
 #endif
 
+void initLSM303DLHC( sensorConfig_st *config, sensorCallback_st *callbacks );
+
 #endif /* __STM32F3_DISCOVERY_LSM303DLHC_H */
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-void * initLSM303DLHC( sensorConfig_st *config, sensorCallback_st *callbacks );
 
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

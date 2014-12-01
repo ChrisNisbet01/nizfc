@@ -303,7 +303,7 @@ done:
 	return doneZeroBias;
 }
 
-void * initL3GD20( sensorConfig_st *config, sensorCallback_st *callbacks )
+void initL3GD20( sensorConfig_st *config, sensorCallback_st *callbacks )
 {
 	l3gd20Ctx_st * l3gCtx = &l3gd20ctx;
 
@@ -347,9 +347,9 @@ void * initL3GD20( sensorConfig_st *config, sensorCallback_st *callbacks )
 		goto error;
 
 	callbacks->readGyro = l3gd20ReadGyro;
+	callbacks->gyroCtx = l3gCtx;
 
-	return l3gCtx;
 error:
-	return NULL;
+	return;
 }
 
