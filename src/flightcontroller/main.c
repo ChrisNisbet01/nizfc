@@ -1,9 +1,9 @@
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
 #include <coocox.h>
-#include <stm32f3_discovery.h>
 #include <serial.h>
 #include <utils.h>
 #include <polling.h>
@@ -30,6 +30,7 @@
 #include <aux_configuration.h>
 #include <filter.h>
 #include <sensor_filters.h>
+#include <leds.h>
 
 #define MAIN_TASK_STACK_SIZE 0x200
 #define CLI_TASK_STACK_SIZE 0x200
@@ -292,7 +293,7 @@ static void main_task( void *pv )
 
 			    updateFailsafeWithNewChannels( newChannels );
 
-			    STM_EVAL_LEDToggle(RX_LED);
+			    setLED(RX_LED, led_state_toggle);
 				processReceiverSignals();
 				updateFunctionEnables();
 			}
@@ -400,21 +401,13 @@ static void cli_task( void *pv )
 
 void _Default_Handler( void )
 {
-	STM_EVAL_LEDOn(EXCEPTION_LED);
+	setLED(EXCEPTION_LED, led_state_on);
 	while( 1 );
 }
 
 int main(void)
 {
-	// TODO: LED task
-	STM_EVAL_LEDInit(LED3);
-	STM_EVAL_LEDInit(LED4);
-	STM_EVAL_LEDInit(LED5);
-	STM_EVAL_LEDInit(LED6);
-	STM_EVAL_LEDInit(LED7);
-	STM_EVAL_LEDInit(LED8);
-	STM_EVAL_LEDInit(LED9);
-	STM_EVAL_LEDInit(LED10);
+	initLEDs();
 
 	CoInitOS();
 

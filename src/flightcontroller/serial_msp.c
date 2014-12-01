@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <stm32f3_discovery.h>
 #include <receiver.h>
 #include <uart.h>
 #include "serial_msp.h"

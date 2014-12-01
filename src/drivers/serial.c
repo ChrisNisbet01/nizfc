@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <stm32f3_discovery.h>
 #include <coos.h>
 #include <serial.h>
 #include <uart.h>

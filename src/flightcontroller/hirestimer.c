@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include <stm32f3_discovery.h>
 #include <stm32f30x_tim.h>
 #include <stm32f30x_rcc.h>
 #include <stm32f30x_misc.h>

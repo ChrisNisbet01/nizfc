@@ -8,7 +8,6 @@
 #include <stm32f30x_gpio.h>
 #include <stm32f30x_rcc.h>
 #include <stm32f30x_misc.h>
-#include <stm32f3_discovery.h>
 #include <coos.h>
 #include <utils.h>
 #include <receiver.h>
@@ -18,6 +17,7 @@
 #include <rate_mode_configuration.h>
 #include <yaw_configuration.h>
 #include <failsafe.h>
+#include <leds.h>
 
 #define MAX_AUX_SWITCHES			4u
 #define FIRST_AUX_SWITCH_CHANNEL	4u
@@ -229,7 +229,7 @@ void armCraft( void )
 	{
 		printf("\narmed!");
 		craftIsArmed = true;
-		STM_EVAL_LEDOn(ARMED_LED);
+		setLED(ARMED_LED, led_state_on);
 		enableFailsafe();
 	}
 }
@@ -240,7 +240,7 @@ void disarmCraft( void )
 	{
 		craftIsArmed = false;
 		printf("\ndisarmed");
-		STM_EVAL_LEDOff(ARMED_LED);
+		setLED(ARMED_LED, led_state_off);
 		disableFailsafe();
 	}
 }

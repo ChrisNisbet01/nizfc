@@ -13,10 +13,10 @@
 #include <receiver.h>
 #include <receiver_handler.h>
 #include <outputs.h>
-#include <stm32f3_discovery.h>
 #include <failsafe.h>
 #include <craft_types.h>
 #include <aux_configuration.h>
+#include <leds.h>
 
 typedef struct motorMixRatios_st
 {
@@ -237,14 +237,14 @@ void updateMotorOutputs( void )
 					// TODO: reset PID state on change of mode
 					if (isFunctionEnabled(aux_function_angle_mode) == true || isFunctionEnabled(aux_function_rate_mode) == false)
 					{
-					STM_EVAL_LEDOn(ANGLE_MODE_LED);
+					setLED(ANGLE_MODE_LED, led_state_on);
 					tempMotorValues[motorIndex] += lrintf(
 									pitchAnglePID.outputValue * mixer[motorIndex].pitch
 									+ rollAnglePID.outputValue * mixer[motorIndex].roll);
 					}
 					else	/* rate mode */
 					{
-					STM_EVAL_LEDOff(ANGLE_MODE_LED);
+					setLED(ANGLE_MODE_LED, led_state_off);
 					tempMotorValues[motorIndex] += lrintf(
 									pitchRatePID.outputValue * mixer[motorIndex].pitch
 									+ rollRatePID.outputValue * mixer[motorIndex].roll);

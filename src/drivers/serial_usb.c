@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <stm32f3_discovery.h>
+#include <stm32f30x.h>
 #include <coos.h>
 #include <serial.h>
 #include <utils.h>

@@ -3,7 +3,6 @@
 
 #include <stm32f30x_usart.h>
 #include <usart_stm32f30x.h>
-#include <stm32f3_discovery.h>
 #include <coos.h>
 #include "uart_interface.h"
 #include "serial.h"

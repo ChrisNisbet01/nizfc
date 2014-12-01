@@ -7,7 +7,6 @@
 #include <stm32f30x_gpio.h>
 #include <stm32f30x_rcc.h>
 #include <stm32f30x_misc.h>
-#include <stm32f3_discovery.h>
 #include <coos.h>
 #include <utils.h>
 #include <polling.h>

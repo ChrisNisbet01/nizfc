@@ -53,8 +53,7 @@ INCLUDE_DIRS := $(INCLUDE_DIRS) \
 				$(SRC_DIR)/cmsis_boot/startup \
 				$(SRC_DIR)/cmsis_boot \
 				$(SRC_DIR)/cmsis_lib/include \
-				$(SRC_DIR)/cmsis \
-				$(SRC_DIR)/STM32F3_Discovery
+				$(SRC_DIR)/cmsis
 
 
 CPU_FLAGS = -mcpu=cortex-m4 -mthumb
@@ -64,9 +63,6 @@ CPU_DEFINES = -DSTM32F303VC -DSTM32F30X
 FPU_FLAGS = -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 FPU_DEFINES = -D__FPU_USED
 PLATFORM_FLAGS = STM32F303xC STM32F303
-
-PLATFORM_DIR = $(SRC_DIR)/STM32F3_Discovery
-PLATFORM_SRC = $(PLATFORM_DIR)/stm32f3_discovery.c
 
 LINK_SCRIPT = $(ROOT)/arm-gcc-link-stm32f3-nizfc.ld
 CO_FLASH_PROCESSOR_TYPE = STM32F303VC
@@ -157,7 +153,6 @@ COOS_SRC_NO_LTO = $(wildcard $(COOS_DIR)/portable/gcc/*.c)
 
 SRC_FILES = $(COMMON_SRC) \
             $(TARGET_SRC) \
-            $(PLATFORM_SRC) \
             $(STM32_SRC) \
             $(COOS_SRC) \
             $(USB_SRC) \

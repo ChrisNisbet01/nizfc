@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include <stm32f3_discovery.h>
 #include <coos.h>
 #include <pwm_inputs.h>
 #include <receiver.h>
