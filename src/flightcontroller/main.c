@@ -8,14 +8,19 @@
 #include <utils.h>
 #include <polling.h>
 #include <i2c.h>
-#include <spi_stm32f30x.h>
+#include <spi.h>
 #include <receiver.h>
 #include <board_configuration.h>
 #include <cli.h>
 #include <startup.h>
 #include <sensors.h>
+#if defined(STM32F30X)
 #include <lsm303dlhc.h>
 #include <l3gd20.h>
+#elif defined(STM32F10X)
+#include <stm32f10x_rcc.h>
+// TODO:
+#endif
 #include <angle_mode_configuration.h>
 #include <rate_mode_configuration.h>
 #include <yaw_configuration.h>
@@ -44,7 +49,9 @@ static void *pcli[2];
 static OS_FlagID cliUartFlag;
 
 static void *i2c_port;
+#if defined(STM32F30X)
 static void *spi_port;
+#endif
 static sensorCallback_st sensorCallbacks;
 
 float RollAngle, PitchAngle, Heading;
@@ -235,15 +242,22 @@ static void main_task( void *pv )
 	UNUSED(pv);
 
 	i2c_port = i2cInit( I2C_PORT_1 );
-	spi_port = spiInit( SPI_PORT_1 );
 
 	if ( i2c_port != NULL )
 	{
 		sensorConfig_st sensorConfig;
 
 		sensorConfig.i2cCtx = i2c_port;
+#if defined(STM32F30X)
 		initLSM303DLHC( &sensorConfig, &sensorCallbacks );
+#elif defined(STM32F10X)
+		// TODO:
+#endif
 	}
+
+#if defined(STM32F30X)
+	spi_port = spiInit( SPI_PORT_1 );
+
 	if (spi_port != NULL )
 	{
 		sensorConfig_st sensorConfig;
@@ -251,6 +265,7 @@ static void main_task( void *pv )
 		sensorConfig.spiCtx = spi_port;
 		initL3GD20( &sensorConfig, &sensorCallbacks );
 	}
+#endif
 
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	failsafeTriggerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
@@ -315,14 +330,17 @@ void newUartData( void *pv )
 static void handleNewSerialData( void )
 {
 	unsigned int uart_index;
-	for (uart_index = 0; uart_index < ARRAY_SIZE(cli_uart) && cli_uart[uart_index] != NULL; uart_index++ )
+	for (uart_index = 0; uart_index < ARRAY_SIZE(cli_uart); uart_index++ )
 	{
-		while ( cli_uart[uart_index]->methods->rxReady( cli_uart[uart_index]->serialCtx ) )
+		if ( cli_uart[uart_index] != NULL )
 		{
-			uint8_t ch;
+			while ( cli_uart[uart_index]->methods->rxReady( cli_uart[uart_index]->serialCtx ) )
+			{
+				uint8_t ch;
 
-			ch = cli_uart[uart_index]->methods->readChar( cli_uart[uart_index]->serialCtx );
-			cliHandleNewChar( pcli[uart_index], ch );
+				ch = cli_uart[uart_index]->methods->readChar( cli_uart[uart_index]->serialCtx );
+				cliHandleNewChar( pcli[uart_index], ch );
+			}
 		}
 	}
 }
@@ -406,10 +424,27 @@ void _Default_Handler( void )
 	while( 1 );
 }
 
+static void systemInit(void)
+{
+    // Configure NVIC preempt/priority groups
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+
+    // Turn on clocks for stuff we use
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_TIM1 | RCC_APB2Periph_ADC1 | RCC_APB2Periph_USART1, ENABLE);
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+    RCC_ClearFlag();
+
+    // Turn off JTAG port 'cause we're using the GPIO for leds
+#define AFIO_MAPR_SWJ_CFG_NO_JTAG_SW            (0x2 << 24)
+    AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_NO_JTAG_SW;
+
+}
+
 int main(void)
 {
+	systemInit();
 	initLEDs();
-
 	CoInitOS();
 
 	initMicrosecondClock();
@@ -417,10 +452,13 @@ int main(void)
 	cli_uart[0] = serialOpen( SERIAL_UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart[0] != NULL )
 		pcli[0] = initCli( cli_uart[0] );
-	cli_uart[1] = serialOpen( SERIAL_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
+#if defined(STM32F30X)
+ 	cli_uart[1] = serialOpen( SERIAL_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
+#elif defined(STM32F10X)
+ 	cli_uart[1] = serialOpen( SERIAL_UART_1, 115200, uart_mode_rx | uart_mode_tx, newUartData );
+#endif
 	if ( cli_uart[1] != NULL )
 		pcli[1] = initCli( cli_uart[1] );
-
 	initialiseCodeGroups();
 	loadSavedConfiguration();
 

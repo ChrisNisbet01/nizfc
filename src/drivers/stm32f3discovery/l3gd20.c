@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stm32f30x_gpio.h>
-#include <spi_stm32f30x.h>
+#include <spi.h>
 #include <sensors.h>
 #include <l3gd20.h>
 #include <utils.h>

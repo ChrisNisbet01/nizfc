@@ -1,15 +1,34 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#if defined(STM32F30X)
 #include <stm32f30x_tim.h>
 #include <stm32f30x_rcc.h>
 #include <stm32f30x_misc.h>
+#elif defined(STM32F10X)
+#include <stm32f10x.h>
+#include <stm32f10x_tim.h>
+#include <stm32f10x_rcc.h>
+#include <misc.h>
+#endif
 #include <coos.h>
 
 static uint32_t ticksPerMicrosecond;
 static uint32_t numTicksToWaitForRollover;
 static uint32_t ticksPerSystickInterrupt;
 void (*callback)( void );
+
+#if defined(STM32F30X)
+#define HIRESTIM	TIM7
+#define HIRESTIM_IRQn	TIM7_IRQn
+#define HIRESTTIM_CLK	RCC_APB1Periph_TIM7
+#define HIRESTIM_IRQHandler TIM7_IRQHandler
+#elif defined(STM32F10X)
+#define HIRESTIM	TIM3
+#define HIRESTIM_IRQn	TIM3_IRQn
+#define HIRESTTIM_CLK	RCC_APB1Periph_TIM3
+#define HIRESTIM_IRQHandler TIM3_IRQHandler
+#endif
 
 static void initTimerTimeBase(TIM_TypeDef *tim, uint_fast16_t period, uint_fast32_t frequency_hz)
 {
@@ -40,9 +59,9 @@ static void initTimerNVIC( uint_fast8_t irq )
     NVIC_Init(&NVIC_InitStructure);
 }
 
-void TIM7_IRQHandler(void)
+void HIRESTIM_IRQHandler(void)
 {
-    TIM_ClearITPendingBit(TIM7, TIM_IT_Update);
+    TIM_ClearITPendingBit(HIRESTIM, TIM_IT_Update);
     if ( callback != NULL )
     {
 		callback();
@@ -53,17 +72,17 @@ void initHiResTimer( uint32_t periodMicrosecs, void (*appCallback)( void ) )
 {
 	callback = appCallback;
 	/* enable timer clock */
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);
+    RCC_APB1PeriphClockCmd(HIRESTTIM_CLK, ENABLE);
 
-    initTimerTimeBase(TIM7, periodMicrosecs, 1000000);
+    initTimerTimeBase(HIRESTIM, periodMicrosecs, 1000000);
 
-    initTimerNVIC(TIM7_IRQn);
+    initTimerNVIC(HIRESTIM_IRQn);
 
 	/* enable update interrupt */
-	TIM_ITConfig( TIM7, TIM_IT_Update, ENABLE );
+	TIM_ITConfig( HIRESTIM, TIM_IT_Update, ENABLE );
 
     /* start the timer */
-    TIM_Cmd(TIM7, ENABLE);
+    TIM_Cmd(HIRESTIM, ENABLE);
 
 }
 

@@ -9,7 +9,11 @@
 #include <cli.h>
 #include <configuration.h>
 #include <configuration_commands.h>
+#if defined(STM32F30X)
 #include <stm32f30x_misc.h>
+#elif defined(STM32F10X)
+#include <stm32f10x.h>
+#endif
 #include <motor_control.h>
 #include <main.h>
 
@@ -186,6 +190,14 @@ static int printSavedConfig( non_config_run_command_data_st *pcommand )
 void systemReset(void)
 {
 	NVIC_SystemReset();
+}
+
+void systemResetToBootloader(void) {
+    // 1FFFF000 -> 20000200 -> SP
+    // 1FFFF004 -> 1FFFF021 -> PC
+
+    *((uint32_t *)0x20004FF0) = 0xDEADBEEF; // 20KB STM32F103
+    systemReset();
 }
 
 static int rebootCommand( non_config_run_command_data_st *pcommand )

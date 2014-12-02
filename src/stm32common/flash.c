@@ -1,7 +1,11 @@
 #include <stdbool.h>
 #include <stdint.h>
+#if defined(STM32F30X)
 #include <stm32f30x_flash.h>
-#include <flash_stm32f30x.h>
+#elif defined(STM32F10X)
+#include <stm32f10x_flash.h>
+#endif
+#include <flash.h>
 
 bool eraseFlashPage( uint32_t flashAddress )
 {
@@ -11,7 +15,11 @@ bool eraseFlashPage( uint32_t flashAddress )
     FLASH_Unlock();
 
 	/* erase the first sector. Assumes that config starts at begining of sector */
+#if defined(STM32F30X)
     FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+#elif defined(STM32F10X)
+    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+#endif
 
     status = FLASH_ErasePage(flashAddress);
 
@@ -34,7 +42,11 @@ bool writeWordToFlash( uint32_t value, uint32_t flashAddress, uint_fast8_t maxim
 
 	do
 	{
-	    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+#if defined(STM32F30X)
+    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+#elif defined(STM32F10X)
+    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+#endif
 
 		/*
 			eraseSector is false when writing out the header. We don't want to erase the first sector again
@@ -49,7 +61,11 @@ bool writeWordToFlash( uint32_t value, uint32_t flashAddress, uint_fast8_t maxim
 		        if (status != FLASH_COMPLETE)
 		            continue;
 
+#if defined(STM32F30X)
 			    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+#elif defined(STM32F10X)
+			    FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+#endif
 		    }
 		}
 

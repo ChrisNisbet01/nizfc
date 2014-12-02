@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <utils.h>
-#include <flash_stm32f30x.h>
+#include <flash.h>
 
 #include <config_structure.h>
 

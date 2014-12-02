@@ -12,13 +12,6 @@
 /* Entry Point */
 ENTRY(Reset_Handler)
 
-/* Highest address of the user mode stack */
-_estack = 0x20005000;    /* end of 20K RAM */
-
-/* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0;      /* required amount of heap  */
-_Min_Stack_Size = 0x400; /* required amount of stack */
-
 /* Specify the memory areas. Flash is limited for last 2K for configuration storage */
 MEMORY
 {
@@ -28,6 +21,7 @@ MEMORY
 }
 
 /* Define output sections */
+_eram = 0x20000000 + 0x00005000;
 SECTIONS
 {
   /* The startup code goes first into FLASH */
@@ -119,15 +113,35 @@ SECTIONS
   } >RAM
 
   /* User_heap_stack section, used to check that there is enough RAM left */
-  ._user_heap_stack :
-  {
-    . = ALIGN(4);
-    PROVIDE ( end = . );
-    PROVIDE ( _end = . );
-    . = . + _Min_Heap_Size;
-    . = . + _Min_Stack_Size;
-    . = ALIGN(4);
-  } >RAM
+	.heap (COPY):
+	{
+	. = ALIGN(4);
+	PROVIDE ( end = . );
+		__end__ = .;
+		_end = __end__;
+		end = __end__;
+		*(.heap*)
+		__HeapLimit = .;
+	. = ALIGN(4);
+	} >RAM
+
+	/* .stack_dummy section doesn't contains any symbols. It is only
+	* used for linker to calculate size of stack sections, and assign
+	* values to stack symbols later */
+	.co_stack (NOLOAD):
+	{
+		. = ALIGN(8);
+		*(.co_stack .co_stack.*)
+	} > RAM
+
+	/* Set stack top to end of ram , and stack limit move down by
+	* size of stack_dummy section */
+	__StackTop = ORIGIN(RAM) + LENGTH(RAM);
+	__StackLimit = __StackTop - SIZEOF(.co_stack);
+	PROVIDE(__stack = __StackTop);
+
+	/* Check if data + heap + stack exceeds ram  limit */
+	ASSERT(__StackLimit >= __HeapLimit, "region ram  overflowed with stack")
 
   /* MEMORY_bank1 section, code must be located here explicitly            */
   /* Example: extern int foo(void) __attribute__ ((section (".mb1text"))); */

@@ -44,9 +44,12 @@
 
 /*!<
 Defines chip type,cortex-m3(1),cortex-m0(2)
-cortem-m4 without FPU(1), cortem-m4 with FPU(3)
+cortex-m4 without FPU(1), cortex-m4 with FPU(3)
 */
-#define CFG_CHIP_TYPE           (3)
+#if defined(STM32F30X)
+#define CFG_CHIP_TYPE           (1)
+#elif defined(STM32F10X)
+#endif
 
 /*!<
 Defines the lowest priority that be assigned.

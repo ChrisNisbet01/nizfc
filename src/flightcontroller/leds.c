@@ -2,8 +2,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#if defined(STM32F30X)
 #include <stm32f30x_rcc.h>
 #include <stm32f30x_gpio.h>
+#elif defined(STM32F10X)
+#include <stm32f10x_rcc.h>
+#include <stm32f10x_gpio.h>
+#endif
 #include <leds.h>
 #include <utils.h>
 
@@ -14,8 +19,9 @@ typedef struct led_configuration_st
 	uint32_t     clk;
 } led_configuration_st;
 
-static led_configuration_st leds[] =
+static const led_configuration_st leds[] =
 {
+#if defined(STM32F30X)
 	[LED1] =
 		{
 		.pin = GPIO_Pin_9,
@@ -64,27 +70,51 @@ static led_configuration_st leds[] =
 		.port = GPIOE,
 		.clk = RCC_AHBPeriph_GPIOE
 		}
+#elif defined(STM32F10X)
+	[LED1] =
+		{
+		.pin = GPIO_Pin_4,
+		.port = GPIOB,
+		.clk = RCC_APB2Periph_GPIOB
+		},
+	[LED2] =
+		{
+		.pin = GPIO_Pin_3,
+		.port = GPIOB,
+		.clk = RCC_APB2Periph_GPIOB
+		}
+#endif
 };
 
-static void LEDInit(led_configuration_st *led)
+static void LEDInit(led_configuration_st const * led)
 {
-  GPIO_InitTypeDef  GPIO_InitStructure;
+	GPIO_InitTypeDef  GPIO_InitStructure;
 
   /* Enable the GPIO_LED Clock */
-  RCC_AHBPeriphClockCmd(led->clk, ENABLE);
+#if defined(STM32F30X)
+	RCC_AHBPeriphClockCmd(led->clk, ENABLE);
+#elif defined(STM32F10X)
+	RCC_APB2PeriphClockCmd(led->clk, ENABLE);
+#endif
 
-  /* Configure the GPIO_LED pin */
-  GPIO_InitStructure.GPIO_Pin = led->pin;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_Init(led->port, &GPIO_InitStructure);
+	/* Configure the GPIO_LED pin */
+	GPIO_InitStructure.GPIO_Pin = led->pin;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+#if defined(STM32F30X)
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+#elif defined(STM32F10X)
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+#endif
+
+	GPIO_Init(led->port, &GPIO_InitStructure);
+
 }
 
 void setLED( led_t led, led_state_t state )
 {
-	if ( led > 0 && led < ARRAY_SIZE(leds) && leds[led].pin != 0 )
+	if ( led < ARRAY_SIZE(leds) && leds[led].pin != 0 )
 	{
 		switch ( state )
 		{
@@ -111,6 +141,8 @@ void initLEDs( void )
 	for ( index = 0; index < ARRAY_SIZE(leds); index++ )
 	{
 		LEDInit(&leds[index]);
+		leds[index].port->BSRR = 0xffffffff;
+		//setLED((led_t)index,led_state_off);
 	}
 }
 

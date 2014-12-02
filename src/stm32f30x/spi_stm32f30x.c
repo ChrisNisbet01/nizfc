@@ -4,7 +4,7 @@
 #include <stm32f30x_rcc.h>
 #include <stm32f30x_gpio.h>
 #include <stm32f30x_spi.h>
-#include <spi_stm32f30x.h>
+#include <spi.h>
 
 #define SPI_FLAG_TIMEOUT             ((uint32_t)0x1000)
 

@@ -1,8 +1,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#if defined(STM32F30X)
 #include <stm32f30x_usart.h>
-#include <usart_stm32f30x.h>
+#elif defined(STM32F10X)
+#include <stm32f10x_usart.h>
+#endif
+
+#include <usart.h>
 #include <coos.h>
 #include "uart_interface.h"
 #include "serial.h"
@@ -70,6 +75,7 @@ static const serial_port_methods_st uart_port_methods =
 
 static const uart_ports_config_t uart_ports[] =
 {
+#if defined(STM32F30X)
 	{
 	.port = SERIAL_UART_2,
 	.usart = USART2,
@@ -78,6 +84,16 @@ static const uart_ports_config_t uart_ports[] =
 	.txBuffer = Usart2TxBuffer,
 	.txBufferSize = sizeof Usart2TxBuffer
 	}
+#elif defined(STM32F10X)
+	{
+	.port = SERIAL_UART_2,
+	.usart = USART2,
+	.rxBuffer = Usart2RxBuffer,
+	.rxBufferSize = sizeof Usart2RxBuffer,
+	.txBuffer = Usart2TxBuffer,
+	.txBufferSize = sizeof Usart2TxBuffer
+	}
+#endif
 };
 
 #define NB_UART_PORTS	(sizeof(uart_ports)/sizeof(uart_ports[0]))
@@ -167,7 +183,7 @@ serial_port_st * uartOpen( serial_port_t port, uint32_t baudrate, serial_modes_t
 		cfg.callback.getTxChar = getTxChar;
 		cfg.callback.putRxChar = putRxChar;
 
-		if ((pctx->ll_info=stm32f30x_usart_init( &cfg )) == NULL)
+		if ((pctx->ll_info=stm32_usart_init( &cfg )) == NULL)
 		{
 			pctx = NULL;
 			goto done;

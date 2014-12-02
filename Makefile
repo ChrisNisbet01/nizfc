@@ -73,9 +73,20 @@ CMSIS_BOOT_SRC = $(SRC_DIR)/cmsis_boot/startup/startup_stm32f30x.S \
 CMSIS_LIB_SRC = $(SRC_DIR)/cmsis_lib/source/*.c
 
 TARGET_SRC = $(CMSIS_BOOT_SRC) \
+             $(SRC_DIR)/drivers/stm32f3discovery/*.c \
              $(CMSIS_LIB_SRC)
 
+STM32_SRC = $(SRC_DIR)/stm32f30x/*.c
+
+USB_DIR = $(SRC_DIR)/STM32_USB-FS-Device_Driver/src
+USB_SRC = $(USB_DIR)/*.c
+
+VCP_DIR = $(SRC_DIR)/vcp
+VCP_SRC = $(VCP_DIR)/*.c
+
+
 else ifeq ($(TARGET),NAZE32)
+
 INCLUDE_DIRS := $(INCLUDE_DIRS) \
 				$(SRC_DIR)/cmsis/CM3/CoreSupport \
 				$(SRC_DIR)/cmsis/CM3/DeviceSupport/ST/STM32F10x \
@@ -97,16 +108,12 @@ TARGET_SRC = $(STD_PERIPH_SRC) \
 			 $(CMSIS_BOOT_SRC) \
 			 $(CMSIS_SRC)
 
+STM32_SRC = $(SRC_DIR)/stm32f10x/*.c
+
 endif
 
-STM32_SRC = $(SRC_DIR)/stm32f30x/*.c
-
-USB_DIR = $(SRC_DIR)/STM32_USB-FS-Device_Driver/src
-USB_SRC = $(USB_DIR)/*.c
-
-VCP_DIR = $(SRC_DIR)/vcp
-VCP_SRC = $(VCP_DIR)/*.c
-
+STM32_SRC := $(STM32_SRC) \
+			 $(SRC_DIR)/stm32common/*.c
 
 LTO_FLAGS	 = -flto -fuse-linker-plugin
 
@@ -132,7 +139,7 @@ COMMON_LDFLAGS = -g \
                  -lm
 		         --specs=nano.specs \
 		         -lc \
-		         -lnosys \
+		         -lnosys
 
 LDFLAGS = $(CPU_FLAGS) \
           $(FPU_FLAGS) \
@@ -183,7 +190,7 @@ flash: all
 	$(CO_FLASH) program $(CO_FLASH_PROCESSOR_TYPE) $(TARGET_ELF) --adapter-name=ST-Link
 
 dump: all
-	$(OBJDUMP) -d $(TARGET_ELF) > $(TARGET_DIS)
+	$(OBJDUMP) -D $(TARGET_ELF) > $(TARGET_DIS)
 
 $(TARGET_HEX): $(TARGET_ELF)
 	$(OBJCOPY) -O ihex --set-start 0x8000000 $< $@
@@ -199,7 +206,7 @@ $(OBJ_DIR)/no_lto/%.o : %.c
 
 $(OBJ_DIR)/%.o : %.c
 	@mkdir -p $(dir $@)
-	@$(CC) -c -o $@ $< $(CFLAGS)
+	$(CC) -c -o $@ $< $(CFLAGS)
 
 $(OBJ_DIR)/%.o: %.s
 	@echo $<

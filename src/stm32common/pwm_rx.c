@@ -3,21 +3,33 @@
 #include <stdbool.h>
 #include <string.h>
 
+#if defined(STM32F30X)
 #include <stm32f30x_tim.h>
 #include <stm32f30x_gpio.h>
 #include <stm32f30x_rcc.h>
 #include <stm32f30x_misc.h>
+#else
+#include <stm32f10x_tim.h>
+#include <stm32f10x_gpio.h>
+#include <stm32f10x_rcc.h>
+#include <misc.h>
+#endif
 #include <coos.h>
 
 #include "pwm_rx_stm32f30x.h"
 
 #define PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE
 
+#if defined(STM32F30X)
 typedef uint32_t capture_t;
+#elif defined(STM32F10X)
+typedef uint16_t capture_t;
+#endif
 
 typedef enum timer_idx_t
 {
 	TIM1_IDX,
+	TIM2_IDX,
 	TIM3_IDX,
 	TIM8_IDX,
 	NB_TIMERS
@@ -49,9 +61,13 @@ typedef struct pwm_timer_config_st
 	pwm_input_id_t  pinID;
 	uint_fast16_t	pin;
 	uint_fast8_t	pinSource;
+#if defined(STM32F30X)
 	uint_fast8_t	pinAF;
-	uint_fast8_t	pinOutputType;
 	uint_fast8_t	pinPuPd;
+	uint_fast8_t	pinOutputType;
+#elif defined(STM32F10X)
+	uint32_t         gpio_clk;
+#endif
 
 	GPIO_TypeDef	* gpio;
 	uint_fast32_t	RCC_AHBPeriph;
@@ -71,7 +87,7 @@ typedef struct pwm_timer_config_st
 typedef struct channel_config_st {
     uint16_t channel;
     uint16_t interruptBit;
-    uint32_t (*TIM_GetCaptureFn)(TIM_TypeDef* TIMx);
+    capture_t (*TIM_GetCaptureFn)(TIM_TypeDef * TIMx);
 } channel_config_st;
 
 /* Ensure there is one of these configured for each timer channel used. */
@@ -84,13 +100,14 @@ static const channel_config_st channel_configs[] = {
 
 static const pwm_timer_config_st pwm_timer_configs[] =
 {
+#if defined(STM32F30X)
 	{
 		.pinID = pwm_input_1,
 		.pin = GPIO_Pin_8,
 		.pinSource = GPIO_PinSource8,
 		.pinAF = GPIO_AF_6,
-		.pinOutputType = GPIO_OType_PP,
 		.pinPuPd = GPIO_PuPd_DOWN,
+		.pinOutputType = GPIO_OType_PP,
 		.gpio = GPIOA,
 		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOA,
 
@@ -109,8 +126,8 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.pin = GPIO_Pin_9,
 		.pinSource = GPIO_PinSource9,
 		.pinAF = GPIO_AF_6,
-		.pinOutputType = GPIO_OType_PP,
 		.pinPuPd = GPIO_PuPd_DOWN,
+		.pinOutputType = GPIO_OType_PP,
 		.gpio = GPIOA,
 		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOA,
 
@@ -129,8 +146,8 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.pin = GPIO_Pin_6,
 		.pinSource = GPIO_PinSource6,
 		.pinAF = GPIO_AF_2,
-		.pinOutputType = GPIO_OType_PP,
 		.pinPuPd = GPIO_PuPd_DOWN,
+		.pinOutputType = GPIO_OType_PP,
 		.gpio = GPIOC,
 		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOC,
 
@@ -149,8 +166,8 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.pin = GPIO_Pin_7,
 		.pinSource = GPIO_PinSource7,
 		.pinAF = GPIO_AF_2,
-		.pinOutputType = GPIO_OType_PP,
 		.pinPuPd = GPIO_PuPd_DOWN,
+		.pinOutputType = GPIO_OType_PP,
 		.gpio = GPIOC,
 		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOC,
 
@@ -169,8 +186,8 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.pin = GPIO_Pin_8,
 		.pinSource = GPIO_PinSource8,
 		.pinAF = GPIO_AF_2,
-		.pinOutputType = GPIO_OType_PP,
 		.pinPuPd = GPIO_PuPd_DOWN,
+		.pinOutputType = GPIO_OType_PP,
 		.gpio = GPIOC,
 		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOC,
 
@@ -189,8 +206,8 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.pin = GPIO_Pin_9,
 		.pinSource = GPIO_PinSource9,
 		.pinAF = GPIO_AF_2,
-		.pinOutputType = GPIO_OType_PP,
 		.pinPuPd = GPIO_PuPd_DOWN,
+		.pinOutputType = GPIO_OType_PP,
 		.gpio = GPIOC,
 		.RCC_AHBPeriph = RCC_AHBPeriph_GPIOC,
 
@@ -204,6 +221,76 @@ static const pwm_timer_config_st pwm_timer_configs[] =
 		.timer_index = TIM3_IDX,
 		.channel_index = CH4_IDX
 	}
+#elif defined(STM32F10X)
+	{
+		.pinID = pwm_input_1,
+		.pin = GPIO_Pin_0,
+		.pinSource = GPIO_PinSource0,
+		.gpio = GPIOA,
+		.gpio_clk = RCC_APB2Periph_GPIOA,
+
+		/* Timer related */
+		.RCC_APBPeriphClockCmd = RCC_APB1PeriphClockCmd,
+		.RCC_APBPeriph = RCC_APB1Periph_TIM2,
+		.tim = TIM2,
+		.channel = TIM_Channel_1,
+		.irq = TIM2_IRQn,
+		.secondary_irq = INVALID_IRQn,
+		.timer_index = TIM2_IDX,
+		.channel_index = CH1_IDX
+	},
+	{
+		.pinID = pwm_input_2,
+		.pin = GPIO_Pin_1,
+		.pinSource = GPIO_PinSource1,
+		.gpio = GPIOA,
+		.gpio_clk = RCC_APB2Periph_GPIOA,
+
+		/* Timer related */
+		.RCC_APBPeriphClockCmd = RCC_APB1PeriphClockCmd,
+		.RCC_APBPeriph = RCC_APB1Periph_TIM2,
+		.tim = TIM2,
+		.channel = TIM_Channel_2,
+		.irq = TIM2_IRQn,
+		.secondary_irq = INVALID_IRQn,
+		.timer_index = TIM2_IDX,
+		.channel_index = CH2_IDX
+	},
+	{
+		.pinID = pwm_input_3,
+		.pin = GPIO_Pin_2,
+		.pinSource = GPIO_PinSource2,
+		.gpio = GPIOA,
+		.gpio_clk = RCC_APB2Periph_GPIOA,
+
+		/* Timer related */
+		.RCC_APBPeriphClockCmd = RCC_APB1PeriphClockCmd,
+		.RCC_APBPeriph = RCC_APB1Periph_TIM2,
+		.tim = TIM2,
+		.channel = TIM_Channel_3,
+		.irq = TIM2_IRQn,
+		.secondary_irq = INVALID_IRQn,
+		.timer_index = TIM2_IDX,
+		.channel_index = CH3_IDX
+	},
+	{
+		.pinID = pwm_input_4,
+		.pin = GPIO_Pin_3,
+		.pinSource = GPIO_PinSource3,
+		.gpio = GPIOA,
+		.gpio_clk = RCC_APB2Periph_GPIOA,
+
+		/* Timer related */
+		.RCC_APBPeriphClockCmd = RCC_APB1PeriphClockCmd,
+		.RCC_APBPeriph = RCC_APB1Periph_TIM2,
+		.tim = TIM2,
+		.channel = TIM_Channel_4,
+		.irq = TIM2_IRQn,
+		.secondary_irq = INVALID_IRQn,
+		.timer_index = TIM2_IDX,
+		.channel_index = CH4_IDX
+	}
+#endif
 };
 #define NB_PWM_PORTS	(sizeof(pwm_timer_configs)/sizeof(pwm_timer_configs[0]))
 #define PWM_CONFIG_INDEX(p)	((p)-&pwm_timer_configs[0])
@@ -238,7 +325,11 @@ static pwm_timer_st 	pwm_timers[NB_PWM_PORTS];
 static void initPwmGpio( pwm_timer_config_st const * timer_config )
 {
 	/* enable the clock for this GPIO port */
+#if defined(STM32F30X)
     RCC_AHBPeriphClockCmd(timer_config->RCC_AHBPeriph, ENABLE);
+#elif defined(STM32F10X)
+	RCC_APB2PeriphClockCmd(timer_config->gpio_clk, ENABLE);
+#endif
 
 	/* configure the pin */
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -246,16 +337,23 @@ static void initPwmGpio( pwm_timer_config_st const * timer_config )
     GPIO_StructInit(&GPIO_InitStructure);
 
     GPIO_InitStructure.GPIO_Pin = timer_config->pin;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+
+#if defined(STM32F30X)
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
     GPIO_InitStructure.GPIO_OType = timer_config->pinOutputType;
     GPIO_InitStructure.GPIO_PuPd = timer_config->pinPuPd;
+#elif defined(STM32F10X)
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+#endif
 
     GPIO_Init(timer_config->gpio, &GPIO_InitStructure);
 
+#if defined(STM32F30X)
 	/* configure the pin function */
     GPIO_PinAFConfig(timer_config->gpio, timer_config->pinSource, timer_config->pinAF);
-
+#endif
 
 }
 
@@ -526,6 +624,11 @@ static void handleTIMIRQ( TIM_TypeDef *tim, timer_idx_t timerIndex )
 void TIM1_CC_IRQHandler(void)
 {
     handleTIMIRQ(TIM1, TIM1_IDX);
+}
+
+void TIM2_IRQHandler(void)
+{
+    handleTIMIRQ(TIM2, TIM2_IDX);
 }
 
 /* TIM1 shares this interrupt with TIM16 */

@@ -138,8 +138,8 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 #elif defined(STM32F10X)
 	{
 		.pinID = pwm_output_1,
-		.pin = GPIO_Pin_9,
-		.pinSource = GPIO_PinSource9,
+		.pin = GPIO_Pin_8,
+		.pinSource = GPIO_PinSource8,
 		.gpio = GPIOA,
 		.gpio_clk = RCC_APB2Periph_GPIOA,
 
@@ -151,8 +151,8 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 	},
 	{
 		.pinID = pwm_output_2,
-		.pin = GPIO_Pin_12,
-		.pinSource = GPIO_PinSource12,
+		.pin = GPIO_Pin_11,
+		.pinSource = GPIO_PinSource11,
 		.gpio = GPIOA,
 		.gpio_clk = RCC_APB2Periph_GPIOA,
 
@@ -164,8 +164,8 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 	},
 	{
 		.pinID = pwm_output_3,
-		.pin = GPIO_Pin_7,
-		.pinSource = GPIO_PinSource7,
+		.pin = GPIO_Pin_6,
+		.pinSource = GPIO_PinSource6,
 		.gpio = GPIOB,
 		.gpio_clk = RCC_APB2Periph_GPIOB,
 
@@ -177,8 +177,8 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 	},
 	{
 		.pinID = pwm_output_4,
-		.pin = GPIO_Pin_8,
-		.pinSource = GPIO_PinSource8,
+		.pin = GPIO_Pin_7,
+		.pinSource = GPIO_PinSource7,
 		.gpio = GPIOB,
 		.gpio_clk = RCC_APB2Periph_GPIOB,
 
