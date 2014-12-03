@@ -49,6 +49,7 @@ INCLUDE_DIRS = 	$(SRC_DIR)/drivers \
 				$(SRC_DIR)/stm32f30x
 
 ifeq ($(TARGET),STM32F3_Discovery)
+
 INCLUDE_DIRS := $(INCLUDE_DIRS) \
 				$(SRC_DIR)/cmsis_boot/startup \
 				$(SRC_DIR)/cmsis_boot \
@@ -87,6 +88,7 @@ VCP_SRC = $(VCP_DIR)/*.c
 
 else ifeq ($(TARGET),NAZE32)
 
+OPTIMISE_FLAGS = -Os
 INCLUDE_DIRS := $(INCLUDE_DIRS) \
 				$(SRC_DIR)/cmsis/CM3/CoreSupport \
 				$(SRC_DIR)/cmsis/CM3/DeviceSupport/ST/STM32F10x \

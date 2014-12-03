@@ -89,6 +89,7 @@ OS_STK *InitTaskContext(FUNCPtr task,void *param,OS_STK *pstk)
  * @note       CoOS may schedule when exiting this ISR.
  *******************************************************************************
  */
+#if !defined(STM32F10X)	/* temp debug only */
 void SysTick_Handler(void)
 {
     OSSchedLock++;                  /* Lock scheduler.                        */
@@ -126,3 +127,4 @@ void SysTick_Handler(void)
 	TaskSchedReq = Co_TRUE;
     OsSchedUnlock();
 }
+#endif

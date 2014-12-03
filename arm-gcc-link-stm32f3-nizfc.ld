@@ -7,7 +7,7 @@ MEMORY
 	ram1 (rwx) : ORIGIN = 0x10000000, LENGTH = 0x00002000
 }
 
-_eram = 0x20000000 + 0x0000A000;
+_estack = 0x20000000 + 0x0000A000;
 SECTIONS
 {
 	.text :

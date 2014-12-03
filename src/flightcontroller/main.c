@@ -424,6 +424,214 @@ void _Default_Handler( void )
 	while( 1 );
 }
 
+#if 1
+#include <stm32f10x.h>
+#include <misc.h>
+
+typedef enum {
+    Mode_AIN = 0x0,
+    Mode_IN_FLOATING = 0x04,
+    Mode_IPD = 0x28,
+    Mode_IPU = 0x48,
+    Mode_Out_OD = 0x14,
+    Mode_Out_PP = 0x10,
+    Mode_AF_OD = 0x1C,
+    Mode_AF_PP = 0x18
+} GPIO_Mode;
+
+typedef enum {
+    Speed_10MHz = 1,
+    Speed_2MHz,
+    Speed_50MHz
+} GPIO_Speed;
+
+typedef enum {
+    Pin_0 = 0x0001,
+    Pin_1 = 0x0002,
+    Pin_2 = 0x0004,
+    Pin_3 = 0x0008,
+    Pin_4 = 0x0010,
+    Pin_5 = 0x0020,
+    Pin_6 = 0x0040,
+    Pin_7 = 0x0080,
+    Pin_8 = 0x0100,
+    Pin_9 = 0x0200,
+    Pin_10 = 0x0400,
+    Pin_11 = 0x0800,
+    Pin_12 = 0x1000,
+    Pin_13 = 0x2000,
+    Pin_14 = 0x4000,
+    Pin_15 = 0x8000,
+    Pin_All = 0xFFFF
+} GPIO_Pin;
+
+typedef struct {
+    uint16_t pin;
+    GPIO_Mode mode;
+    GPIO_Speed speed;
+} gpio_config_t;
+#define LED0_GPIO   GPIOB
+#define LED0_PIN    Pin_3 // PB3 (LED)
+#define LED1_GPIO   GPIOB
+#define LED1_PIN    Pin_4 // PB4 (LED)
+
+#define LED0_TOGGLE              digitalToggle(LED0_GPIO, LED0_PIN);
+#define LED0_OFF                 digitalHi(LED0_GPIO, LED0_PIN);
+#define LED0_ON                  digitalLo(LED0_GPIO, LED0_PIN);
+#define LED1_TOGGLE              digitalToggle(LED1_GPIO, LED1_PIN);
+#define LED1_OFF                 digitalHi(LED1_GPIO, LED1_PIN);
+#define LED1_ON                  digitalLo(LED1_GPIO, LED1_PIN);
+
+#define digitalHi(p, i)     { p->BSRR = i; }
+#define digitalLo(p, i)     { p->BRR = i; }
+#define digitalToggle(p, i) { p->ODR ^= i; }
+#define digitalIn(p, i)     (p->IDR & i)
+static volatile uint32_t usTicks = 0;
+static volatile uint32_t sysTickUptime = 0;
+
+static void cycleCounterInit(void)
+{
+    RCC_ClocksTypeDef clocks;
+    RCC_GetClocksFreq(&clocks);
+    usTicks = clocks.SYSCLK_Frequency / 1000000;
+}
+
+// SysTick
+void SysTick_Handler(void)
+{
+    sysTickUptime++;
+}
+
+// Return system uptime in microseconds (rollover in 70minutes)
+uint32_t micros(void)
+{
+    register uint32_t ms, cycle_cnt;
+    do {
+        ms = sysTickUptime;
+        cycle_cnt = SysTick->VAL;
+    } while (ms != sysTickUptime);
+    return (ms * 1000) + (usTicks * 1000 - cycle_cnt) / usTicks;
+}
+
+static void delayMicroseconds(uint32_t us)
+{
+    uint32_t now = micros();
+    while (micros() - now < us);
+}
+static void delay(uint32_t ms)
+{
+    while (ms--)
+        delayMicroseconds(1000);
+}
+void gpioInit(GPIO_TypeDef *gpio, gpio_config_t *config)
+{
+    uint32_t pinpos;
+    for (pinpos = 0; pinpos < 16; pinpos++) {
+        // are we doing this pin?
+        if (config->pin & (0x1 << pinpos)) {
+            // reference CRL or CRH, depending whether pin number is 0..7 or 8..15
+            __IO uint32_t *cr = &gpio->CRL + (pinpos / 8);
+            // mask out extra bits from pinmode, leaving just CNF+MODE
+            uint32_t currentmode = config->mode & 0x0F;
+            // offset to CNF and MODE portions of CRx register
+            uint32_t shift = (pinpos % 8) * 4;
+            // Read out current CRx value
+            uint32_t tmp = *cr;
+            // if we're in output mode, add speed too.
+            if (config->mode & 0x10)
+                currentmode |= config->speed;
+            // Mask out 4 bits
+            tmp &= ~(0xF << shift);
+            // apply current pinmode
+            tmp |= currentmode << shift;
+            *cr = tmp;
+            // Special handling for IPD/IPU
+            if (config->mode == Mode_IPD) {
+                gpio->ODR &= ~(1U << pinpos);
+            } else if (config->mode == Mode_IPU) {
+                gpio->ODR |= (1U << pinpos);
+            }
+        }
+    }
+}
+
+void systemInit(void)
+{
+    struct {
+        GPIO_TypeDef *gpio;
+        gpio_config_t cfg;
+    } gpio_setup[] = {
+        {
+            .gpio = LED0_GPIO,
+            .cfg = { LED0_PIN, Mode_Out_PP, Speed_2MHz }
+        },
+
+        {
+            .gpio = LED1_GPIO,
+            .cfg = { LED1_PIN, Mode_Out_PP, Speed_2MHz }
+        },
+    };
+    gpio_config_t gpio;
+    int i, gpio_count = sizeof(gpio_setup) / sizeof(gpio_setup[0]);
+
+    // Configure NVIC preempt/priority groups
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+
+    // Turn on clocks for stuff we use
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_TIM1 | RCC_APB2Periph_ADC1 | RCC_APB2Periph_USART1, ENABLE);
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+    RCC_ClearFlag();
+
+    // Make all GPIO in by default to save power and reduce noise
+    gpio.pin = Pin_All;
+    gpio.mode = Mode_AIN;
+    gpioInit(GPIOA, &gpio);
+    gpioInit(GPIOB, &gpio);
+    gpioInit(GPIOC, &gpio);
+
+    // Turn off JTAG port 'cause we're using the GPIO for leds
+#define AFIO_MAPR_SWJ_CFG_NO_JTAG_SW            (0x2 << 24)
+    AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_NO_JTAG_SW;
+
+    LED0_OFF;
+    LED1_OFF;
+
+    for (i = 0; i < gpio_count; i++) {
+        gpioInit(gpio_setup[i].gpio, &gpio_setup[i].cfg);
+    }
+
+    // Init cycle counter
+    cycleCounterInit();
+
+    // SysTick
+    SysTick_Config(SystemCoreClock / 1000);
+
+    // sleep for 100ms
+    delay(100);
+}
+
+int main(void)
+{
+    int i;
+
+    // Configure clock, this figures out HSE for hardware autodetect
+    SetSysClock(0);
+    systemInit();
+    while ( 1 )
+    {
+        LED1_ON;
+        LED0_OFF;
+        for (i = 0; i < 10; i++) {
+            LED1_TOGGLE;
+            LED0_TOGGLE;
+            delay(50);
+        }
+        LED0_OFF;
+        LED1_OFF;
+    }
+}
+#else
 static void systemInit(void)
 {
     // Configure NVIC preempt/priority groups
@@ -440,7 +648,6 @@ static void systemInit(void)
     AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_NO_JTAG_SW;
 
 }
-
 int main(void)
 {
 	systemInit();
@@ -469,3 +676,5 @@ int main(void)
 
 	while (1);
 }
+#endif
+

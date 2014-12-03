@@ -638,11 +638,12 @@ void TIM1_UP_TIM16_IRQHandler(void)
 	    handleTIMIRQ(TIM1, TIM1_IDX);
 }
 
+#if !defined(STM32F10X)
 void TIM3_IRQHandler(void)
 {
     handleTIMIRQ(TIM3, TIM3_IDX);
 }
-
+#endif
 void TIM8_CC_IRQHandler(void)
 {
     handleTIMIRQ(TIM8, TIM8_IDX);

@@ -21,7 +21,7 @@ MEMORY
 }
 
 /* Define output sections */
-_eram = 0x20000000 + 0x00005000;
+_estack = 0x20000000 + 0x00005000;
 SECTIONS
 {
   /* The startup code goes first into FLASH */
