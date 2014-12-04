@@ -12,9 +12,13 @@
 #include "uart_interface.h"
 #include "serial.h"
 
+#define USART1_RX_BUFFER_SIZE	128	/* must be power of two */
+#define USART1_TX_BUFFER_SIZE	128
 #define USART2_RX_BUFFER_SIZE	128	/* must be power of two */
 #define USART2_TX_BUFFER_SIZE	128
 
+static volatile uint8_t Usart1TxBuffer[USART1_TX_BUFFER_SIZE];
+static volatile uint8_t Usart1RxBuffer[USART1_RX_BUFFER_SIZE];
 static volatile uint8_t Usart2TxBuffer[USART2_TX_BUFFER_SIZE];
 static volatile uint8_t Usart2RxBuffer[USART2_RX_BUFFER_SIZE];
 
@@ -85,6 +89,14 @@ static const uart_ports_config_t uart_ports[] =
 	.txBufferSize = sizeof Usart2TxBuffer
 	}
 #elif defined(STM32F10X)
+	{
+	.port = SERIAL_UART_1,
+	.usart = USART1,
+	.rxBuffer = Usart1RxBuffer,
+	.rxBufferSize = sizeof Usart1RxBuffer,
+	.txBuffer = Usart1TxBuffer,
+	.txBufferSize = sizeof Usart1TxBuffer
+	},
 	{
 	.port = SERIAL_UART_2,
 	.usart = USART2,

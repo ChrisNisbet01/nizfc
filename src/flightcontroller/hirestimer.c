@@ -86,7 +86,6 @@ void initHiResTimer( uint32_t periodMicrosecs, void (*appCallback)( void ) )
 
 }
 
-#if !defined(STM32F10X)	/* temp debug only */
 uint32_t __attribute__ ((noinline)) micros(void)
 {
     uint32_t centiseconds, centiseconds2, cycle_count;
@@ -112,7 +111,7 @@ uint32_t __attribute__ ((noinline)) micros(void)
 
     return microsValue;
 }
-#endif
+
 void delayMicroseconds(uint32_t us)
 {
     uint32_t now = micros();
@@ -131,7 +130,7 @@ void initMicrosecondClock(void)
     RCC_ClocksTypeDef clocks;
     RCC_GetClocksFreq(&clocks);
     ticksPerMicrosecond = clocks.SYSCLK_Frequency / 1000000;
-    numTicksToWaitForRollover = 1 * ticksPerMicrosecond;	/* 5us */
+    numTicksToWaitForRollover = 1 * ticksPerMicrosecond;	/* 1us */
     ticksPerSystickInterrupt = ticksPerMicrosecond * (1000000/CFG_SYSTICK_FREQ);
 }
 

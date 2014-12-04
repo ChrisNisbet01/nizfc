@@ -141,8 +141,7 @@ void initLEDs( void )
 	for ( index = 0; index < ARRAY_SIZE(leds); index++ )
 	{
 		LEDInit(&leds[index]);
-		leds[index].port->BSRR = 0xffffffff;
-		//setLED((led_t)index,led_state_off);
+		setLED((led_t)index,led_state_off);
 	}
 }
 

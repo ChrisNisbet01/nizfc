@@ -47,8 +47,9 @@ Defines chip type,cortex-m3(1),cortex-m0(2)
 cortex-m4 without FPU(1), cortex-m4 with FPU(3)
 */
 #if defined(STM32F30X)
-#define CFG_CHIP_TYPE           (1)
+#define CFG_CHIP_TYPE           (3)
 #elif defined(STM32F10X)
+#define CFG_CHIP_TYPE           (1)
 #endif
 
 /*!<

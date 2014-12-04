@@ -16,6 +16,7 @@
 #include "usart.h"
 
 typedef enum usart_idx_t {
+	USART1_IDX,
 	USART2_IDX,
 	MAX_USARTS
 } usart_idx_t;
@@ -65,6 +66,19 @@ static const usart_port_config_st usart_configs[] =
 			.irq = USART2_IRQn
 		}
 #elif defined(STM32F10X)
+	[USART1_IDX] =
+		{
+			.usart = USART1,
+			.txPin = GPIO_Pin_9,
+			.txPinSource = GPIO_PinSource9,
+			.rxPin = GPIO_Pin_10,
+			.rxPinSource = GPIO_PinSource10,
+			.gpioPort = GPIOA,
+			.RCC_APBPeriphClockCmd = RCC_APB2PeriphClockCmd,
+			.RCC_APBPeriph = RCC_APB2Periph_USART1,
+			.RCC_APB2Periph = RCC_APB2Periph_GPIOA,
+			.irq = USART1_IRQn
+		},
 	[USART2_IDX] =
 		{
 			.usart = USART2,
@@ -210,6 +224,11 @@ static void usartIrqHandler(usart_port_config_st const * const uart_config, usar
         USART_ClearITPendingBit (uart_config->usart, USART_IT_ORE);
         // TODO: statistic?
     }
+}
+
+void USART1_IRQHandler(void)
+{
+    usartIrqHandler(&usart_configs[USART1_IDX], &usartCallbackInfo[USART1_IDX]);
 }
 
 void USART2_IRQHandler(void)
