@@ -119,10 +119,18 @@ void setLED( led_t led, led_state_t state )
 		switch ( state )
 		{
 			case led_state_off:
+#if defined(STM32F30X)
 				leds[led].port->BRR = leds[led].pin;
+#elif defined(STM32F10X)
+				leds[led].port->BSRR = leds[led].pin;
+#endif
 				break;
 			case led_state_on:
+#if defined(STM32F30X)
 				leds[led].port->BSRR = leds[led].pin;
+#else
+				leds[led].port->BRR = leds[led].pin;
+#endif
 				break;
 			case led_state_toggle:
 				leds[led].port->ODR ^= leds[led].pin;
