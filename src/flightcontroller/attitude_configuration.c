@@ -36,7 +36,7 @@ static char const * const parameter_name_mappings[] =
 {
 	[parameter_id_roll_lpf] = "rlpf",
 	[parameter_id_pitch_lpf] = "plpf",
-	[parameter_id_heading_lpf] = "hlpf"
+	[parameter_id_heading_lpf] = "ylpf"
 };
 
 static const parameterConfig_st attitude_config_parameterConfigs[] =

@@ -216,7 +216,14 @@ void updateMotorOutputs( void )
 	unsigned int motorIndex;
 	uint_fast16_t maxMotorValue = 0;
 	craftType_st const * craft;
+	static int count;
 
+	if ( count++ >= 300 )
+	{
+		count = 0;
+		setLED( LED1, led_state_toggle );
+		setLED( LED2, led_state_toggle );
+	}
 	craft = currentCraft;
 	if ( craft != NULL )
 	{

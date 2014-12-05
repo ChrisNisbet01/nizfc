@@ -36,6 +36,7 @@ typedef struct pwm_timer_config_st
 	uint_fast8_t	 pinAF;
 #elif defined(STM32F10X)
 	uint32_t         gpio_clk;
+	bool             outputEnable;
 #endif
 	GPIO_TypeDef	 * gpio;
 	uint_fast32_t	 RCC_AHBPeriph;
@@ -147,7 +148,8 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 		.RCC_APBPeriphClockCmd = RCC_APB2PeriphClockCmd,
 		.RCC_APBPeriph = RCC_APB2Periph_TIM1,
 		.tim = TIM1,
-		.channel = TIM_Channel_1
+		.channel = TIM_Channel_1,
+		.outputEnable = true
 	},
 	{
 		.pinID = pwm_output_2,
@@ -160,7 +162,8 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 		.RCC_APBPeriphClockCmd = RCC_APB2PeriphClockCmd,
 		.RCC_APBPeriph = RCC_APB2Periph_TIM1,
 		.tim = TIM1,
-		.channel = TIM_Channel_4
+		.channel = TIM_Channel_4,
+		.outputEnable = true
 	},
 	{
 		.pinID = pwm_output_3,
@@ -173,7 +176,8 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 		.RCC_APBPeriphClockCmd = RCC_APB1PeriphClockCmd,
 		.RCC_APBPeriph = RCC_APB1Periph_TIM4,
 		.tim = TIM4,
-		.channel = TIM_Channel_1
+		.channel = TIM_Channel_1,
+		.outputEnable = false
 	},
 	{
 		.pinID = pwm_output_4,
@@ -186,7 +190,8 @@ static const pwm_timer_config_st pwm_tx_timer_configs[] =
 		.RCC_APBPeriphClockCmd = RCC_APB1PeriphClockCmd,
 		.RCC_APBPeriph = RCC_APB1Periph_TIM4,
 		.tim = TIM4,
-		.channel = TIM_Channel_2
+		.channel = TIM_Channel_2,
+		.outputEnable = false
 	},
 #endif
 };
@@ -304,6 +309,10 @@ static void enablePWMTx( pwm_timer_config_st const * timer_config, uint_fast16_t
 	*/
 	initTimerTimeBase( timer_config->tim, period, PWM_FREQUENCY_HZ );
 	pwmOCConfig( timer_config->tim, timer_config->channel, initialValue );
+#if defined(STM32F10X)
+    if (timer_config->outputEnable)
+        TIM_CtrlPWMOutputs(timer_config->tim, ENABLE);
+#endif
 
     /* start the timer */
     TIM_Cmd(timer_config->tim, ENABLE);
