@@ -128,6 +128,14 @@ static uint32_t lastIMUTime;
 
 static void IMUCallback( void )
 {
+	static int count;
+
+	if ( count++ == 300 )
+	{
+		count = 0;
+		setLED( LED1, led_state_toggle);
+		setLED( LED2, led_state_toggle );
+	}
 	CoEnterISR();
 
 	isr_SetFlag( IMUTimerFlag );
@@ -241,20 +249,11 @@ static void main_task( void *pv )
 {
 	UNUSED(pv);
 
-	setLED( LED1, led_state_on );
-	setLED( LED2, led_state_off );
-    while ( 1 )
-    {
-    	int i;
-
-
-        for (i = 0; i < 10; i++) {
-	    	setLED( LED1, led_state_toggle);
-	    	setLED( LED2, led_state_toggle );
-	    	CoTimeDelay( 0, 0, 0, 100 );
-        }
-    }
+#if defined(STM32F30X)
 	i2c_port = i2cInit( I2C_PORT_1 );
+#elif defined(STM32F10X)
+	i2c_port = i2cInit( I2C_PORT_2 );
+#endif
 
 	if ( i2c_port != NULL )
 	{
@@ -264,7 +263,7 @@ static void main_task( void *pv )
 #if defined(STM32F30X)
 		initLSM303DLHC( &sensorConfig, &sensorCallbacks );
 #elif defined(STM32F10X)
-		// TODO:
+		// TODO: gyro + accelerometer
 #endif
 	}
 
@@ -287,8 +286,11 @@ static void main_task( void *pv )
 		board_configuration[0].boardOrientation[0],
 		board_configuration[0].boardOrientation[1],
 		board_configuration[0].boardOrientation[2] );
+
 	initFailsafe( failsafeTriggerCallback );
+
 	initMotorControl(board_configuration[0].craftType);
+
 	openReceiver( newReceiverDataCallback );
 
 	initIMU(board_configuration[0].updateTime);
@@ -411,9 +413,6 @@ static void cli_task( void *pv )
 
 	UNUSED(pv);
 
-	cliUartFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-	printTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-
 	printTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ, CFG_SYSTICK_FREQ, printTimer );
 	CoStartTmr( printTimerID );
 
@@ -445,7 +444,7 @@ static void systemInit(void)
     // Turn on clocks for stuff we use
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_TIM1 | RCC_APB2Periph_ADC1 | RCC_APB2Periph_USART1, ENABLE);
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+    //RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
     RCC_ClearFlag();
 
     // Turn off JTAG port because we're using the GPIO for leds
@@ -456,12 +455,17 @@ static void systemInit(void)
 int main(void)
 {
 	systemInit();
+	SetSysClock(0);
 	initLEDs();
 	initMicrosecondClock();
 
 	CoInitOS();
 
 	/* open the serial ports early so debug info can be sent to them */
+
+	cliUartFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+	printTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+
 	cli_uart[0] = serialOpen( SERIAL_UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 	if ( cli_uart[0] != NULL )
 		pcli[0] = initCli( cli_uart[0] );

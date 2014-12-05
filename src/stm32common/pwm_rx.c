@@ -18,7 +18,9 @@
 
 #include "pwm_rx_stm32f30x.h"
 
-#define PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE
+#if defined(STM32F30X)
+#define PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE	/* doesn't work on the NAZE32 STM32F103 */
+#endif
 
 #if defined(STM32F30X)
 typedef uint32_t capture_t;
@@ -345,7 +347,7 @@ static void initPwmGpio( pwm_timer_config_st const * timer_config )
     GPIO_InitStructure.GPIO_OType = timer_config->pinOutputType;
     GPIO_InitStructure.GPIO_PuPd = timer_config->pinPuPd;
 #elif defined(STM32F10X)
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;
 #endif
 
     GPIO_Init(timer_config->gpio, &GPIO_InitStructure);

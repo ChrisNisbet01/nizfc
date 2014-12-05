@@ -9,7 +9,7 @@ SIZE		 = $(CC_PREFIX)size
 CO_FLASH     = /cygdrive/c/CooCox/CoIDE/bin/coflash.exe
 
 # indicate which platform we're building for
-TARGET ?= STM32F3_Discovery
+TARGET ?= NAZE32
 TARGETS = NAZE32 STM32F3_Discovery
 
 # check for valid target

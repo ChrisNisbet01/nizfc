@@ -422,10 +422,16 @@ char* shortGitRevision = "1234567";
 #define FC_VERSION_MAJOR            1  // increment when a major release is made (big new feature, etc)
 #define FC_VERSION_MINOR            0  // increment when a minor release is made (small new feature, change etc)
 #define FC_VERSION_PATCH_LEVEL      0  // increment when a bug is fixed
-#define MW_VERSION              230
+#define MW_VERSION              	230
+#if defined(STM32F30X)
 #define U_ID_0 (*(uint32_t*)0x1FFFF7AC)
 #define U_ID_1 (*(uint32_t*)0x1FFFF7B0)
 #define U_ID_2 (*(uint32_t*)0x1FFFF7B4)
+#elif defined(STM32F10X)
+#define U_ID_0 (*(uint32_t*)0x1FFFF7E8)
+#define U_ID_1 (*(uint32_t*)0x1FFFF7EC)
+#define U_ID_2 (*(uint32_t*)0x1FFFF7F0)
+#endif
 
 static bool processOutCommand(uint8_t cmdMSP)
 {
