@@ -303,7 +303,7 @@ typedef struct pwm_timer_st
 #if !defined(PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE)
 	volatile pin_state_t 		last_pin_state;	/* state of pin at last edge ISR */
 #endif
-	volatile capture_t			last_rising_edge_capture_value;
+	volatile uint_fast32_t		last_rising_edge_capture_value;
 	volatile uint_fast32_t		overflow_capture_value;
 
 	pwm_timer_config_st         const * timer_config;			/* the GPIO/TIM details */
@@ -516,7 +516,7 @@ static void enablePWMTiming( pwm_timer_config_st const * timer_config, uint_fast
 	configureTimerCallbacks( timer_config->timer_index, timer_config->channel_index, pwm_context_index, edgeCallback, overflowCallback );
 
 	/* configure the timer
-		period == 65535ms
+		period == 65535us
 		frequency == 1MHz
 	*/
 	initPwmTimer( timer_config, PWM_PERIOD, PWM_FREQUENCY_HZ );
@@ -640,7 +640,7 @@ void TIM1_UP_TIM16_IRQHandler(void)
 	    handleTIMIRQ(TIM1, TIM1_IDX);
 }
 
-#if !defined(STM32F10X)
+#if !defined(STM32F10X)	/* TIM3 used for his res loop timer */
 void TIM3_IRQHandler(void)
 {
     handleTIMIRQ(TIM3, TIM3_IDX);

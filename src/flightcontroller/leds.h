@@ -12,10 +12,10 @@ typedef enum led_t
 	LED7,
 	LED8,
 	ARMED_LED =		    LED1,
-	ANGLE_MODE_LED =    LED2,
+	ANGLE_MODE_LED =    LED3,
 	FAILSAFE_LED =      LED3,
 	EXCEPTION_LED =     LED4,
-	RX_LED =			LED5
+	RX_LED =			LED2
 } led_t;
 
 typedef enum led_state_t
