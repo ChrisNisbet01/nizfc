@@ -19,7 +19,7 @@
 #include <l3gd20.h>
 #elif defined(STM32F10X)
 #include <stm32f10x_rcc.h>
-// TODO:
+#include <mpu6050.h>
 #endif
 #include <angle_mode_configuration.h>
 #include <rate_mode_configuration.h>
@@ -204,17 +204,21 @@ static void IMUHandler( void )
 		&& sensorCallbacks.readAccelerometer( sensorCallbacks.accelerometerCtx, accelerometerValues ) == true
 		&& sensorCallbacks.readGyro( sensorCallbacks.gyroCtx, gyroValues ) == true)
 	{
-		alignVectorsToFlightController( accelerometerValues, noRotation );	// TODO: configurable
+#if defined(STM32F30X)
+		alignVectorsToFlightController( accelerometerValues, noRotation );	// TODO: configurable/per hardware, not cpu
+#elif defined(STM32F10X)
+		alignVectorsToFlightController( accelerometerValues, clockwise180Degrees );	// TODO: configurable/per hardware, not cpu
+#endif
 		alignVectorsToCraft( accelerometerValues );
 		filterAccValues( accelerometerValues, filteredAccelerometerValues );
 
-		alignVectorsToFlightController( gyroValues, noRotation );			// TODO: configurable
+#if defined(STM32F30X)
+		alignVectorsToFlightController( gyroValues, noRotation );			// TODO: configurable/per hardware, not cpu
+#elif defined(STM32F10X)
+		alignVectorsToFlightController( gyroValues, clockwise270Degrees );			// TODO: configurable/per hardware, not cpu
+#endif
 		alignVectorsToCraft( gyroValues );
 		filterGyroValues( gyroValues, filteredGyroValues );
-
-		alignVectorsToFlightController( magnetometerValues, noRotation );	// TODO: configurable
-		alignVectorsToCraft( magnetometerValues );
-		filterMagValues( magnetometerValues, filteredMagnetometerValues );
 
 		estimateAttitude( fIMUDelta );
 
@@ -256,7 +260,7 @@ static void main_task( void *pv )
 #if defined(STM32F30X)
 		initLSM303DLHC( &sensorConfig, &sensorCallbacks );
 #elif defined(STM32F10X)
-		// TODO: gyro + accelerometer
+		initMPU6050( &sensorConfig, &sensorCallbacks );
 #endif
 	}
 
@@ -389,6 +393,9 @@ static void doDebugOutput( void )
 		printf( "\r\nfiltered" );
 		printf( "\r\n        roll %g", &RollAngle );
 		printf( "\r\n        pit  %g", &PitchAngle );
+		printf( "\r\nsetpoint" );
+		printf( "\r\n        roll %d", (int)getRollAngleSetpoint() );
+		printf( "\r\n        pit  %d", (int)getPitchAngleSetpoint() );
 	}
 	if (board_configuration[0].debug & 16 )
 	{
@@ -459,9 +466,9 @@ int main(void)
 	cliUartFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	printTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 
-	cli_uart[0] = serialOpen( SERIAL_UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
-	if ( cli_uart[0] != NULL )
-		pcli[0] = initCli( cli_uart[0] );
+	//cli_uart[0] = serialOpen( SERIAL_UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
+	//if ( cli_uart[0] != NULL )
+	//	pcli[0] = initCli( cli_uart[0] );
 #if defined(STM32F30X)
  	cli_uart[1] = serialOpen( SERIAL_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
 #elif defined(STM32F10X)
