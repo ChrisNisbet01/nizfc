@@ -13,6 +13,7 @@
 #include <failsafe.h>
 #include <craft_types.h>
 #include <aux_configuration.h>
+#include <board_configuration.h>
 
 typedef struct motorMixRatios_st
 {
@@ -28,6 +29,8 @@ typedef struct craftType_st
     const motorMixRatios_st * motorRatios;
     uint_fast8_t 			nbMotors;
 } craftType_st;
+
+#define MAX_MOTORS	4
 
 static const motorMixRatios_st HQuadMixRatios[] =
 {
@@ -46,8 +49,8 @@ static const craftType_st crafts[] =
 	}
 };
 
-static uint_fast16_t motorValues[6];	// TODO: defined limit
-static uint_fast16_t disarmedMotorValues[6];	// TODO: defined limit
+static uint_fast16_t motorOutputs[MAX_MOTORS];			// TODO: defined limit
+static uint_fast16_t disarmedMotorOutputs[MAX_MOTORS];	// TODO: defined limit
 static craftType_st const * currentCraft;
 
 static void assignCraftType( craft_type_t craftType )
@@ -71,8 +74,8 @@ void initMotorControl( craft_type_t craftType )
 {
 	unsigned int index;
 
-	for (index = 0; index < ARRAY_SIZE(disarmedMotorValues); index++ )
-		disarmedMotorValues[index] = 1000;	// TODO: configurable
+	for (index = 0; index < ARRAY_SIZE(disarmedMotorOutputs); index++ )
+		disarmedMotorOutputs[index] = board_configuration[0].minMotorOutput;
 
 	assignCraftType( craftType );
 	if ( currentCraft != NULL )
@@ -81,34 +84,34 @@ void initMotorControl( craft_type_t craftType )
 	}
 }
 
-uint16_t getMotorValue( uint_fast8_t motorIndex )
+uint16_t getMotorOutput( uint_fast8_t motorIndex )
 {
-	uint16_t motorValue;
+	uint16_t motorOutput;
 
-	if ( currentCraft != NULL && motorIndex < currentCraft->nbMotors)
-		motorValue = motorValues[motorIndex];
+	if ( currentCraft != NULL && motorIndex < currentCraft->nbMotors && motorIndex < MAX_MOTORS)
+		motorOutput = motorOutputs[motorIndex];
 	else
-		motorValue = 0;
+		motorOutput = 0;
 
-	return motorValue;
+	return motorOutput;
 }
 
 void setMotorDisarmedValue( uint_fast8_t motorIndex, uint_fast16_t value )
 {
-	if (motorIndex < ARRAY_SIZE(disarmedMotorValues))
-		disarmedMotorValues[motorIndex] = limit( value, 1000, 2000 );
+	if (motorIndex < ARRAY_SIZE(disarmedMotorOutputs))
+		disarmedMotorOutputs[motorIndex] = limit( value, board_configuration[0].minMotorOutput, board_configuration[0].maxMotorOutput );
 }
 
 void updateMotorOutputs( void )
 {
 	unsigned int motorIndex;
-	uint_fast16_t maxMotorValue = 0;
+	uint_fast16_t maxMotorOutput = 0;
 	craftType_st const * craft;
 
 	craft = currentCraft;
 	if ( craft != NULL )
 	{
-		uint_fast16_t tempMotorValues[craft->nbMotors];
+		uint_fast16_t tempMotorOutputs[craft->nbMotors];
 
 		if ( isCraftArmed() && hasFailsafeTriggered() == false )
 		{
@@ -117,28 +120,28 @@ void updateMotorOutputs( void )
 			mixer = craft->motorRatios;
 			for ( motorIndex=0; motorIndex < craft->nbMotors; motorIndex++ )
 			{
-				tempMotorValues[motorIndex] = lrintf(getThrottleSetpoint() * mixer[motorIndex].throttle);
+				tempMotorOutputs[motorIndex] = lrintf(getThrottleSetpoint() * mixer[motorIndex].throttle);
 				/* only add in PID control values once throttle is above 0 */
 				if ( getThrottleSetpoint() > THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS )
 				{
 					switch ( getCurrentFlightMode() )
 					{
 						case angle_flight_mode:
-							tempMotorValues[motorIndex] += lrintf(getPitchAnglePIDOutput() * mixer[motorIndex].pitch
+							tempMotorOutputs[motorIndex] += lrintf(getPitchAnglePIDOutput() * mixer[motorIndex].pitch
 																	+ getRollAnglePIDOutput() * mixer[motorIndex].roll);
 							break;
 						case rate_flight_mode:
-							tempMotorValues[motorIndex] += lrintf(getPitchRatePIDOutput() * mixer[motorIndex].pitch
+							tempMotorOutputs[motorIndex] += lrintf(getPitchRatePIDOutput() * mixer[motorIndex].pitch
 																	+ getRollRatePIDOutput() * mixer[motorIndex].roll);
 							break;
 						default:	/* ??? */
 							break;
 					}
-					tempMotorValues[motorIndex] += lrintf(getYawRatePIDOutput() * mixer[motorIndex].yaw);
+					tempMotorOutputs[motorIndex] += lrintf(getYawRatePIDOutput() * mixer[motorIndex].yaw);
 
 				}
-				if ( maxMotorValue < tempMotorValues[motorIndex] )
-					maxMotorValue = tempMotorValues[motorIndex];
+				if ( maxMotorOutput < tempMotorOutputs[motorIndex] )
+					maxMotorOutput = tempMotorOutputs[motorIndex];
 			}
 		}
 
@@ -146,22 +149,24 @@ void updateMotorOutputs( void )
 		{
 			if ( hasFailsafeTriggered() == true )
 			{
-				tempMotorValues[motorIndex] = getFailsafeMotorSpeed();
+				tempMotorOutputs[motorIndex] = getFailsafeMotorSpeed();
 			}
 			else if ( isCraftArmed() )
 			{
-				if ( maxMotorValue > 2000 )
-					tempMotorValues[motorIndex] -= (maxMotorValue - 2000);
+				if ( maxMotorOutput > board_configuration[0].maxMotorOutput )
+					tempMotorOutputs[motorIndex] -= (maxMotorOutput - board_configuration[0].maxMotorOutput);
 			}
 			else
 			{
-				tempMotorValues[motorIndex] = disarmedMotorValues[motorIndex];
+				tempMotorOutputs[motorIndex] = disarmedMotorOutputs[motorIndex];
 			}
 			/* store so that the output value can be displayed */
-			motorValues[motorIndex] = limit(tempMotorValues[motorIndex], 1000, 2000);	// TODO: configurable limits
+			motorOutputs[motorIndex] = limit(tempMotorOutputs[motorIndex],
+											board_configuration[0].minMotorOutput,
+											board_configuration[0].maxMotorOutput);
 
 			/* update the output to the motor esc */
-			setMotorOutput( motorIndex, motorValues[motorIndex] );
+			setMotorOutput( motorIndex, motorOutputs[motorIndex] );
 		}
 	}
 }

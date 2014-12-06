@@ -9,6 +9,8 @@ typedef struct board_configuration_st
 	float  			boardOrientation[3];
 	uint32_t 		debug;			/* debug flags */
 	uint32_t		updateTime;		/* time between updates of the IMU, motor outputs etc. */
+	uint16_t		minMotorOutput;
+	uint16_t		maxMotorOutput;
 }board_configuration_st;
 
 

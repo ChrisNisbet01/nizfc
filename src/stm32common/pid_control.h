@@ -1,7 +1,9 @@
 #ifndef __PID_CONTROL_H__
 #define __PID_CONTROL_H__
 
-#define THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS	1050	// TODO: configurable
+#include <board_configuration.h>
+
+#define THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS	(1000 + 50)	// TODO: configurable
 
 float getRollAnglePIDOutput( void );
 float getPitchAnglePIDOutput( void );

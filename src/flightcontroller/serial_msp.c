@@ -7,50 +7,15 @@
 #include <receiver.h>
 #include <uart.h>
 #include "serial_msp.h"
+#include <motor_control.h>
+#include <board_configuration.h>
+#include <failsafe_configuration.h>
 
 extern uint32_t IMUDelta;
 #define cycleTime IMUDelta
 #define serialPort_t	serial_port_st
 
 static const char MSPHeader[3] = {'$', 'M', '<'};
-
-
-
-/**
- * MSP Guidelines, emphasis is used to clarify.
- *
- * Each FlightController (FC, Server) MUST change the API version when any MSP command is added, deleted, or changed.
- *
- * If you fork the FC source code and release your own version, you MUST change the Flight Controller Identifier.
- *
- * NEVER release a modified copy of this code that shares the same Flight controller IDENT and API version
- * if the API doesn't match EXACTLY.
- *
- * Consumers of the API (API clients) SHOULD first attempt to get a response from the MSP_API_VERSION command.
- * If no response is obtained then client MAY try the legacy MSP_IDENT command.
- *
- * API consumers should ALWAYS handle communication failures gracefully and attempt to continue
- * without the information if possible.  Clients MAY log/display a suitable message.
- *
- * API clients should NOT attempt any communication if they can't handle the API MAJOR VERSION.
- *
- * API clients SHOULD attempt communication if the API MINOR VERSION has increased from the time
- * the API client was written and handle command failures gracefully.  Clients MAY disable
- * functionality that depends on the commands while still leaving other functionality intact.
- * Clients SHOULD operate in READ-ONLY mode and SHOULD present a warning to the user to state
- * that the newer API version may cause problems before using API commands that change FC state.
- *
- * It is for this reason that each MSP command should be specific as possible, such that changes
- * to commands break as little functionality as possible.
- *
- * API client authors MAY use a compatibility matrix/table when determining if they can support
- * a given command from a given flight controller at a given api version level.
- *
- * Developers MUST NOT create new MSP commands that do more than one thing.
- *
- * Failure to follow these guidelines will likely invoke the wrath of developers trying to write tools
- * that use the API and the users of those tools.
- */
 
 #define MSP_PROTOCOL_VERSION                0
 
@@ -487,10 +452,14 @@ static bool processOutCommand(uint8_t cmdMSP)
     case MSP_STATUS:
         headSerialReply(11);
         serialize16(cycleTime);
-        serialize16(0);
+        serialize16(0);	/* I2C error count */
+#if defined(STM32F30X)
         serialize16(5);	/* bit 0 == gyro + accel, bit 1 = baro, bit 2 == magnetometer, bit 3 = GPS, bit 4 = sonar */
+#elif defined(STM32F10X)
+        serialize16(1);	/* bit 0 == gyro + accel, bit 1 = baro, bit 2 == magnetometer, bit 3 = GPS, bit 4 = sonar */
+#endif
         serialize32(0);
-        serialize8(0);
+        serialize8(0);	/* current config profile */
         break;
     case MSP_RAW_IMU:
         headSerialReply(18);
@@ -505,7 +474,7 @@ static bool processOutCommand(uint8_t cmdMSP)
     case MSP_MOTOR:
         headSerialReply(16);
         for (i = 0; i < 8; i++)
-	        serialize16(getMotorValue(i));
+	        serialize16(getMotorOutput(i));
         break;
     case MSP_RC:
         headSerialReply(2 * 8);
@@ -570,12 +539,12 @@ static bool processOutCommand(uint8_t cmdMSP)
     case MSP_MISC:
         headSerialReply(2 * 6 + 4 + 2 + 4);
         serialize16(0); // intPowerTrigger1 (aka useless trash)
-        serialize16(1000);	/* min trottle */
-        serialize16(2000);	/* max throttle */
-        serialize16(1000);	/* min command */
-        serialize16(1000);	/* failsafe throttle */
-        serialize16(0); // plog useless shit
-        serialize32(0); // plog useless shit
+        serialize16(board_configuration[0].minMotorOutput);	/* min throttle */
+        serialize16(board_configuration[0].maxMotorOutput);	/* max throttle */
+        serialize16(board_configuration[0].minMotorOutput);	/* min command */
+        serialize16(failsafe_configuration[0].motorOutput);	/* failsafe throttle */
+        serialize16(0); // ???
+        serialize32(0); // ???
         serialize16(0); // magnetic declination
         serialize8(10);
         serialize8(35);
@@ -594,7 +563,7 @@ static bool processInCommand(void)
 
     switch (currentPort->cmdMSP) {
     case MSP_SET_MOTOR:
-        for (i = 0; i < 8; i++) // FIXME should this use MAX_MOTORS or MAX_SUPPORTED_MOTORS instead of 8
+        for (i = 0; i < 8; i++)
             setMotorDisarmedValue( i, read16() );
         break;
     default:

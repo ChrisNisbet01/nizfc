@@ -32,7 +32,9 @@ static const board_configuration_st default_board_configuration =
 	.boardOrientation[1] = 0.0f,
 	.boardOrientation[2] = 0.0f,
 	.updateTime          = 3000,	/* microseconds */
-	.debug               = 0
+	.debug               = 0,
+	.minMotorOutput      = 1000,
+	.maxMotorOutput      = 2000
 };
 
 typedef enum board_parameter_id_t
@@ -42,7 +44,9 @@ typedef enum board_parameter_id_t
 	board_parameter_id_boardOrientationY = 2,
 	board_parameter_id_boardOrientationZ = 3,
 	board_parameter_id_debug = 4,
-	board_parameter_id_updateTime = 5
+	board_parameter_id_updateTime = 5,
+	board_parameter_id_minMotorOutput = 6,
+	board_parameter_id_maxMotorOutput = 7
 } board_parameter_id_t;
 
 
@@ -53,7 +57,9 @@ static char const * const board_parameter_name_mappings[] =
 	[board_parameter_id_boardOrientationY] = "pitch",
 	[board_parameter_id_boardOrientationZ] = "yaw",
 	[board_parameter_id_updateTime]        = "updatetime",
-	[board_parameter_id_debug]             = "debug"
+	[board_parameter_id_debug]             = "debug",
+	[board_parameter_id_minMotorOutput]    = "minmotor",
+	[board_parameter_id_maxMotorOutput]    = "maxmotor"
 };
 
 static const parameterConfig_st board_config_parameterConfigs[] =
@@ -84,6 +90,16 @@ static const parameterConfig_st board_config_parameterConfigs[] =
 	.parameter_id = board_parameter_id_updateTime,
 	.data_type = config_data_type_uint32,
 	.offsetToData = offsetof(board_configuration_st, updateTime),
+	},
+	{
+	.parameter_id = board_parameter_id_minMotorOutput,
+	.data_type = config_data_type_uint16,
+	.offsetToData = offsetof(board_configuration_st, minMotorOutput),
+	},
+	{
+	.parameter_id = board_parameter_id_maxMotorOutput,
+	.data_type = config_data_type_uint16,
+	.offsetToData = offsetof(board_configuration_st, maxMotorOutput),
 	},
 	{
 	.parameter_id = board_parameter_id_debug,

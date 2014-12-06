@@ -423,7 +423,7 @@ static void doDebugOutput( void )
 
 		printf("\r\n");
 		for (motor = 0; motor < 4; motor++ )
-			printf("  m-%d: %u", motor+1, (unsigned int)getMotorValue( motor ) );
+			printf("  m-%d: %u", motor+1, (unsigned int)getMotorOutput( motor ) );
 	}
 	if (board_configuration[0].debug & 8 )
 	{

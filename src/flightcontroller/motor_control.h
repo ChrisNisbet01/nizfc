@@ -5,7 +5,8 @@
 
 void initMotorControl( craft_type_t craftType );
 void updateMotorOutputs( void );
-uint16_t getMotorValue( uint_fast8_t motorIndex );
+uint16_t getMotorOutput( uint_fast8_t motorIndex );
+void setMotorDisarmedValue( uint_fast8_t motorIndex, uint_fast16_t value );
 
 float getRollAnglePIDOutput( void );
 float getPitchAnglePIDOutput( void );

@@ -47,65 +47,53 @@ static receiver_state_st receiver_state;
 
 static void determineThrottleSetpoint( uint_fast16_t channel )
 {
-	int temp;
 	/* just return a value in the range 1000-2000 */
 	// TODO: scale between configured low/high limits
-	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.throttle_position = scale(temp, 1000, 2000, 1000, 2000 );
+	receiver_state.throttle_position = scale(channel, 1000, 2000, 1000, 2000 );
 }
 
 static void determineRollAngleSetpoint( uint_fast16_t channel )
 {
-	int temp;
 	/* just return a value in the range 1000-2000 */
 	// TODO: scale between configured low/high limits
-	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.roll_angle_setpoint = scale(temp, 1000, 2000, -angle_mode_configuration[0].roll_maxAngle, angle_mode_configuration[0].roll_maxAngle );
+	receiver_state.roll_angle_setpoint = scale(channel, 1000, 2000, -angle_mode_configuration[0].roll_maxAngle, angle_mode_configuration[0].roll_maxAngle );
 }
 
 static void determinePitchAngleSetpoint( uint_fast16_t channel )
 {
-	int temp;
 	/* just return a value in the range 1000-2000 */
 	// TODO: scale between configured low/high limits
 	// TODO: expo?
-	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.pitch_angle_setpoint = scale(temp, 1000, 2000, -angle_mode_configuration[0].pitch_maxAngle, angle_mode_configuration[0].pitch_maxAngle );
+	receiver_state.pitch_angle_setpoint = scale(channel, 1000, 2000, -angle_mode_configuration[0].pitch_maxAngle, angle_mode_configuration[0].pitch_maxAngle );
 }
 
 static void determineRollRateSetpoint( uint_fast16_t channel )
 {
-	int temp;
 	/* just return a value in the range 1000-2000 */
 	// TODO: scale between configured low/high limits
-	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.roll_rate_setpoint = scale(temp, 1000, 2000, -rate_mode_configuration[0].roll_maxRate, rate_mode_configuration[0].roll_maxRate );
+	receiver_state.roll_rate_setpoint = scale(channel, 1000, 2000, -rate_mode_configuration[0].roll_maxRate, rate_mode_configuration[0].roll_maxRate );
 }
 
 static void determinePitchRateSetpoint( uint_fast16_t channel )
 {
-	int temp;
 	/* just return a value in the range 1000-2000 */
 	// TODO: scale between configured low/high limits
 	// TODO: expo?
-	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.pitch_rate_setpoint = scale(temp, 1000, 2000, -rate_mode_configuration[0].pitch_maxRate, rate_mode_configuration[0].pitch_maxRate );
+	receiver_state.pitch_rate_setpoint = scale(channel, 1000, 2000, -rate_mode_configuration[0].pitch_maxRate, rate_mode_configuration[0].pitch_maxRate );
 }
 
 
 static void determineYawRateSetpoint( uint_fast16_t channel )
 {
-	int temp;
 	/* just return a value in the range 1000-2000 */
 	// TODO: scale between configured low/high limits
-	temp = limit( channel, 1000, 2000 );
 
-	receiver_state.yaw_rate_setpoint = scale(temp, 1000, 2000, yaw_configuration[0].maxRate, -yaw_configuration[0].maxRate );
+	receiver_state.yaw_rate_setpoint = scale(channel, 1000, 2000, yaw_configuration[0].maxRate, -yaw_configuration[0].maxRate );
 }
 
 static void determineArmingState( void )
