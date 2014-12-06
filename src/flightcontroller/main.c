@@ -266,7 +266,11 @@ static void IMUHandler( void )
 		initVectorRotationDegrees( &matrix, deltaGyroAngle[0], deltaGyroAngle[1], deltaGyroAngle[2] );
 		applyVectorRotation( &matrix, gyroHeadingVectors );
 		normalizeVectors( gyroHeadingVectors, gyroHeadingVectors );
+#if defined(STM32F30X)
 		Heading = calculateHeading( gyroHeadingVectors, -RollAngle, -PitchAngle );
+#elif defined(STM32F10X)
+		Heading = calculateHeading( gyroHeadingVectors, -PitchAngle, RollAngle );
+#endif
 	}
 
 	IMUExeTime = (now=micros()) - lastIMUTime;
@@ -360,7 +364,9 @@ static void main_task( void *pv )
 			    updateFailsafeWithNewChannels( newChannels );
 
 			    setLED(RX_LED, led_state_toggle);
+
 				processReceiverSignals();
+
 				updateFunctionEnables();
 			}
 		}

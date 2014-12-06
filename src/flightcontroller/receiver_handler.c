@@ -15,9 +15,6 @@
 #include <failsafe.h>
 #include <leds.h>
 
-#define MAX_AUX_SWITCHES			4u
-#define FIRST_AUX_SWITCH_CHANNEL	4u
-
 typedef enum aux_switch_position_t
 {
 	aux_switch_low,
@@ -35,7 +32,6 @@ typedef struct receiver_state_st
 	float pitch_rate_setpoint;
 	float yaw_rate_setpoint;
 
-	aux_switch_position_t	aux_switch[MAX_AUX_SWITCHES];
 } receiver_state_st;
 
 /* TODO: configurable */
@@ -47,19 +43,6 @@ typedef struct receiver_state_st
 #define STICK_MAX_VALID_VALUE	2250
 
 static receiver_state_st receiver_state;
-
-static void determineAuxSwitchPosition( unsigned int aux_switch, uint_fast16_t channel )
-{
-	if ( channel < STICK_MIN_VALID_VALUE || channel > STICK_MAX_VALID_VALUE )
-		receiver_state.aux_switch[aux_switch] = aux_switch_invalid;
-	else if ( channel < STICK_LOW_VALUE )
-		receiver_state.aux_switch[aux_switch] = aux_switch_low;
-	else if ( channel > STICK_MID_LOW_VALUE && channel < STICK_MID_HIGH_VALUE )
-		receiver_state.aux_switch[aux_switch] = aux_switch_middle;
-	else if ( channel > STICK_HIGH_VALUE )
-		receiver_state.aux_switch[aux_switch] = aux_switch_high;
-	/* else leave the switch in its previous state */
-}
 
 static void determineThrottleSetpoint( uint_fast16_t channel )
 {
@@ -180,8 +163,6 @@ void processReceiverSignals( void )
 	determinePitchAngleSetpoint(readReceiverChannel(2));
 	determineRollRateSetpoint(readReceiverChannel(1));
 	determinePitchRateSetpoint(readReceiverChannel(2));
-	for ( aux_switch_index = 0, aux_switch_channel = FIRST_AUX_SWITCH_CHANNEL; aux_switch_channel < FIRST_AUX_SWITCH_CHANNEL + MAX_AUX_SWITCHES; aux_switch_index++, aux_switch_channel++ )
-		determineAuxSwitchPosition(aux_switch_index, readReceiverChannel(aux_switch_channel));
 
 	determineYawRateSetpoint(readReceiverChannel(3));
 
