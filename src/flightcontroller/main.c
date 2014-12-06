@@ -480,15 +480,17 @@ void _Default_Handler( void )
 	while( 1 );
 }
 
+#if defined(STM32F10X)
 static void systemInit(void)
 {
     // Configure NVIC preempt/priority groups
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
-    // Turn on clocks for stuff we use
+    // Turn on clocks for peripherals used
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_TIM1 | RCC_APB2Periph_ADC1 | RCC_APB2Periph_USART1, ENABLE);
     //RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+
     RCC_ClearFlag();
 
     // Turn off JTAG port because we're using the GPIO for leds
@@ -496,12 +498,17 @@ static void systemInit(void)
     AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_NO_JTAG_SW;
 
 }
+#endif
 
 int main(void)
 {
 	unsigned int cli_index;
+
+#if defined(STM32F10X)
 	systemInit();
 	SetSysClock(0);
+#endif
+
 	initLEDs();
 	initMicrosecondClock();
 
