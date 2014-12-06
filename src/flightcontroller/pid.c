@@ -49,7 +49,7 @@ void updatePID( pid_st *pid, float pv, float setpoint, float dt )
 		iTerm = 0.0f;
 
 	/* D term. Based upon changes in pv, not changes in error. */
-	// TODO: based upon mode selection
+	// TODO: based upon PID mode selection
 	if ( *pid->kD != 0.0f )
 	{
 		if ( pid->nbUpdates > 0 )
@@ -73,7 +73,7 @@ void updatePID( pid_st *pid, float pv, float setpoint, float dt )
 	else
 		dTerm = 0.0f;
 
-	pid->outputValue = pTerm + iTerm - dTerm;
+	pid->outputValue = pTerm + iTerm + dTerm;
 	if ( *pid->maximumRange != 0.0f )
 		pid->outputValue = limitFloat( pid->outputValue, -(*pid->maximumRange), *pid->maximumRange );
 }
