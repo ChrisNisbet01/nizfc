@@ -7,6 +7,7 @@
 #include <coos.h>
 #include <utils.h>
 #include <receiver.h>
+#include <aux_configuration.h>
 #include <receiver_configuration.h>
 #include <receiver_handler.h>
 #include <angle_mode_configuration.h>
@@ -150,11 +151,8 @@ static void determineArmingState( void )
 		timerRunning = false;
 }
 
-
 void processReceiverSignals( void )
 {
-	unsigned int aux_switch_channel, aux_switch_index;
-
 	/* from the various input values, determine things like arming, angle setpoints etc. */
 	// TODO: receiver channel mappings. For now, we have TAER
 	// TODO: read all channel values in one go.
@@ -167,6 +165,8 @@ void processReceiverSignals( void )
 	determineYawRateSetpoint(readReceiverChannel(3));
 
 	determineArmingState();
+
+	updateFunctionEnables();
 }
 
 float getThrottleSetpoint( void )

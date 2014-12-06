@@ -9,12 +9,12 @@
 #include <cli.h>
 #include <configuration.h>
 #include <configuration_commands.h>
+#include <receiver_handler.h>
 #if defined(STM32F30X)
 #include <stm32f30x_misc.h>
 #elif defined(STM32F10X)
 #include <stm32f10x.h>
 #endif
-#include <motor_control.h>
 #include <main.h>
 
 static int saveCommand( non_config_run_command_data_st *pcommand );

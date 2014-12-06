@@ -25,6 +25,7 @@
 #include <rate_mode_configuration.h>
 #include <yaw_configuration.h>
 #include <receiver_handler.h>
+#include <pid_control.h>
 #include <motor_control.h>
 #include <hirestimer.h>
 #include <attitude_estimation.h>
@@ -32,7 +33,6 @@
 #include <vector_rotation.h>
 #include <board_alignment.h>
 #include <failsafe.h>
-#include <aux_configuration.h>
 #include <filter.h>
 #include <sensor_filters.h>
 #include <leds.h>
@@ -328,6 +328,7 @@ static void main_task( void *pv )
 
 	initFailsafe( failsafeTriggerCallback );
 
+	initPIDControl();
 	initMotorControl(board_configuration[0].craftType);
 
 	openReceiver( newReceiverDataCallback );
@@ -367,7 +368,6 @@ static void main_task( void *pv )
 
 				processReceiverSignals();
 
-				updateFunctionEnables();
 			}
 		}
 	}

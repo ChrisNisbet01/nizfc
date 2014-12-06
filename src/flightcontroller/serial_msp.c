@@ -378,16 +378,6 @@ void serializeNames(const char *s)
         serialize8(*c);
 }
 
-static void resetMspPort(mspPort_t *mspPortToReset, serialPort_t * serialPort, mspPortUsage_e usage)
-{
-    memset(mspPortToReset, 0, sizeof(mspPort_t));
-
-    mspPortToReset->serialPort = serialPort;
-    mspPortToReset->mspPortUsage = usage;
-}
-
-// This rate is chosen since softserial supports it.
-
 void mspInit(serialPort_t *serialPort)
 {
 

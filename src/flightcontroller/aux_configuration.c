@@ -9,6 +9,8 @@
 #include <configuration_commands.h>
 #include <receiver.h>
 #include <aux_configuration.h>
+#include <pid_control.h>
+#include <leds.h>
 
 #define NB_AUX_CONFIGURATIONS	32u
 
@@ -121,11 +123,38 @@ static void initAuxConfiguration( void )
 	/* nothing to do */
 }
 
+bool isFunctionEnabled( aux_function_mappings_t function )
+{
+	bool isEnabled;
+
+	if ( function < aux_function_max )
+		isEnabled = FUNCTION_BIT_IS_SET( functionEnableBits, function ) != 0;
+	else
+		isEnabled = false;
+
+	return isEnabled;
+}
+
+flight_mode_t getCurrentFlightMode( void )
+{
+	flight_mode_t flight_mode;
+
+	/* If not in rate mode, default to angle mode. Angle mode overrides rate mode */
+	if (isFunctionEnabled(aux_function_angle_mode) == true || isFunctionEnabled(aux_function_rate_mode) == false)
+		flight_mode = angle_flight_mode;
+	else
+		flight_mode = rate_flight_mode;
+
+	return flight_mode;
+}
+
 void updateFunctionEnables( void )
 {
 	/* called whenever new receiver information is received. */
 	unsigned int auxConfigIndex, functionIndex;
 	uint32_t tempFunctionEnables[(aux_function_max + ((sizeof(uint32_t)*8) - 1))/32] = {0};
+	static flight_mode_t previousFlightMode = invalid_flight_mode;
+	flight_mode_t currentFlightMode;
 
 	for (auxConfigIndex = 0; auxConfigIndex < NB_AUX_CONFIGURATIONS; auxConfigIndex++)
 	{
@@ -152,18 +181,22 @@ void updateFunctionEnables( void )
 			CLEAR_FUNCTION_BIT( functionEnableBits, functionIndex );
 		}
 	}
-}
 
-bool isFunctionEnabled( aux_function_mappings_t function )
-{
-	bool isEnabled;
-
-	if ( function < aux_function_max )
-		isEnabled = FUNCTION_BIT_IS_SET( functionEnableBits, function ) != 0;
-	else
-		isEnabled = false;
-
-	return isEnabled;
+	/* check for change in flight mode. Reset PID states if a change is detected */
+	if ( (currentFlightMode=getCurrentFlightMode()) == angle_flight_mode )
+	{
+		if ( previousFlightMode != angle_flight_mode )
+		{
+			resetAngleModePID();
+			setLED(ANGLE_MODE_LED, led_state_on);
+		}
+	}
+	else if ( previousFlightMode != rate_flight_mode )
+	{
+		resetRateModePID();
+		setLED(ANGLE_MODE_LED, led_state_off);
+	}
+	previousFlightMode = currentFlightMode;
 }
 
 int auxPollHandler( poll_id_t poll_id, void *pv )
