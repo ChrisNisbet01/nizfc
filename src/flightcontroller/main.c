@@ -8,13 +8,13 @@
 #include <utils.h>
 #include <polling.h>
 #include <i2c.h>
-#include <spi.h>
 #include <receiver.h>
 #include <board_configuration.h>
 #include <cli.h>
 #include <startup.h>
 #include <sensors.h>
 #if defined(STM32F30X)
+#include <spi.h>
 #include <lsm303dlhc.h>
 #include <l3gd20.h>
 #elif defined(STM32F10X)
@@ -29,7 +29,7 @@
 #include <hirestimer.h>
 #include <attitude_estimation.h>
 #include <attitude_configuration.h>
-#include <kalman.h>
+#include <vector_rotation.h>
 #include <board_alignment.h>
 #include <failsafe.h>
 #include <aux_configuration.h>
@@ -43,16 +43,35 @@
 static OS_STK cli_task_stack[CLI_TASK_STACK_SIZE];
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE];
 
-static serial_port_st *cli_uart[2];
+static const serial_port_t serial_ports[] =
+{
+#if defined(STM32F30X)
+	SERIAL_UART_2,
+	SERIAL_USB
+#elif defined(STM32F10X)
+	SERIAL_UART_1
+#endif
+};
+
+typedef struct serialCli_st
+{
+	serial_port_st *cli_uart;
+	void *pcli;
+} serialCli_st;
+
+static serialCli_st serialCli[ARRAY_SIZE(serial_ports)];
+
 serial_port_st *debug_port;
-static void *pcli[2];
+
 static OS_FlagID cliUartFlag;
 
 static void *i2c_port;
 #if defined(STM32F30X)
 static void *spi_port;
 #endif
+
 static sensorCallback_st sensorCallbacks;
+static float	gyroHeadingVectors[3];
 
 float RollAngle, PitchAngle, Heading;
 
@@ -151,8 +170,8 @@ bool setDebugPort( int port )
 
 	if ( port < 0 )
 		debug_port = NULL;
-	else if ( (unsigned)port < ARRAY_SIZE(cli_uart) && cli_uart[port] != NULL )
-		debug_port = cli_uart[port];
+	else if ( (unsigned)port < ARRAY_SIZE(serialCli) && serialCli[port].cli_uart != NULL )
+		debug_port = serialCli[port].cli_uart;
 	else
 		debugPortAssigned = false;
 
@@ -178,7 +197,7 @@ static void estimateAttitude( float dT )
 
     do_attitude_estimation( &imu_data,
     				dT,
-    				filteredGyroValues[1],
+    				filteredGyroValues[1],	// TODO: rotate vectors appropriately before calling this
     				-filteredGyroValues[0],
     				filteredAccelerometerValues[0],
     				filteredAccelerometerValues[1],
@@ -222,21 +241,33 @@ static void IMUHandler( void )
 
 		estimateAttitude( fIMUDelta );
 
-		if ( sensorCallbacks.readMagnetometer != NULL
-			&& sensorCallbacks.readMagnetometer( sensorCallbacks.magnetometerCtx, magnetometerValues ) == true )
-		{
-			alignVectorsToFlightController( magnetometerValues, noRotation );	// TODO: configurable
-			alignVectorsToCraft( magnetometerValues );
-			filterMagValues( magnetometerValues, filteredMagnetometerValues );
-
-			/* we have pitch and roll, determine heading */
-			Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
-
-		}
-
 		updatePIDControlLoops();
 	}
 
+	/* we have pitch and roll, determine heading */
+	if ( sensorCallbacks.readMagnetometer != NULL
+		&& sensorCallbacks.readMagnetometer( sensorCallbacks.magnetometerCtx, magnetometerValues ) == true )
+	{
+		alignVectorsToFlightController( magnetometerValues, noRotation );	// TODO: configurable
+		alignVectorsToCraft( magnetometerValues );
+		filterMagValues( magnetometerValues, filteredMagnetometerValues );
+
+		Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
+
+	}
+	else
+	{
+		float deltaGyroAngle[3];
+		vectorRotation_st matrix;
+		deltaGyroAngle[0] = gyroValues[0] * fIMUDelta;
+		deltaGyroAngle[1] = gyroValues[1] * fIMUDelta;	// XXX fix up rotation here and in estimateAttitude and above
+		deltaGyroAngle[2] = gyroValues[2] * fIMUDelta;
+		/* use gyro to determine heading */
+		initVectorRotationDegrees( &matrix, deltaGyroAngle[0], deltaGyroAngle[1], deltaGyroAngle[2] );
+		applyVectorRotation( &matrix, gyroHeadingVectors );
+		normalizeVectors( gyroHeadingVectors, gyroHeadingVectors );
+		Heading = calculateHeading( gyroHeadingVectors, -RollAngle, -PitchAngle );
+	}
 
 	IMUExeTime = (now=micros()) - lastIMUTime;
 
@@ -275,6 +306,13 @@ static void main_task( void *pv )
 		initL3GD20( &sensorConfig, &sensorCallbacks );
 	}
 #endif
+
+	if ( sensorCallbacks.readMagnetometer == NULL )
+	{
+		gyroHeadingVectors[0] = 1.0f;
+		gyroHeadingVectors[1] = 0.0f;
+		gyroHeadingVectors[2] = 0.0f;
+	}
 
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	failsafeTriggerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
@@ -342,16 +380,16 @@ void newUartData( void *pv )
 static void handleNewSerialData( void )
 {
 	unsigned int uart_index;
-	for (uart_index = 0; uart_index < ARRAY_SIZE(cli_uart); uart_index++ )
+	for (uart_index = 0; uart_index < ARRAY_SIZE(serialCli); uart_index++ )
 	{
-		if ( cli_uart[uart_index] != NULL )
+		if ( serialCli[uart_index].cli_uart != NULL )
 		{
-			while ( cli_uart[uart_index]->methods->rxReady( cli_uart[uart_index]->serialCtx ) )
+			while ( serialCli[uart_index].cli_uart->methods->rxReady( serialCli[uart_index].cli_uart->serialCtx ) )
 			{
 				uint8_t ch;
 
-				ch = cli_uart[uart_index]->methods->readChar( cli_uart[uart_index]->serialCtx );
-				cliHandleNewChar( pcli[uart_index], ch );
+				ch = serialCli[uart_index].cli_uart->methods->readChar( serialCli[uart_index].cli_uart->serialCtx );
+				cliHandleNewChar( serialCli[uart_index].pcli, ch );
 			}
 		}
 	}
@@ -452,8 +490,10 @@ static void systemInit(void)
     AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_NO_JTAG_SW;
 
 }
+
 int main(void)
 {
+	unsigned int cli_index;
 	systemInit();
 	SetSysClock(0);
 	initLEDs();
@@ -466,16 +506,13 @@ int main(void)
 	cliUartFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	printTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 
-	//cli_uart[0] = serialOpen( SERIAL_UART_2, 115200, uart_mode_rx | uart_mode_tx, newUartData );
-	//if ( cli_uart[0] != NULL )
-	//	pcli[0] = initCli( cli_uart[0] );
-#if defined(STM32F30X)
- 	cli_uart[1] = serialOpen( SERIAL_USB, 115200, uart_mode_rx | uart_mode_tx, newUartData );
-#elif defined(STM32F10X)
- 	cli_uart[1] = serialOpen( SERIAL_UART_1, 115200, uart_mode_rx | uart_mode_tx, newUartData );
-#endif
-	if ( cli_uart[1] != NULL )
-		pcli[1] = initCli( cli_uart[1] );
+	for ( cli_index = 0 ; cli_index < ARRAY_SIZE(serial_ports); cli_index++ )
+	{
+		serialCli[cli_index].cli_uart = serialOpen( serial_ports[cli_index], 115200, uart_mode_rx | uart_mode_tx, newUartData );
+		if ( serialCli[cli_index].cli_uart != NULL )
+			serialCli[cli_index].pcli = initCli( serialCli[cli_index].cli_uart );
+	}
+
 	initialiseCodeGroups();
 	loadSavedConfiguration();
 

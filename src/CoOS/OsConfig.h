@@ -80,6 +80,8 @@ System frequency (Hz).
 systick frequency (Hz).
 */
 #define CFG_SYSTICK_FREQ        (100)
+#define MSPERTICK				(1000/CFG_SYSTICK_FREQ)
+#define MSTOTICKS(ms)			(ms/MSPERTICK)
 
 /*!<
 max systerm api call num in ISR.

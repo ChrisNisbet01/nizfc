@@ -19,7 +19,7 @@ static failsafe_st failsafe;
 
 static void startFailsafeTimer( void )
 {
-	CoSetTmrCnt( failsafe.timerID, (failsafe_configuration[0].maxQuietTimeMs * CFG_SYSTICK_FREQ)/1000, 0 );
+	CoSetTmrCnt( failsafe.timerID, MSTOTICKS(failsafe_configuration[0].maxQuietTimeMs), 0 );
 	CoStartTmr( failsafe.timerID );
 
 }
@@ -31,7 +31,7 @@ static void stopFailsafeTimer( void )
 
 static void restartFailsafeTimer( void )
 {
-	CoSetTmrCnt( failsafe.timerID, (failsafe_configuration[0].maxQuietTimeMs * CFG_SYSTICK_FREQ)/1000, 0 );
+	CoSetTmrCnt( failsafe.timerID, MSTOTICKS(failsafe_configuration[0].maxQuietTimeMs), 0 );
 }
 
 

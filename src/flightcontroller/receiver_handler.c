@@ -143,7 +143,7 @@ static void determineArmingState( void )
 				timerRunning = true;
 				timerStartTime = now;
 			}
-			if ((long)(now - timerStartTime) > CFG_SYSTICK_FREQ/2 )
+			if ((long)(now - timerStartTime) > MSTOTICKS(500) )
 			{
 				disarmCraft();
 			}
@@ -155,7 +155,7 @@ static void determineArmingState( void )
 				timerRunning = true;
 				timerStartTime = now;
 			}
-			if ((now - timerStartTime) > CFG_SYSTICK_FREQ/2 )
+			if ((now - timerStartTime) > MSTOTICKS(500) )
 			{
 				armCraft();
 			}

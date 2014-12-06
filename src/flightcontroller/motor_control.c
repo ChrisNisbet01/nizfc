@@ -139,16 +139,16 @@ void initMotorControl( craft_type_t craftType )
 
 void updatePIDControlLoops( void )
 {
-	static U64 last_time;
-	U64 now;
+	static uint32_t last_time;
+	uint32_t now;
 	uint32_t delta_time;
 	float dT;
 
 	// TODO: better time handling
-	now = CoGetOSTime();
+	now = micros();
 	delta_time = now - last_time;
 	last_time = now;
-	dT = (float)delta_time/CFG_SYSTICK_FREQ;
+	dT = (float)delta_time/1000000.0f;
 
 	/* only if armed, and only if throttle is above minimum */
 	if ( isCraftArmed() == true && getThrottleSetpoint() > THROTTLE_POSITION_TO_ENABLE_CONTROL_LOOPS )
@@ -216,7 +216,6 @@ void updateMotorOutputs( void )
 	unsigned int motorIndex;
 	uint_fast16_t maxMotorValue = 0;
 	craftType_st const * craft;
-	static int count;
 
 	craft = currentCraft;
 	if ( craft != NULL )

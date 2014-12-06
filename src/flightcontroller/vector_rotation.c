@@ -58,3 +58,15 @@ void applyVectorRotation( vectorRotation_st * matrix, float *vectors )
     vectors[2] = matrix->rotationMatrix[0][2] * x + matrix->rotationMatrix[1][2] * y + matrix->rotationMatrix[2][2] * z;
 }
 
+void normalizeVectors(float *src, float *dest)
+{
+    float length;
+
+    length = sqrtf(src[0] * src[0] + src[1] * src[1] + src[2] * src[2]);
+    if (length != 0.0f) {
+        dest[0] = src[0] / length;
+        dest[1] = src[1] / length;
+        dest[2] = src[2] / length;
+    }
+}
+

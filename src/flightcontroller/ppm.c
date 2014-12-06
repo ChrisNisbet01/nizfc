@@ -6,7 +6,7 @@
 #include <coos.h>
 #include <pwm_inputs.h>
 #include <receiver.h>
-#include "pwm_rx_stm32f30x.h"
+#include "pwm_rx.h"
 
 #define MIN_INTERFRAME_TIME_US					2900
 #define MIN_CONSECUTIVE_FRAMES_OF_SAME_LENGTH	4

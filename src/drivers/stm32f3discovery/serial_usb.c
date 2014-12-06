@@ -172,7 +172,7 @@ static void usbWriteChar(void *pv, uint8_t ch)
         return;
     }
     // TODO: need to detect USB error, which might result in usbPacketSent nevr being cleared
-	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, CFG_SYSTICK_FREQ/10 ) == E_OK || usbPacketSent == 0 )
+	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, MSTOTICKS(100) ) == E_OK || usbPacketSent == 0 )
 	{
         if ( CDC_Send_DATA(&ch, 1) == 0 )
         {
@@ -192,7 +192,7 @@ static int usbWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, ui
 	usb_serial_ctx_st *pctx = pv;
 	int result = -1;
 
-	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, max_millisecs_to_wait/(1000/CFG_SYSTICK_FREQ) ) == E_OK || usbPacketSent == 0 )
+	if ( CoWaitForSingleFlag( pctx->usbTxCompleteFlag, MSTOTICKS(max_millisecs_to_wait) ) == E_OK || usbPacketSent == 0 )
 	{
         if ( CDC_Send_DATA(&ch, 1) == 0 )
         {
@@ -220,7 +220,7 @@ static int usbWriteBulkBlockingWithTimeout(void * const pv, uint8_t const * buf,
 
 	do
 	{
-		if ( (max_millisecs_to_wait > 0 && CoWaitForSingleFlag( pctx->usbTxCompleteFlag, max_millisecs_to_wait/(1000/CFG_SYSTICK_FREQ) )) == E_OK
+		if ( (max_millisecs_to_wait > 0 && CoWaitForSingleFlag( pctx->usbTxCompleteFlag, MSTOTICKS(max_millisecs_to_wait) )) == E_OK
 			|| usbPacketSent == 0 )
 		{
 			uint32_t written = CDC_Send_DATA(buf, tosend);

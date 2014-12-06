@@ -44,9 +44,7 @@ INCLUDE_DIRS = 	$(SRC_DIR)/drivers \
 				$(COOS_DIR) \
 				$(COOS_DIR)/portable \
 				$(COOS_DIR)/kernel \
-				$(SRC_DIR)/STM32_USB-FS-Device_Driver/inc \
-				$(SRC_DIR)/vcp \
-				$(SRC_DIR)/stm32f30x
+				$(SRC_DIR)/stm32common
 
 ifeq ($(TARGET),STM32F3_Discovery)
 
@@ -54,7 +52,10 @@ INCLUDE_DIRS := $(INCLUDE_DIRS) \
 				$(SRC_DIR)/cmsis_boot/startup \
 				$(SRC_DIR)/cmsis_boot \
 				$(SRC_DIR)/cmsis_lib/include \
-				$(SRC_DIR)/cmsis
+				$(SRC_DIR)/cmsis \
+				$(SRC_DIR)/STM32_USB-FS-Device_Driver/inc \
+				$(SRC_DIR)/vcp \
+				$(SRC_DIR)/stm32f30x
 
 
 CPU_FLAGS = -mcpu=cortex-m4 -mthumb

@@ -42,7 +42,7 @@ typedef struct uart_ports_config_t
 typedef struct uart_ctx_st
 {
 	uint_fast32_t				baudRate;
-	uart_ports_config_t	const   * uart;
+	uart_ports_config_t	const   * uartConfig;
 	serial_modes_t				mode;
 	void const          		* ll_info;	/* returned by micro specific init function */
 	volatile uint8_t 			* rxBuffer;
@@ -158,7 +158,7 @@ static void uartConfigure(uart_ctx_st *pctx)
     if (pctx->mode & uart_mode_tx)
         USART_InitStructure.USART_Mode |= USART_Mode_Tx;
 
-    USART_Init(pctx->uart->usart, &USART_InitStructure);
+    USART_Init(pctx->uartConfig->usart, &USART_InitStructure);
 }
 
 static uart_ports_config_t const * uartPortLookup( serial_port_t port )
@@ -208,7 +208,7 @@ serial_port_st * uartOpen( serial_port_t port, uint32_t baudrate, serial_modes_t
 
 	    pctx->rxBufferHead = pctx->rxBufferTail = 0;
 	    pctx->txBufferHead = pctx->txBufferTail = 0;
-	    pctx->uart = uart_config;
+	    pctx->uartConfig = uart_config;
 	    pctx->mode = mode;
 	    pctx->baudRate = baudrate;
 	    pctx->newRxDataCb = newRxDataCb;
@@ -270,7 +270,7 @@ static void uartWriteChar(void *pv, uint8_t ch)
     pctx->txBuffer[pctx->txBufferHead] = ch;
     pctx->txBufferHead = (pctx->txBufferHead + 1) % pctx->txBufferSize;
 
-    USART_ITConfig(pctx->uart->usart, USART_IT_TXE, ENABLE);
+    USART_ITConfig(pctx->uartConfig->usart, USART_IT_TXE, ENABLE);
 }
 
 static int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, uint_fast16_t const max_millisecs_to_wait)
@@ -288,15 +288,15 @@ static int uartWriteCharBlockingWithTimeout(void * const pv, uint8_t const ch, u
 			timed_out = 1;
 			break;
 		}
-		CoTimeDelay( 0, 0, 0, 1000/CFG_SYSTICK_FREQ );
-		millisecs_counter += 1000/CFG_SYSTICK_FREQ;
+		CoTimeDelay( 0, 0, 0, 10 );
+		millisecs_counter += 10;
 	}
 	if ( timed_out == 0 )
 	{
 	    pctx->txBuffer[pctx->txBufferHead] = ch;
 	    pctx->txBufferHead = (pctx->txBufferHead + 1) % pctx->txBufferSize;
 
-	    USART_ITConfig(pctx->uart->usart, USART_IT_TXE, ENABLE);
+	    USART_ITConfig(pctx->uartConfig->usart, USART_IT_TXE, ENABLE);
 	    result = 0;
 	}
 	else

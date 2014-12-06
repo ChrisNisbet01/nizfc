@@ -4,7 +4,7 @@
 
 void delayMilliseconds( unsigned int milliseconds )
 {
-	CoTickDelay( (milliseconds*CFG_SYSTICK_FREQ)/1000);
+	CoTickDelay( MSTOTICKS(milliseconds) );
 }
 
 /*---------------------------------------------------------*/

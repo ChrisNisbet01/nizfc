@@ -16,7 +16,7 @@
 #endif
 #include <coos.h>
 
-#include "pwm_rx_stm32f30x.h"
+#include "pwm_rx.h"
 
 #if defined(STM32F30X)
 #define PWM_CHECKS_GPIO_PIN_FOR_PIN_STATE	/* doesn't work on the NAZE32 STM32F103 */

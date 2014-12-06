@@ -7,7 +7,7 @@
 #include <pwm_inputs.h>
 
 #include <receiver.h>
-#include "pwm_rx_stm32f30x.h"
+#include "pwm_rx.h"
 
 static const pwm_input_id_t pwm_pinIDs[] =
 {
