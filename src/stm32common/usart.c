@@ -134,7 +134,7 @@ void const * stm32_usart_init(usart_init_st *cfg)
 	/* configure appropriate GPIO pins */
     GPIO_InitTypeDef  GPIO_InitStructure;
 
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
 #if defined(STM32F30X)
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
 #endif
