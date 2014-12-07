@@ -254,25 +254,25 @@ static void updateLedStates( void )
 		switch( ledContexts[index].currentMode )
 		{
 			case led_state_off:
-				setLED( index, led_state_off );
+				setLED( (led_t)index, led_state_off );
 				break;
 			case led_state_on:
-				setLED( index, led_state_on );
+				setLED( (led_t)index, led_state_on );
 				break;
 			case led_state_toggle:
-				setLED( index, led_state_toggle );
+				setLED( (led_t)index, led_state_toggle );
 				break;
 			case led_state_slow_fast:
-				setLED( index, ledFlashContexts[SLOW_FAST_FLASH_IDX].flash_state );
+				setLED( (led_t)index, ledFlashContexts[SLOW_FAST_FLASH_IDX].flash_state );
 				break;
 			case led_state_fast_slow:
-				setLED( index, ledFlashContexts[FAST_SLOW_FLASH_IDX].flash_state );
+				setLED( (led_t)index, ledFlashContexts[FAST_SLOW_FLASH_IDX].flash_state );
 				break;
 			case led_state_fast_flash:
-				setLED( index, ledFlashContexts[FAST_FLASH_IDX].flash_state );
+				setLED( (led_t)index, ledFlashContexts[FAST_FLASH_IDX].flash_state );
 				break;
 			case led_state_slow_flash:
-				setLED( index, ledFlashContexts[SLOW_FLASH_IDX].flash_state );
+				setLED( (led_t)index, ledFlashContexts[SLOW_FLASH_IDX].flash_state );
 				break;
 		}
 	}

@@ -640,7 +640,7 @@ void TIM1_UP_TIM16_IRQHandler(void)
 	    handleTIMIRQ(TIM1, TIM1_IDX);
 }
 
-#if !defined(STM32F10X)	/* TIM3 used for his res loop timer */
+#if !defined(STM32F10X)	/* TIM3 used for high res loop timer */
 void TIM3_IRQHandler(void)
 {
     handleTIMIRQ(TIM3, TIM3_IDX);

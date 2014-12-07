@@ -4,13 +4,11 @@
 #include <stdbool.h>
 #include <math.h>
 #include <coocox.h>
-#include <serial.h>
 #include <utils.h>
 #include <polling.h>
 #include <i2c.h>
 #include <receiver.h>
 #include <board_configuration.h>
-#include <cli.h>
 #include <startup.h>
 #include <sensors.h>
 #if defined(STM32F30X)
@@ -36,34 +34,10 @@
 #include <filter.h>
 #include <sensor_filters.h>
 #include <leds.h>
+#include <serial_task.h>
 
 #define MAIN_TASK_STACK_SIZE 0x200
-#define CLI_TASK_STACK_SIZE 0x200
-
-static OS_STK cli_task_stack[CLI_TASK_STACK_SIZE];
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE];
-
-static const serial_port_t serial_ports[] =
-{
-#if defined(STM32F30X)
-	SERIAL_UART_2,
-	SERIAL_USB
-#elif defined(STM32F10X)
-	SERIAL_UART_1
-#endif
-};
-
-typedef struct serialCli_st
-{
-	serial_port_st *cli_uart;
-	void *pcli;
-} serialCli_st;
-
-static serialCli_st serialCli[ARRAY_SIZE(serial_ports)];
-
-serial_port_st *debug_port;
-
-static OS_FlagID cliUartFlag;
 
 static void *i2c_port;
 #if defined(STM32F30X)
@@ -74,14 +48,6 @@ static sensorCallback_st sensorCallbacks;
 static float	gyroHeadingVector[3];
 
 float RollAngle, PitchAngle, Heading;
-
-int uartPutChar( void * port, int ch )
-{
-	serial_port_st * serialPort = port;
-	int result = serialPort->methods->writeCharBlockingWithTimeout( serialPort->serialCtx, ch, 10 );
-
-	return result;
-}
 
 static float calculateHeading(float *headingVector, float roll, float pitch)
 {
@@ -114,15 +80,9 @@ static float calculateHeading(float *headingVector, float roll, float pitch)
 	return heading;
 }
 
-OS_FlagID debugTimerFlag;
 OS_FlagID receiverFlag;
 OS_FlagID IMUTimerFlag;
 OS_FlagID failsafeTriggerFlag;
-
-static void debugTimer( void )
-{
-	isr_SetFlag( debugTimerFlag );
-}
 
 static volatile uint32_t latestChannelsReceived;
 
@@ -137,10 +97,17 @@ static void newReceiverDataCallback( uint32_t newChannelsReceived )
 	isr_SetFlag( receiverFlag );
 }
 
+static uint32_t lastIMUTime;
 uint32_t IMUDelta;
 static uint32_t IMUExeTime;
-static float    fIMUDelta;
-static uint32_t lastIMUTime;
+float    fIMUDelta;
+IMU_DATA_ST imu_data;
+float accelerometerValues[3];
+float gyroValues[3];
+float magnetometerValues[3];
+float filteredAccelerometerValues[3];
+float filteredGyroValues[3];
+float filteredMagnetometerValues[3];
 
 static void IMUCallback( void )
 {
@@ -153,29 +120,6 @@ static void IMUCallback( void )
 	isr_SetFlag( IMUTimerFlag );
 
 	CoExitISR();
-}
-
-IMU_DATA_ST imu_data;
-
-float accelerometerValues[3];
-float gyroValues[3];
-float magnetometerValues[3];
-float filteredAccelerometerValues[3];
-float filteredGyroValues[3];
-float filteredMagnetometerValues[3];
-
-bool setDebugPort( int port )
-{
-	bool debugPortAssigned = true;
-
-	if ( port < 0 )
-		debug_port = NULL;
-	else if ( (unsigned)port < ARRAY_SIZE(serialCli) && serialCli[port].cli_uart != NULL )
-		debug_port = serialCli[port].cli_uart;
-	else
-		debugPortAssigned = false;
-
-	return debugPortAssigned;
 }
 
 static void initGyroHeadingVector( void )
@@ -248,8 +192,6 @@ static void IMUHandler( void )
 		filterGyroValues( gyroValues, filteredGyroValues );
 
 		estimateAttitude( fIMUDelta );
-
-		updatePIDControlLoops();
 	}
 
 	/* we have pitch and roll, determine heading */
@@ -357,6 +299,7 @@ static void main_task( void *pv )
 			if ( (ReadyFlags & (1<<IMUTimerFlag)) != 0 )
 			{
 				IMUHandler();
+				updatePIDControlLoops();
 				updateMotorOutputs();
 			}
 			if ( (ReadyFlags & (1<<receiverFlag)) != 0 )
@@ -376,107 +319,6 @@ static void main_task( void *pv )
 
 			}
 		}
-	}
-}
-
-void newUartData( void *pv )
-{
-	UNUSED(pv);
-	CoEnterISR();
-
-	isr_SetFlag(cliUartFlag);
-
-	CoExitISR();
-}
-
-static void handleNewSerialData( void )
-{
-	unsigned int uart_index;
-	for (uart_index = 0; uart_index < ARRAY_SIZE(serialCli); uart_index++ )
-	{
-		if ( serialCli[uart_index].cli_uart != NULL )
-		{
-			while ( serialCli[uart_index].cli_uart->methods->rxReady( serialCli[uart_index].cli_uart->serialCtx ) )
-			{
-				uint8_t ch;
-
-				ch = serialCli[uart_index].cli_uart->methods->readChar( serialCli[uart_index].cli_uart->serialCtx );
-				cliHandleNewChar( serialCli[uart_index].pcli, ch );
-			}
-		}
-	}
-}
-
-static void doDebugOutput( void )
-{
-	if (board_configuration[0].debug & 1 )
-	{
-		extern float getRollAngleOutput( void );
-		extern float getPitchAnglePIDOutput( void );
-		extern float getRollRatePIDOutput( void );
-		extern float getPitchRatePIDOutput( void );
-
- 		//printf("\n\nthrottle: %d", (int)getThrottleSetpoint() );
- 		//printf("\nroll: %d:%g PID: %d", (int)getRollAngleSetpoint(), &RollAngle, (int)getRollAnglePIDOutput() );
- 		//printf("\npitch: %d:%g PID: %d", (int)getPitchAngleSetpoint(), &PitchAngle, (int)getPitchAnglePIDOutput() );
- 		printf("\nroll rate: %d:%g PID: %d", (int)getRollRateSetpoint(), &filteredGyroValues[0], (int)getRollRatePIDOutput() );
- 		printf("\npitch rate: %d:%g PID: %d", (int)getPitchRateSetpoint(), &filteredGyroValues[1], (int)getPitchRatePIDOutput() );
- 		//printf("\nheading: %g", &Heading );
-	}
-	if (board_configuration[0].debug & 2 )
-	{
-		int motor;
-
-		printf("\r\n");
-		for (motor = 0; motor < 4; motor++ )
-			printf("  m-%d: %u", motor+1, (unsigned int)getMotorOutput( motor ) );
-	}
-	if (board_configuration[0].debug & 8 )
-	{
-		printf( "\r\n\ndT: %g", &fIMUDelta );
-		printf( "\r\naccel" );
-		printf( "\r\n        roll %g", &imu_data.roll );
-		printf( "\r\n        pit  %g", &imu_data.pitch );
-		printf( "\r\ngyro" );
-		printf( "\r\n        roll %g", &imu_data.gyroRollAngle );
-		printf( "\r\n        pit  %g", &imu_data.gyroPitchAngle );
-		printf( "\r\nfiltered" );
-		printf( "\r\n        roll %g", &RollAngle );
-		printf( "\r\n        pit  %g", &PitchAngle );
-		printf( "\r\nsetpoint" );
-		printf( "\r\n        roll %d", (int)getRollAngleSetpoint() );
-		printf( "\r\n        pit  %d", (int)getPitchAngleSetpoint() );
-	}
-	if (board_configuration[0].debug & 16 )
-	{
-		int channel;
-
-		printf("\r\n");
-		for (channel = 4; channel < 8; channel++ )
-			printf("  aux-%d: %u", channel+1, (unsigned int)readReceiverChannel(channel));
-	}
-}
-
-static void cli_task( void *pv )
-{
-	OS_TCID debugTimerID;
-
-	UNUSED(pv);
-
-	debugTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ, CFG_SYSTICK_FREQ, debugTimer );
-	CoStartTmr( debugTimerID );
-
-	while (1)
-	{
-		StatusType err;
-		U32 readyFlags;
-
-		readyFlags = CoWaitForMultipleFlags( (1<<debugTimerFlag)|(1<<cliUartFlag), OPT_WAIT_ANY, 0, &err );
-	 	if ( readyFlags & (1<<cliUartFlag) )
-	 		handleNewSerialData();
-
-	 	if ( readyFlags & (1<<debugTimerFlag) )
-	 		doDebugOutput();
 	}
 }
 
@@ -501,7 +343,6 @@ static void systemInit(void)
 
 int main(void)
 {
-	unsigned int cli_index;
 
 #if defined(STM32F10X)
 	systemInit();
@@ -516,22 +357,13 @@ int main(void)
 
 
 	/* open the serial ports early so debug info can be sent to them */
+	init_serial_task();
 
-	cliUartFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-	debugTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-
-	for ( cli_index = 0 ; cli_index < ARRAY_SIZE(serial_ports); cli_index++ )
-	{
-		serialCli[cli_index].cli_uart = serialOpen( serial_ports[cli_index], 115200, uart_mode_rx | uart_mode_tx, newUartData );
-		if ( serialCli[cli_index].cli_uart != NULL )
-			serialCli[cli_index].pcli = initCli( serialCli[cli_index].cli_uart );
-	}
 
 	initialiseCodeGroups();
 
 	loadSavedConfiguration();
 
-	CoCreateTask(cli_task, Co_NULL, 1, &cli_task_stack[CLI_TASK_STACK_SIZE-1], CLI_TASK_STACK_SIZE);
 	CoCreateTask(main_task, Co_NULL, 0, &main_task_stack[MAIN_TASK_STACK_SIZE-1], MAIN_TASK_STACK_SIZE);
 
 	CoStartOS();

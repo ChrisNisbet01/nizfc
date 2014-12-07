@@ -15,7 +15,7 @@
 #elif defined(STM32F10X)
 #include <stm32f10x.h>
 #endif
-#include <main.h>
+#include <serial_task.h>
 
 static int saveCommand( non_config_run_command_data_st *pcommand );
 static int showCommand( non_config_run_command_data_st *pcommand );

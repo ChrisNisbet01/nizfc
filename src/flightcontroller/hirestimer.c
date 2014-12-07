@@ -19,14 +19,14 @@ static uint32_t ticksPerSystickInterrupt;
 void (*callback)( void );
 
 #if defined(STM32F30X)
-#define HIRESTIM	TIM7
-#define HIRESTIM_IRQn	TIM7_IRQn
-#define HIRESTTIM_CLK	RCC_APB1Periph_TIM7
+#define HIRESTIM			TIM7
+#define HIRESTIM_IRQn		TIM7_IRQn
+#define HIRESTTIM_CLK		RCC_APB1Periph_TIM7
 #define HIRESTIM_IRQHandler TIM7_IRQHandler
 #elif defined(STM32F10X)
-#define HIRESTIM	TIM3
-#define HIRESTIM_IRQn	TIM3_IRQn
-#define HIRESTTIM_CLK	RCC_APB1Periph_TIM3
+#define HIRESTIM			TIM3
+#define HIRESTIM_IRQn		TIM3_IRQn
+#define HIRESTTIM_CLK		RCC_APB1Periph_TIM3
 #define HIRESTIM_IRQHandler TIM3_IRQHandler
 #endif
 
