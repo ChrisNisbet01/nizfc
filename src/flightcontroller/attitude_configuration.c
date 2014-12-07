@@ -22,21 +22,18 @@ static const attitude_configuration_st default_attitude_configuration =
 {
 	.roll_lpf = 200,
 	.pitch_lpf = 200,
-	.heading_lpf = 100
 };
 
 typedef enum attitude_parameter_id_t
 {
 	parameter_id_roll_lpf = 0,
 	parameter_id_pitch_lpf = 1,
-	parameter_id_heading_lpf = 2
 } attitude_parameter_id_t;
 
 static char const * const parameter_name_mappings[] =
 {
 	[parameter_id_roll_lpf] = "rlpf",
 	[parameter_id_pitch_lpf] = "plpf",
-	[parameter_id_heading_lpf] = "ylpf"
 };
 
 static const parameterConfig_st attitude_config_parameterConfigs[] =
@@ -50,12 +47,7 @@ static const parameterConfig_st attitude_config_parameterConfigs[] =
 	.parameter_id = parameter_id_pitch_lpf,
 	.data_type = config_data_type_uint16,
 	.offsetToData = offsetof(attitude_configuration_st, pitch_lpf),
-	},
-	{
-	.parameter_id = parameter_id_heading_lpf,
-	.data_type = config_data_type_uint16,
-	.offsetToData = offsetof(attitude_configuration_st, heading_lpf),
-	},
+	}
 };
 
 static const command_st attitude_commands[] =

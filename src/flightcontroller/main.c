@@ -71,7 +71,7 @@ static void *spi_port;
 #endif
 
 static sensorCallback_st sensorCallbacks;
-static float	gyroHeadingVectors[3];
+static float	gyroHeadingVector[3];
 
 float RollAngle, PitchAngle, Heading;
 
@@ -83,7 +83,7 @@ int uartPutChar( void * port, int ch )
 	return result;
 }
 
-static float calculateHeading(float *magValues, float roll, float pitch)
+static float calculateHeading(float *headingVector, float roll, float pitch)
 {
     float headX;
     float headY;
@@ -92,7 +92,6 @@ static float calculateHeading(float *magValues, float roll, float pitch)
     float cos_pitch;
     float sin_pitch;
 	float heading;
-	static float filteredHeading;
 
     cos_roll = cosf((roll * M_PI)/180.0f);
     sin_roll = sinf((roll * M_PI)/180.0f);
@@ -100,17 +99,15 @@ static float calculateHeading(float *magValues, float roll, float pitch)
     sin_pitch = sinf((pitch * M_PI)/180.0f);
 
     // Tilt compensated magnetic field X component:
-    headX = magValues[1] * sin_roll * sin_pitch + magValues[0] * cos_pitch + magValues[2] * cos_roll * sin_pitch;
+    headX = headingVector[1] * sin_roll * sin_pitch + headingVector[0] * cos_pitch + headingVector[2] * cos_roll * sin_pitch;
     // Tilt compensated magnetic field Y component:
-    headY = magValues[1] * cos_roll - magValues[2] * sin_roll;
+    headY = headingVector[1] * cos_roll - headingVector[2] * sin_roll;
 
     // magnetic heading
-    heading = atan2f(-headY,-headX) * 180.0f/M_PI;
+    heading = atan2f(headY,headX) * 180.0f/M_PI;
 
 	// TODO: apply declination
-	filteredHeading = filterValue( filteredHeading, heading, attitude_configuration[0].heading_lpf );
 
-	heading = filteredHeading;
 	if ( heading < 0.0f)
 		heading += 360.0f;
 
@@ -176,6 +173,14 @@ bool setDebugPort( int port )
 		debugPortAssigned = false;
 
 	return debugPortAssigned;
+}
+
+static void initGyroHeadingVector( void )
+{
+	/* start out pointing straight ahead */
+	gyroHeadingVector[0] = 1.0f;
+	gyroHeadingVector[1] = 0.0f;
+	gyroHeadingVector[2] = 0.0f;
 }
 
 static void initIMU( uint32_t updatePeriod )
@@ -264,12 +269,12 @@ static void IMUHandler( void )
 		deltaGyroAngle[2] = gyroValues[2] * fIMUDelta;
 		/* use gyro to determine heading */
 		initVectorRotationDegrees( &matrix, deltaGyroAngle[0], deltaGyroAngle[1], deltaGyroAngle[2] );
-		applyVectorRotation( &matrix, gyroHeadingVectors );
-		normalizeVectors( gyroHeadingVectors, gyroHeadingVectors );
+		applyVectorRotation( &matrix, gyroHeadingVector );
+		normalizeVectors( gyroHeadingVector, gyroHeadingVector );
 #if defined(STM32F30X)
-		Heading = calculateHeading( gyroHeadingVectors, -RollAngle, -PitchAngle );
+		Heading = calculateHeading( gyroHeadingVector, -RollAngle, -PitchAngle );
 #elif defined(STM32F10X)
-		Heading = calculateHeading( gyroHeadingVectors, -PitchAngle, RollAngle );
+		Heading = calculateHeading( gyroHeadingVector, -PitchAngle, RollAngle );
 #endif
 	}
 
@@ -313,9 +318,7 @@ static void main_task( void *pv )
 
 	if ( sensorCallbacks.readMagnetometer == NULL )
 	{
-		gyroHeadingVectors[0] = 1.0f;
-		gyroHeadingVectors[1] = 0.0f;
-		gyroHeadingVectors[2] = 0.0f;
+		initGyroHeadingVector();
 	}
 
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
