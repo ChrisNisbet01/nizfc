@@ -144,6 +144,9 @@ static uint32_t lastIMUTime;
 
 static void IMUCallback( void )
 {
+	/*
+		Called by TIM3 ISR with period set by board_configuration (~3000us)
+	*/
 	CoEnterISR();
 
 	/* signal the main task that it's time to update the IMU etc */
@@ -367,7 +370,7 @@ static void main_task( void *pv )
 
 			    updateFailsafeWithNewChannels( newChannels );
 
-			    setLED(RX_LED, led_state_toggle);
+			    setLEDMode(RX_LED, led_state_toggle);
 
 				processReceiverSignals();
 
@@ -460,6 +463,9 @@ static void cli_task( void *pv )
 
 	UNUSED(pv);
 
+	setLEDMode(LED1, led_state_fast_flash);
+	setLEDMode(LED2, led_state_slow_flash);
+
 	printTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ, CFG_SYSTICK_FREQ, printTimer );
 	CoStartTmr( printTimerID );
 
@@ -479,7 +485,7 @@ static void cli_task( void *pv )
 
 void _Default_Handler( void )
 {
-	setLED(EXCEPTION_LED, led_state_on);
+	setLEDMode(EXCEPTION_LED, led_state_on);
 	while( 1 );
 }
 
@@ -489,16 +495,9 @@ static void systemInit(void)
     // Configure NVIC preempt/priority groups
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
-    // Turn on clocks for peripherals used
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4, ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_TIM1 | RCC_APB2Periph_ADC1 | RCC_APB2Periph_USART1, ENABLE);
-    //RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
     RCC_ClearFlag();
-
-    // Turn off JTAG port because we're using the GPIO for leds
-#define AFIO_MAPR_SWJ_CFG_NO_JTAG_SW            (0x2 << 24)
-    AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_NO_JTAG_SW;
 
 }
 #endif
@@ -512,10 +511,12 @@ int main(void)
 	SetSysClock(0);
 #endif
 
+	CoInitOS();
+
 	initLEDs();
+
 	initMicrosecondClock();
 
-	CoInitOS();
 
 	/* open the serial ports early so debug info can be sent to them */
 
@@ -530,6 +531,7 @@ int main(void)
 	}
 
 	initialiseCodeGroups();
+
 	loadSavedConfiguration();
 
 	CoCreateTask(cli_task, Co_NULL, 1, &cli_task_stack[CLI_TASK_STACK_SIZE-1], CLI_TASK_STACK_SIZE);

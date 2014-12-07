@@ -9,8 +9,14 @@
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
 #endif
+#include <coos.h>
 #include <leds.h>
 #include <utils.h>
+
+#define LEDS_TASK_STACK_SIZE 0x80
+#define MS_PER_UPDATE			20
+
+static OS_STK ledsTaskStack[LEDS_TASK_STACK_SIZE];
 
 typedef struct led_configuration_st
 {
@@ -85,6 +91,78 @@ static const led_configuration_st leds[] =
 		}
 #endif
 };
+#define NB_LEDS ARRAY_SIZE(leds)
+
+typedef enum flash_state_t
+{
+	flash_off,
+	flash_on
+} flash_state_t;
+
+typedef enum pin_transtion_time_t
+{
+	slow_flash_on = 800,
+	slow_flash_off = 800,
+	fast_flash_on = 200,
+	fast_flash_off = 200,
+	fast_slow_flash_on = 200,
+	fast_slow_flash_off = 800,
+	slow_fast_flash_on = 800,
+	slow_fast_flash_off = 200
+} pin_transtion_time_t;
+
+typedef struct ledContext_st
+{
+	volatile led_state_t currentMode;
+} ledContext_st;
+
+typedef enum flashIndex_t
+{
+	SLOW_FLASH_IDX,
+	FAST_FLASH_IDX,
+	SLOW_FAST_FLASH_IDX,
+	FAST_SLOW_FLASH_IDX,
+} flashIndex_t;
+
+typedef struct ledFlashConfig_st
+{
+	uint16_t offCount;
+	uint16_t onCount;
+} ledFlashConfig_st;
+
+typedef struct ledFlashContext_st
+{
+	flash_state_t flash_state;
+	unsigned int currentCount;
+} ledFlashContext_st;
+
+static const ledFlashConfig_st ledFlashConfigs[] =
+{
+	[SLOW_FLASH_IDX] =
+	{
+		.offCount = slow_flash_off,
+		.onCount = slow_flash_on
+	},
+	[FAST_FLASH_IDX] =
+	{
+		.offCount = fast_flash_off,
+		.onCount = fast_flash_on
+	},
+	[SLOW_FAST_FLASH_IDX] =
+	{
+		.offCount = slow_fast_flash_off,
+		.onCount = slow_fast_flash_on
+	},
+	[FAST_SLOW_FLASH_IDX] =
+	{
+		.offCount = fast_slow_flash_off,
+		.onCount = fast_slow_flash_on
+	}
+};
+#define NB_FLASH_CONFIGS	(ARRAY_SIZE(ledFlashConfigs))
+
+static ledContext_st ledContexts[NB_LEDS];
+static ledFlashContext_st ledFlashContexts[NB_FLASH_CONFIGS];
 
 static void LEDInit(led_configuration_st const * led)
 {
@@ -112,7 +190,7 @@ static void LEDInit(led_configuration_st const * led)
 
 }
 
-void setLED( led_t led, led_state_t state )
+static void setLED( led_t led, led_state_t state )
 {
 	if ( led < ARRAY_SIZE(leds) && leds[led].pin != 0 )
 	{
@@ -128,7 +206,7 @@ void setLED( led_t led, led_state_t state )
 			case led_state_on:
 #if defined(STM32F30X)
 				leds[led].port->BSRR = leds[led].pin;
-#else
+#elif defined(STM32F10X)
 				leds[led].port->BRR = leds[led].pin;
 #endif
 				break;
@@ -141,15 +219,104 @@ void setLED( led_t led, led_state_t state )
 	}
 }
 
-void initLEDs( void )
+static void updateFlashContexts( unsigned int dTmillis )
 {
-	// TODO: LED task to handle state switches
 	unsigned int index;
 
-	for ( index = 0; index < ARRAY_SIZE(leds); index++ )
+	for ( index = 0; index < NB_FLASH_CONFIGS; index++ )
+	{
+		ledFlashContext_st * ledFlashContext = &ledFlashContexts[index];
+
+		ledFlashContext->currentCount += dTmillis;
+
+		if ( ledFlashContext->flash_state == flash_off )
+		{
+			if ( ledFlashContext->currentCount >= ledFlashConfigs[index].offCount )
+			{
+				ledFlashContext->flash_state = flash_on;
+				ledFlashContext->currentCount = 0;
+			}
+		}
+		else if ( ledFlashContext->currentCount >= ledFlashConfigs[index].onCount )
+		{
+			ledFlashContext->flash_state = flash_off;
+			ledFlashContext->currentCount = 0;
+		}
+	}
+}
+
+static void updateLedStates( void )
+{
+	unsigned int index;
+
+	for( index = 0; index < NB_LEDS; index++ )
+	{
+		switch( ledContexts[index].currentMode )
+		{
+			case led_state_off:
+				setLED( index, led_state_off );
+				break;
+			case led_state_on:
+				setLED( index, led_state_on );
+				break;
+			case led_state_toggle:
+				setLED( index, led_state_toggle );
+				break;
+			case led_state_slow_fast:
+				setLED( index, ledFlashContexts[SLOW_FAST_FLASH_IDX].flash_state );
+				break;
+			case led_state_fast_slow:
+				setLED( index, ledFlashContexts[FAST_SLOW_FLASH_IDX].flash_state );
+				break;
+			case led_state_fast_flash:
+				setLED( index, ledFlashContexts[FAST_FLASH_IDX].flash_state );
+				break;
+			case led_state_slow_flash:
+				setLED( index, ledFlashContexts[SLOW_FLASH_IDX].flash_state );
+				break;
+		}
+	}
+}
+
+static void ledsTask( void *pv )
+{
+	UNUSED(pv);
+
+	while ( 1 )
+	{
+		CoTickDelay( MSTOTICKS( MS_PER_UPDATE ) );
+
+		updateFlashContexts(MS_PER_UPDATE);
+
+		updateLedStates();
+	}
+}
+
+void setLEDMode( led_t led, led_state_t state )
+{
+	if ( led < ARRAY_SIZE(leds) && leds[led].pin != 0 )
+		ledContexts[led].currentMode = state;
+}
+
+void initLEDs( void )
+{
+	unsigned int index;
+
+#if defined(STM32F10X)
+    // Turn off JTAG port because we're using the GPIO for leds
+	GPIO_PinRemapConfig( GPIO_Remap_SWJ_Disable, ENABLE );
+#endif
+
+	for ( index = 0; index < NB_LEDS; index++ )
 	{
 		LEDInit(&leds[index]);
 		setLED((led_t)index,led_state_off);
 	}
+
+	for ( index = 0; index < NB_FLASH_CONFIGS; index++ )
+		ledFlashContexts[index].flash_state = led_state_off;
+
+	CoCreateTask(ledsTask, Co_NULL, 2, &ledsTaskStack[LEDS_TASK_STACK_SIZE-1], LEDS_TASK_STACK_SIZE);
+
 }
 

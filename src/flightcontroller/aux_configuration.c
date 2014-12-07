@@ -188,13 +188,13 @@ void updateFunctionEnables( void )
 		if ( previousFlightMode != angle_flight_mode )
 		{
 			resetAngleModePID();
-			setLED(ANGLE_MODE_LED, led_state_on);
+			setLEDMode(ANGLE_MODE_LED, led_state_on);
 		}
 	}
 	else if ( previousFlightMode != rate_flight_mode )
 	{
 		resetRateModePID();
-		setLED(ANGLE_MODE_LED, led_state_off);
+		setLEDMode(ANGLE_MODE_LED, led_state_off);
 	}
 	previousFlightMode = currentFlightMode;
 }

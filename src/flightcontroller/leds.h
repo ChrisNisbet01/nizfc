@@ -29,7 +29,7 @@ typedef enum led_state_t
 	led_state_slow_fast		/* long ON, short OFF */
 } led_state_t;
 
-void setLED( led_t led, led_state_t state );
+void setLEDMode( led_t led, led_state_t state );
 void initLEDs( void );
 
 

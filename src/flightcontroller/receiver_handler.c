@@ -194,7 +194,7 @@ void armCraft( void )
 	{
 		printf("\narmed!");
 		craftIsArmed = true;
-		setLED(ARMED_LED, led_state_on);
+		setLEDMode(ARMED_LED, led_state_on);
 		enableFailsafe();
 	}
 }
@@ -205,7 +205,7 @@ void disarmCraft( void )
 	{
 		craftIsArmed = false;
 		printf("\ndisarmed");
-		setLED(ARMED_LED, led_state_off);
+		setLEDMode(ARMED_LED, led_state_off);
 		disableFailsafe();
 	}
 }

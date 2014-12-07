@@ -38,7 +38,7 @@ static void restartFailsafeTimer( void )
 void failsafeTimeout( void )
 {
 	/* called from COOS systick ISR */
-	setLED(FAILSAFE_LED, led_state_on);
+	setLEDMode(FAILSAFE_LED, led_state_on);
 	if ( failsafe.failsafeTriggerCb != NULL )
 		failsafe.failsafeTriggerCb();
 }
@@ -108,5 +108,5 @@ uint_fast16_t getFailsafeMotorSpeed( void )
 void resetFailsafeTrigger( void )
 {
 	failsafe.triggered = false;
-	setLED(FAILSAFE_LED, led_state_off);
+	setLEDMode(FAILSAFE_LED, led_state_off);
 }
