@@ -114,14 +114,14 @@ static float calculateHeading(float *headingVector, float roll, float pitch)
 	return heading;
 }
 
-OS_FlagID printTimerFlag;
+OS_FlagID debugTimerFlag;
 OS_FlagID receiverFlag;
 OS_FlagID IMUTimerFlag;
 OS_FlagID failsafeTriggerFlag;
 
-static void printTimer( void )
+static void debugTimer( void )
 {
-	isr_SetFlag( printTimerFlag );
+	isr_SetFlag( debugTimerFlag );
 }
 
 static volatile uint32_t latestChannelsReceived;
@@ -459,26 +459,23 @@ static void doDebugOutput( void )
 
 static void cli_task( void *pv )
 {
-	OS_TCID printTimerID;
+	OS_TCID debugTimerID;
 
 	UNUSED(pv);
 
-	setLEDMode(LED1, led_state_fast_flash);
-	setLEDMode(LED2, led_state_slow_flash);
-
-	printTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ, CFG_SYSTICK_FREQ, printTimer );
-	CoStartTmr( printTimerID );
+	debugTimerID = CoCreateTmr( TMR_TYPE_PERIODIC, CFG_SYSTICK_FREQ, CFG_SYSTICK_FREQ, debugTimer );
+	CoStartTmr( debugTimerID );
 
 	while (1)
 	{
 		StatusType err;
 		U32 readyFlags;
 
-		readyFlags = CoWaitForMultipleFlags( (1<<printTimerFlag)|(1<<cliUartFlag), OPT_WAIT_ANY, 0, &err );
+		readyFlags = CoWaitForMultipleFlags( (1<<debugTimerFlag)|(1<<cliUartFlag), OPT_WAIT_ANY, 0, &err );
 	 	if ( readyFlags & (1<<cliUartFlag) )
 	 		handleNewSerialData();
 
-	 	if ( readyFlags & (1<<printTimerFlag) )
+	 	if ( readyFlags & (1<<debugTimerFlag) )
 	 		doDebugOutput();
 	}
 }
@@ -521,7 +518,7 @@ int main(void)
 	/* open the serial ports early so debug info can be sent to them */
 
 	cliUartFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-	printTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+	debugTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 
 	for ( cli_index = 0 ; cli_index < ARRAY_SIZE(serial_ports); cli_index++ )
 	{
