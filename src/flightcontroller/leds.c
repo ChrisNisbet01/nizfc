@@ -16,6 +16,19 @@
 #define LEDS_TASK_STACK_SIZE 0x80
 #define MS_PER_UPDATE			20
 
+#define RESET_PIN( port, pin )	port->BRR = (pin)
+#define SET_PIN( port, pin )	port->BSRR = (pin)
+#define TOGGLE_PIN( port, pin )	port->ODR ^= (pin)
+
+#if defined(STM32F30X)
+#define LED_OFF( port, pin )	RESET_PIN(port, pin)
+#define LED_ON( port, pin )		SET_PIN(port, pin)
+#elif defined(STM32F10X)
+#define LED_OFF( port, pin )	SET_PIN(port, pin)
+#define LED_ON( port, pin )		RESET_PIN(port, pin)
+#endif
+#define LED_TOGGLE( port, pin ) TOGGLE_PIN( port, pin )
+
 static OS_STK ledsTaskStack[LEDS_TASK_STACK_SIZE];
 
 typedef struct led_configuration_st
@@ -99,6 +112,7 @@ typedef enum flash_state_t
 	flash_on
 } flash_state_t;
 
+/* definitions for the periods of time (in ms) the LEDs are ON/OFF when flashing */
 typedef enum pin_transtion_time_t
 {
 	slow_flash_on = 800,
@@ -113,7 +127,7 @@ typedef enum pin_transtion_time_t
 
 typedef struct ledContext_st
 {
-	volatile led_state_t currentMode;
+	volatile led_mode_t currentMode;
 } ledContext_st;
 
 typedef enum flashIndex_t
@@ -190,30 +204,22 @@ static void LEDInit(led_configuration_st const * led)
 
 }
 
-static void setLED( led_t led, led_state_t state )
+static void setLED( led_t led, led_mode_t state )
 {
 	if ( led < ARRAY_SIZE(leds) && leds[led].pin != 0 )
 	{
 		switch ( state )
 		{
 			case led_state_off:
-#if defined(STM32F30X)
-				leds[led].port->BRR = leds[led].pin;
-#elif defined(STM32F10X)
-				leds[led].port->BSRR = leds[led].pin;
-#endif
+				LED_OFF( leds[led].port, leds[led].pin );
 				break;
 			case led_state_on:
-#if defined(STM32F30X)
-				leds[led].port->BSRR = leds[led].pin;
-#elif defined(STM32F10X)
-				leds[led].port->BRR = leds[led].pin;
-#endif
+				LED_ON( leds[led].port, leds[led].pin );
 				break;
 			case led_state_toggle:
-				leds[led].port->ODR ^= leds[led].pin;
+				LED_TOGGLE( leds[led].port, leds[led].pin );
 				break;
-			default:	// TODO:
+			default:
 				break;
 		}
 	}
@@ -253,15 +259,6 @@ static void updateLedStates( void )
 	{
 		switch( ledContexts[index].currentMode )
 		{
-			case led_state_off:
-				setLED( (led_t)index, led_state_off );
-				break;
-			case led_state_on:
-				setLED( (led_t)index, led_state_on );
-				break;
-			case led_state_toggle:
-				setLED( (led_t)index, led_state_toggle );
-				break;
 			case led_state_slow_fast:
 				setLED( (led_t)index, ledFlashContexts[SLOW_FAST_FLASH_IDX].flash_state );
 				break;
@@ -273,6 +270,8 @@ static void updateLedStates( void )
 				break;
 			case led_state_slow_flash:
 				setLED( (led_t)index, ledFlashContexts[SLOW_FLASH_IDX].flash_state );
+				break;
+			default:
 				break;
 		}
 	}
@@ -292,10 +291,30 @@ static void ledsTask( void *pv )
 	}
 }
 
-void setLEDMode( led_t led, led_state_t state )
+void setLEDMode( led_t led, led_mode_t state )
 {
 	if ( led < ARRAY_SIZE(leds) && leds[led].pin != 0 )
+	{
+		/*
+			It may happen that a task is blocking this one for some period of time, and wishes to turn an LED ON/OFF/TOGGLE.
+			So that this can occur without waiting for the LED task to run, we'll drive the LED directly in these cases.
+		*/
 		ledContexts[led].currentMode = state;
+		switch( ledContexts[led].currentMode )
+		{
+			case led_state_off:
+				setLED( led, led_state_off );
+				break;
+			case led_state_on:
+				setLED( led, led_state_on );
+				break;
+			case led_state_toggle:
+				setLED( led, led_state_toggle );
+				break;
+			default:
+				break;
+		}
+	}
 }
 
 void initLEDs( void )
