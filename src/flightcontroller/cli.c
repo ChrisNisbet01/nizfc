@@ -75,7 +75,7 @@ static int clivfprintf(void *pv, const char *pFormat, va_list ap)
 	cliCtx_st *pctx	= pv;
 
     /* Write formatted string in buffer */
-    if ((unsigned)vsnprintf(pctx->outputBuffer, sizeof(pctx->outputBuffer), pFormat, ap) >= sizeof(pctx->outputBuffer)) {
+    if ((unsigned)vsnprintf_aligned(pctx->outputBuffer, sizeof(pctx->outputBuffer), pFormat, ap) >= sizeof(pctx->outputBuffer)) {
 
         clifputs(pctx, pError);
         return -1;

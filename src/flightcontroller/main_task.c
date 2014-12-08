@@ -118,7 +118,6 @@ uint_fast32_t getCPULoad( void )
 	/*
 		It is assumed that this function will be called at 1 second intervals
 	*/
-	printf("\r\nmax %d idle %d", OSMaxIdleCtr, OSIdleCtr );
 	if ( OSIdleCtr > OSMaxIdleCtr )
 		OSMaxIdleCtr = OSIdleCtr;
 	if ( OSMaxIdleCtr > 0 )

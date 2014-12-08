@@ -353,7 +353,10 @@ static signed int PutFloat( char *pStr, float value )
  *
  * @return  The number of characters written.
  */
-signed int vsnprintf(char *pStr, size_t length, const char *pFormat, va_list ap)
+
+#define IS_DOUBLE_WORD_ALIGNED(x) ((x) & 1)
+
+static signed int local_vsnprintf(int isDoubleWordAligned, char *pStr, size_t length, const char *pFormat, va_list ap)
 {
     char          fill;
     unsigned char width;
@@ -412,20 +415,38 @@ signed int vsnprintf(char *pStr, size_t length, const char *pFormat, va_list ap)
             /* Parse type */
             switch (*pFormat) {
             case 'd':
-            case 'i': num = PutSignedInt(pStr, fill, width, va_arg(ap, signed int)); break;
-            case 'u': num = PutUnsignedInt(pStr, fill, width, va_arg(ap, unsigned int)); break;
+            case 'i': num = PutSignedInt(pStr, fill, width, va_arg(ap, signed int)); isDoubleWordAligned++; break;
+            case 'u': num = PutUnsignedInt(pStr, fill, width, va_arg(ap, unsigned int)); isDoubleWordAligned++; break;
             case 'p':
-            case 'x': num = PutHexa(pStr, fill, width, 0, va_arg(ap, unsigned int)); break;
-            case 'X': num = PutHexa(pStr, fill, width, 1, va_arg(ap, unsigned int)); break;
-            case 's': num = PutString(pStr, fill, width, va_arg(ap, char *)); break;
-            case 'c': num = PutChar(pStr, va_arg(ap, unsigned int)); break;
-            case 'f': num = PutFloat(pStr, va_arg(ap, double)); break;
+            case 'x': num = PutHexa(pStr, fill, width, 0, va_arg(ap, unsigned int)); isDoubleWordAligned++; break;
+            case 'X': num = PutHexa(pStr, fill, width, 1, va_arg(ap, unsigned int)); isDoubleWordAligned++; break;
+            case 's': num = PutString(pStr, fill, width, va_arg(ap, char *)); isDoubleWordAligned++; break;
+            case 'c': num = PutChar(pStr, va_arg(ap, unsigned int)); isDoubleWordAligned++; break;
+            case 'f':
+            {
+            	union
+            	{
+            		uint32_t i[2];
+            		double f;
+            	} u;
+            	if ( IS_DOUBLE_WORD_ALIGNED(isDoubleWordAligned) == 0)
+            	{
+	            	u.i[0] = va_arg(ap, uint32_t);
+	            	isDoubleWordAligned++;
+            	}
+            	u.i[0] = va_arg(ap, uint32_t);
+            	u.i[1] = va_arg(ap, uint32_t);
+            	num = PutFloat(pStr, u.f); break;
+            }
+#if 0
             case 'g':
             {
             	float *pf = (float *)va_arg(ap, long);
+            	isDoubleWordAligned++;
             	num = PutFloat(pStr, *pf);
             	break;
             }
+#endif
             default:
                 return EOF;
             }
@@ -436,18 +457,28 @@ signed int vsnprintf(char *pStr, size_t length, const char *pFormat, va_list ap)
         }
     }
 
-    /* NULL-terminated (final \0 is not counted) */
+    /* NUL terminated (final '\0' is not counted) */
     if (size < length) {
 
-        *pStr = 0;
+        *pStr = '\0';
     }
     else {
 
-        *(--pStr) = 0;
+        *(--pStr) = '\0';
         size--;
     }
 
     return size;
+}
+
+signed int vsnprintf_aligned(char *pStr, size_t length, const char *pFormat, va_list ap)
+{
+	return local_vsnprintf( 1, pStr, length, pFormat, ap );
+}
+
+signed int vsnprintf_unaligned(char *pStr, size_t length, const char *pFormat, va_list ap)
+{
+	return local_vsnprintf( 0, pStr, length, pFormat, ap );
 }
 
 /**
@@ -467,7 +498,7 @@ signed int snprintf(char *pString, size_t length, const char *pFormat, ...)
     signed int rc;
 
     va_start(ap, pFormat);
-    rc = vsnprintf(pString, length, pFormat, ap);
+    rc = vsnprintf_unaligned(pString, length, pFormat, ap);
     va_end(ap);
     return rc;
 }
@@ -486,7 +517,7 @@ signed int snprintf(char *pString, size_t length, const char *pFormat, ...)
  */
 signed int vsprintf(char *pString, const char *pFormat, va_list ap)
 {
-   return vsnprintf(pString, MAX_STRING_SIZE, pFormat, ap);
+   return vsnprintf_unaligned(pString, MAX_STRING_SIZE, pFormat, ap);
 }
 
 /**

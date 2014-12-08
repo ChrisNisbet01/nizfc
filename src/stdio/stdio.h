@@ -11,7 +11,8 @@ typedef struct FILE
 #define stdout (FILE *)0
 #define stderr (FILE *)1
 
-signed int vsnprintf(char *pStr, size_t length, const char *pFormat, va_list ap);
+signed int vsnprintf_aligned(char *pStr, size_t length, const char *pFormat, va_list ap);
+signed int vsnprintf_unaligned(char *pStr, size_t length, const char *pFormat, va_list ap);
 signed int snprintf(char *pString, size_t length, const char *pFormat, ...);
 signed int vsprintf(char *pString, const char *pFormat, va_list ap);
 signed int vfprintf(FILE *pStream, const char *pFormat, va_list ap);

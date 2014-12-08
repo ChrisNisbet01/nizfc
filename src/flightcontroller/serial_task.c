@@ -92,10 +92,10 @@ static void doDebugOutput( void )
 	if (board_configuration[0].debug & 1 )
 	{
  		//printf("\n\nthrottle: %d", (int)getThrottleSetpoint() );
- 		//printf("\nroll: %d:%g PID: %d", (int)getRollAngleSetpoint(), &RollAngle, (int)getRollAnglePIDOutput() );
- 		//printf("\npitch: %d:%g PID: %d", (int)getPitchAngleSetpoint(), &PitchAngle, (int)getPitchAnglePIDOutput() );
- 		printf("\nroll rate: %d:%g PID: %d", (int)getRollRateSetpoint(), &filteredGyroValues[0], (int)getRollRatePIDOutput() );
- 		printf("\npitch rate: %d:%g PID: %d", (int)getPitchRateSetpoint(), &filteredGyroValues[1], (int)getPitchRatePIDOutput() );
+ 		//printf("\nroll: %d:%f PID: %d", (int)getRollAngleSetpoint(), RollAngle, (int)getRollAnglePIDOutput() );
+ 		//printf("\npitch: %d:%f PID: %d", (int)getPitchAngleSetpoint(), PitchAngle, (int)getPitchAnglePIDOutput() );
+ 		printf("\nroll rate: %d:%f PID: %d", (int)getRollRateSetpoint(), filteredGyroValues[0], (int)getRollRatePIDOutput() );
+ 		printf("\npitch rate: %d:%f PID: %d", (int)getPitchRateSetpoint(), filteredGyroValues[1], (int)getPitchRatePIDOutput() );
  		//printf("\nheading: %g", &Heading );
 	}
 	if (board_configuration[0].debug & 2 )
@@ -109,23 +109,23 @@ static void doDebugOutput( void )
 	if (board_configuration[0].debug & 4 )
 	{
 		float exeTime = getIMUExeTime();
-		printf("\r\nIMU exe time %g cpu %d", &exeTime, cpuLoad );
+		printf("\r\nIMU exe time %f cpu %d", exeTime, cpuLoad );
 	}
 	if (board_configuration[0].debug & 8 )
 	{
-		printf( "\r\n\ndT: %g", &fIMUDelta );
+		printf( "\r\n\ndT: %fg", fIMUDelta );
 		printf( "\r\naccel" );
-		printf( "\r\n        roll %g", &imu_data.roll );
-		printf( "\r\n        pit  %g", &imu_data.pitch );
+		printf( "\r\n        roll %f", imu_data.roll );
+		printf( "\r\n        pit  %f", imu_data.pitch );
 		printf( "\r\ngyro" );
-		printf( "\r\n        roll %g", &imu_data.gyroRollAngle );
-		printf( "\r\n        pit  %g", &imu_data.gyroPitchAngle );
+		printf( "\r\n        roll %f", imu_data.gyroRollAngle );
+		printf( "\r\n        pit  %f", imu_data.gyroPitchAngle );
 		printf( "\r\nfiltered" );
-		printf( "\r\n        roll %g", &RollAngle );
-		printf( "\r\n        pit  %g", &PitchAngle );
+		printf( "\r\n        roll %f", RollAngle );
+		printf( "\r\n        pit  %f", PitchAngle );
 		printf( "\r\nsetpoint" );
-		printf( "\r\n        roll %d", (int)getRollAngleSetpoint() );
-		printf( "\r\n        pit  %d", (int)getPitchAngleSetpoint() );
+		printf( "\r\n        roll %f", getRollAngleSetpoint() );
+		printf( "\r\n        pit  %f", getPitchAngleSetpoint() );
 	}
 	if (board_configuration[0].debug & 16 )
 	{
