@@ -56,8 +56,6 @@ static float calculateHeading(float *headingVector, float roll, float pitch)
     // magnetic heading
     heading = atan2f(headY,headX) * 180.0f/M_PI;
 
-	// TODO: apply declination
-
 	heading = normaliseHeading( heading );
 
 	return heading;
@@ -70,7 +68,7 @@ float getIMUExeTime( void )
 
 void initGyroHeadingVector( void )
 {
-	/* start out pointing straight ahead */
+	/* current attitude is used as the starting point for gyro based heading */
 	gyroHeadingVector[0] = 1.0f;
 	gyroHeadingVector[1] = 0.0f;
 	gyroHeadingVector[2] = 0.0f;
@@ -81,7 +79,7 @@ static void estimateAttitude( float dT )
 
     do_attitude_estimation( &imu_data,
     				dT,
-    				filteredGyroValues[1],	// TODO: rotate vectors appropriately before calling this
+    				filteredGyroValues[1],
     				-filteredGyroValues[0],
     				filteredAccelerometerValues[0],
     				filteredAccelerometerValues[1],
@@ -186,6 +184,9 @@ void updateIMU( sensorCallback_st * sensorCallbacks )
 	if ( gotMagnetometerValues == true )
 	{
 		Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
+
+		// TODO: apply declination (and renormalise afterwards)
+
 	}
 	else if ( gotGyroValues == true )
 	{
@@ -193,14 +194,14 @@ void updateIMU( sensorCallback_st * sensorCallbacks )
 		vectorRotation_st matrix;
 
 		deltaGyroAngle[0] = gyroValues[0] * fIMUDelta;
-		deltaGyroAngle[1] = gyroValues[1] * fIMUDelta;	// XXX fix up rotation here and in estimateAttitude and above
+		deltaGyroAngle[1] = gyroValues[1] * fIMUDelta;
 		deltaGyroAngle[2] = gyroValues[2] * fIMUDelta;
 
 		/* use gyro to determine heading */
 		initVectorRotationDegrees( &matrix, deltaGyroAngle[0], deltaGyroAngle[1], deltaGyroAngle[2] );
 		applyVectorRotation( &matrix, gyroHeadingVector );
 		normaliseVector( gyroHeadingVector, gyroHeadingVector );
-#if defined(STM32F30X)
+#if defined(STM32F30X)	// XXX why different?
 		Heading = calculateHeading( gyroHeadingVector, -RollAngle, -PitchAngle );
 #elif defined(STM32F10X)
 		Heading = calculateHeading( gyroHeadingVector, -PitchAngle, RollAngle );
