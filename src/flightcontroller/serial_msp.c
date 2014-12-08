@@ -10,9 +10,8 @@
 #include <motor_control.h>
 #include <board_configuration.h>
 #include <failsafe_configuration.h>
+#include <imu.h>
 
-extern uint32_t IMUDelta;
-#define cycleTime IMUDelta
 #define serialPort_t	serial_port_st
 
 static const char MSPHeader[3] = {'$', 'M', '<'};
@@ -218,8 +217,6 @@ static mspPort_t mspPorts[MAX_MSP_PORT_COUNT];
 static mspPort_t *currentPort;
 #define mspSerialPort currentPort->serialPort
 
-extern float RollAngle, PitchAngle, Heading;
-
 void serialWrite( serial_port_st *port, uint8_t ch )
 {
 	if ( port->methods->writeBulkBlockingWithTimeout == NULL )
@@ -354,12 +351,6 @@ void mspInit(serialPort_t *serialPort)
 
 #define IS_ENABLED(mask) (mask == 0 ? 0 : 1)
 
-extern float accelerometerValues[3];
-extern float gyroValues[3];
-extern float magnetometerValues[3];
-extern float filteredAccelerometerValues[3];
-extern float filteredGyroValues[3];
-extern float filteredMagnetometerValues[3];
 
 #define BUILD_DATE_LENGTH 11
 char* buildDate = __DATE__;  // "MMM DD YYYY" MMM = Jan/Feb/...
@@ -451,7 +442,7 @@ static bool processOutCommand(uint8_t cmdMSP)
 
     case MSP_STATUS:
         headSerialReply(11);
-        serialize16(cycleTime);
+        serialize16(IMUDelta);
         serialize16(0);	/* I2C error count */
 #if defined(STM32F30X)
         serialize16(5);	/* bit 0 == gyro + accel, bit 1 = baro, bit 2 == magnetometer, bit 3 = GPS, bit 4 = sonar */

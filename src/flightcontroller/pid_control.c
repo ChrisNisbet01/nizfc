@@ -9,11 +9,7 @@
 #include <angle_mode_configuration.h>
 #include <rate_mode_configuration.h>
 #include <yaw_configuration.h>
-
-extern float RollAngle, PitchAngle, Heading;
-extern float filteredAccelerometerValues[3];
-extern float filteredGyroValues[3];
-extern float filteredMagnetometerValues[3];
+#include <imu.h>	/* for roll angle etc. Fix this up */
 
 static pid_st rollAnglePID;
 static pid_st pitchAnglePID;

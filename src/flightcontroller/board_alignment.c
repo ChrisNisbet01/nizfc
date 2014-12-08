@@ -28,6 +28,10 @@ void alignVectorsToCraft(float *vectors)
 
 void alignVectorsToFlightController(float *vectors, orientation_t sensorOrientation)
 {
+	/*
+		These vectors will always be at 90 degree intervals, so we can avoid doing lengthy vector
+		transformations.
+	*/
 	float temp[3];
 
 	temp[0] = vectors[0];

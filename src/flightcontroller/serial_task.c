@@ -12,6 +12,7 @@
 #include <receiver_handler.h>
 #include <motor_control.h>
 #include <attitude_estimation.h>
+#include <imu.h>
 
 #define CLI_TASK_STACK_SIZE 0x200
 
@@ -39,17 +40,6 @@ serial_port_st *debug_port;
 
 static OS_FlagID cliUartFlag;
 static OS_FlagID debugTimerFlag;
-
-extern float RollAngle, PitchAngle, Heading;
-extern float accelerometerValues[3];
-extern float gyroValues[3];
-extern float magnetometerValues[3];
-extern float filteredAccelerometerValues[3];
-extern float filteredGyroValues[3];
-extern float filteredMagnetometerValues[3];
-extern float fIMUDelta;
-extern IMU_DATA_ST imu_data;
-
 
 int uartPutChar( void * port, int ch )
 {
@@ -176,7 +166,7 @@ bool setDebugPort( int port )
 	return debugPortAssigned;
 }
 
-void init_serial_task( void )
+void initSerialTask( void )
 {
 	unsigned int cli_index;
 
