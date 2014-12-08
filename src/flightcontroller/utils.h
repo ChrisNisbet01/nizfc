@@ -20,6 +20,8 @@ int strtoint (char const * str, unsigned int  * pint );
 float limitFloat( float value, float lowLimit, float highLimit);
 int limit( int value, int lowLimit, int highLimit);
 float scale(int32_t value, int32_t srcMin, int32_t srcMax, float destMin, float destMax);
+float normaliseHeading( float heading );
+
 void delayMilliseconds( unsigned int milliseconds );
 
 #endif /*  __UTILS_H__ */

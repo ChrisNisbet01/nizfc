@@ -91,12 +91,13 @@ void multiplyVectorMatrix( vectorRotation_st * MatrixA, vectorRotation_st * Matr
 	}
 }
 
-void normalizeVectors(float *src, float *dest)
+void normaliseVector(float *src, float *dest)
 {
     float length;
 
     length = sqrtf(src[0] * src[0] + src[1] * src[1] + src[2] * src[2]);
-    if (length != 0.0f) {
+    if (length != 0.0f)
+    {
         dest[0] = src[0] / length;
         dest[1] = src[1] / length;
         dest[2] = src[2] / length;

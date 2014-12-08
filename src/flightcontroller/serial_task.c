@@ -103,6 +103,11 @@ static void doDebugOutput( void )
 		for (motor = 0; motor < 4; motor++ )
 			printf("  m-%d: %u", motor+1, (unsigned int)getMotorOutput( motor ) );
 	}
+	if (board_configuration[0].debug & 4 )
+	{
+		float exeTime = getIMUExeTime();
+		printf("\r\nIMU exe time %g", &exeTime );
+	}
 	if (board_configuration[0].debug & 8 )
 	{
 		printf( "\r\n\ndT: %g", &fIMUDelta );

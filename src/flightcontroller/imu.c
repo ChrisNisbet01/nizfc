@@ -10,8 +10,16 @@
 #include <vector_rotation.h>
 #include <hirestimer.h>
 #include <board_alignment.h>
+#include <utils.h>
 
 float RollAngle, PitchAngle, Heading;
+
+/*
+	When we don't have a magnetometer we can use the gyro to provide a rough heading fix
+*/
+
+static float	gyroHeadingVector[3];
+
 uint32_t IMUDelta;
 float    fIMUDelta;
 IMU_DATA_ST imu_data;
@@ -22,7 +30,6 @@ float filteredAccelerometerValues[3];
 float filteredGyroValues[3];
 float filteredMagnetometerValues[3];
 
-static float	gyroHeadingVector[3];
 static uint32_t lastIMUTime;
 static uint32_t IMUExeTime;
 
@@ -51,10 +58,14 @@ static float calculateHeading(float *headingVector, float roll, float pitch)
 
 	// TODO: apply declination
 
-	if ( heading < 0.0f)
-		heading += 360.0f;
+	heading = normaliseHeading( heading );
 
 	return heading;
+}
+
+float getIMUExeTime( void )
+{
+	return IMUExeTime;
 }
 
 void initGyroHeadingVector( void )
@@ -80,29 +91,13 @@ static void estimateAttitude( float dT )
     PitchAngle = imu_data.compPitchAngle;
 }
 
-void updateIMU( sensorCallback_st * sensorCallbacks )
+bool readGyro( sensorCallback_st * sensorCallbacks )
 {
-	uint32_t now = micros();
-	IMUDelta = now - lastIMUTime;
-	lastIMUTime = now;
+	bool gotGyroValues;
 
-	/* calculate time between iterations */
-	fIMUDelta = (float)IMUDelta/1000000.0f;
-
-	if ( sensorCallbacks->readAccelerometer != NULL
-		&& sensorCallbacks->readGyro != NULL
-		&& sensorCallbacks->readAccelerometer( sensorCallbacks->accelerometerCtx, accelerometerValues ) == true
-		&& sensorCallbacks->readGyro( sensorCallbacks->gyroCtx, gyroValues ) == true)
+	if ( sensorCallbacks->readGyro != NULL && sensorCallbacks->readGyro( sensorCallbacks->gyroCtx, gyroValues ) == true )
 	{
-		// TODO matrix multiplication to avoid doing two transformations?
-#if defined(STM32F30X)
-		alignVectorsToFlightController( accelerometerValues, noRotation );	// TODO: configurable/per hardware, not cpu
-#elif defined(STM32F10X)
-		alignVectorsToFlightController( accelerometerValues, clockwise180Degrees );	// TODO: configurable/per hardware, not cpu
-#endif
-		alignVectorsToCraft( accelerometerValues );
-
-		filterAccValues( accelerometerValues, filteredAccelerometerValues );
+		gotGyroValues = true;
 
 		// TODO matrix multiplication to avoid doing two transformations?
 #if defined(STM32F30X)
@@ -114,32 +109,97 @@ void updateIMU( sensorCallback_st * sensorCallbacks )
 
 		filterGyroValues( gyroValues, filteredGyroValues );
 
-		estimateAttitude( fIMUDelta );
 	}
+	else
+		gotGyroValues = false;
 
-	/* we have pitch and roll, determine heading */
+	return gotGyroValues;
+}
+
+bool readAccelerometer( sensorCallback_st * sensorCallbacks )
+{
+	bool gotAccValues;
+
+	if ( sensorCallbacks->readAccelerometer != NULL	&& sensorCallbacks->readAccelerometer( sensorCallbacks->accelerometerCtx, accelerometerValues ) == true)
+	{
+		gotAccValues = true;
+
+		// TODO matrix multiplication to avoid doing two transformations?
+#if defined(STM32F30X)
+		alignVectorsToFlightController( accelerometerValues, noRotation );	// TODO: configurable/per hardware, not cpu
+#elif defined(STM32F10X)
+		alignVectorsToFlightController( accelerometerValues, clockwise180Degrees );	// TODO: configurable/per hardware, not cpu
+#endif
+		alignVectorsToCraft( accelerometerValues );
+
+		filterAccValues( accelerometerValues, filteredAccelerometerValues );
+	}
+	else
+		gotAccValues = false;
+
+	return gotAccValues;
+}
+
+bool readMagnetometer( sensorCallback_st * sensorCallbacks )
+{
+	bool gotMagnetometerValues;
+
 	if ( sensorCallbacks->readMagnetometer != NULL
 		&& sensorCallbacks->readMagnetometer( sensorCallbacks->magnetometerCtx, magnetometerValues ) == true )
 	{
+		gotMagnetometerValues = true;
 		// TODO matrix multiplication to avoid doing two transformations?
 		alignVectorsToFlightController( magnetometerValues, noRotation );	// TODO: configurable
 		alignVectorsToCraft( magnetometerValues );
+
 		filterMagValues( magnetometerValues, filteredMagnetometerValues );
-
-		Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
-
 	}
 	else
+		gotMagnetometerValues = false;
+
+	return gotMagnetometerValues;
+}
+
+void updateIMU( sensorCallback_st * sensorCallbacks )
+{
+	bool gotGyroValues;
+	bool gotAccValues;
+	bool gotMagnetometerValues;
+	uint32_t now = micros();
+	IMUDelta = now - lastIMUTime;
+	lastIMUTime = now;
+
+	/* calculate time in seconds between iterations */
+	fIMUDelta = (float)IMUDelta * 1e-6f;
+
+	gotGyroValues = readGyro( sensorCallbacks );
+	gotAccValues = readAccelerometer( sensorCallbacks );
+	gotMagnetometerValues = readMagnetometer( sensorCallbacks );
+
+	/* only estimate attitude (used in Angle mode) if gyro and accelerometer both found */
+	if ( gotGyroValues == true && gotAccValues == true )
+	{
+		estimateAttitude( fIMUDelta );
+	}
+
+	/* determine heading */
+	if ( gotMagnetometerValues == true )
+	{
+		Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
+	}
+	else if ( gotGyroValues == true )
 	{
 		float deltaGyroAngle[3];
 		vectorRotation_st matrix;
+
 		deltaGyroAngle[0] = gyroValues[0] * fIMUDelta;
 		deltaGyroAngle[1] = gyroValues[1] * fIMUDelta;	// XXX fix up rotation here and in estimateAttitude and above
 		deltaGyroAngle[2] = gyroValues[2] * fIMUDelta;
+
 		/* use gyro to determine heading */
 		initVectorRotationDegrees( &matrix, deltaGyroAngle[0], deltaGyroAngle[1], deltaGyroAngle[2] );
 		applyVectorRotation( &matrix, gyroHeadingVector );
-		normalizeVectors( gyroHeadingVector, gyroHeadingVector );
+		normaliseVector( gyroHeadingVector, gyroHeadingVector );
 #if defined(STM32F30X)
 		Heading = calculateHeading( gyroHeadingVector, -RollAngle, -PitchAngle );
 #elif defined(STM32F10X)
@@ -147,7 +207,7 @@ void updateIMU( sensorCallback_st * sensorCallbacks )
 #endif
 	}
 
-	IMUExeTime = (now=micros()) - lastIMUTime;
+	IMUExeTime = micros() - lastIMUTime;
 
 }
 

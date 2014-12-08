@@ -7,6 +7,7 @@
 void updateIMU( sensorCallback_st * sensorCallbacks );
 void initIMUTime( uint32_t time );
 void initGyroHeadingVector( void );
+float getIMUExeTime( void );
 
 extern float RollAngle, PitchAngle, Heading;
 extern float filteredAccelerometerValues[3];
