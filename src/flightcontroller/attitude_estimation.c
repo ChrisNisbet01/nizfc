@@ -9,8 +9,8 @@
 
 void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroRollRate, float gyroPitchRate, float accX, float accY, float accZ )
 {
-	float roll  = -atan2f(accY, accZ) * RAD_TO_DEG;
-	float pitch = -atan2f(-accX, sqrtf(accY * accY + accZ * accZ)) * RAD_TO_DEG;
+	float roll  = atan2f(accY, accZ) * RAD_TO_DEG;
+	float pitch = atan2f(-accX, sqrtf(accY * accY + accZ * accZ)) * RAD_TO_DEG;
 	float rotationX, rotationY;
 
 	// This fixes the transition problem when the accelerometer angle jumps between -180 and 180 degrees

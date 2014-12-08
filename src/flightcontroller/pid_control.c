@@ -74,8 +74,8 @@ void updatePIDControlLoops( void )
 			// TODO: only update PIDs when appropriate for current flight mode
 			updatePID( &pitchAnglePID, PitchAngle, getPitchAngleSetpoint(), dT );
 			updatePID( &rollAnglePID, RollAngle, getRollAngleSetpoint(), dT );
-			updatePID( &pitchRatePID, -filteredGyroValues[0], getPitchRateSetpoint(), dT );
-			updatePID( &rollRatePID, filteredGyroValues[1], getRollRateSetpoint(), dT );
+			updatePID( &rollRatePID, filteredGyroValues[0], getRollRateSetpoint(), dT );
+			updatePID( &pitchRatePID, filteredGyroValues[1], getPitchRateSetpoint(), dT );
 			updatePID( &yawRatePID, filteredGyroValues[2], getYawRateSetpoint(), dT );
 		}
 	}

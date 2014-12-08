@@ -79,8 +79,8 @@ static void estimateAttitude( float dT )
 
     do_attitude_estimation( &imu_data,
     				dT,
+    				filteredGyroValues[0],
     				filteredGyroValues[1],
-    				-filteredGyroValues[0],
     				filteredAccelerometerValues[0],
     				filteredAccelerometerValues[1],
     				filteredAccelerometerValues[2] );
@@ -98,11 +98,7 @@ bool readGyro( sensorCallback_st * sensorCallbacks )
 		gotGyroValues = true;
 
 		// TODO matrix multiplication to avoid doing two transformations?
-#if defined(STM32F30X)
 		alignVectorsToFlightController( gyroValues, noRotation );			// TODO: configurable/per hardware, not cpu
-#elif defined(STM32F10X)
-		alignVectorsToFlightController( gyroValues, clockwise270Degrees );			// TODO: configurable/per hardware, not cpu
-#endif
 		alignVectorsToCraft( gyroValues );
 
 		filterGyroValues( gyroValues, filteredGyroValues );
@@ -123,11 +119,7 @@ bool readAccelerometer( sensorCallback_st * sensorCallbacks )
 		gotAccValues = true;
 
 		// TODO matrix multiplication to avoid doing two transformations?
-#if defined(STM32F30X)
 		alignVectorsToFlightController( accelerometerValues, noRotation );	// TODO: configurable/per hardware, not cpu
-#elif defined(STM32F10X)
-		alignVectorsToFlightController( accelerometerValues, clockwise180Degrees );	// TODO: configurable/per hardware, not cpu
-#endif
 		alignVectorsToCraft( accelerometerValues );
 
 		filterAccValues( accelerometerValues, filteredAccelerometerValues );
@@ -204,7 +196,7 @@ void updateIMU( sensorCallback_st * sensorCallbacks )
 #if defined(STM32F30X)	// XXX why different?
 		Heading = calculateHeading( gyroHeadingVector, -RollAngle, -PitchAngle );
 #elif defined(STM32F10X)
-		Heading = calculateHeading( gyroHeadingVector, -PitchAngle, RollAngle );
+		Heading = calculateHeading( gyroHeadingVector, RollAngle, PitchAngle );
 #endif
 	}
 
