@@ -57,7 +57,9 @@ void CoIdleTask(void* pdata)
     /* Add your codes here */
     for(; ;)
     {
+    	extern volatile U32 OSIdleCtr;
         /* Add your codes here */
+        OSIdleCtr++;
     }
 }
 

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include <coos.h>
 #include <failsafe_configuration.h>
@@ -79,7 +80,10 @@ void updateFailsafeWithNewChannels( uint32_t newChannels )
 
 		failsafe.currentChannels |= newChannels;
 
-		requiredChannels = (1 << failsafe_configuration[0].nbRequiredChannels) - 1;	/* works up to 31 channels */
+		if ( failsafe_configuration[0].nbRequiredChannels == 32 )
+			requiredChannels = 0xffffffff;
+		else
+			requiredChannels = (1 << failsafe_configuration[0].nbRequiredChannels) - 1;	/* works up to 31 channels */
 
 		if ( (failsafe.currentChannels & requiredChannels) == requiredChannels )
 		{
@@ -92,6 +96,8 @@ void updateFailsafeWithNewChannels( uint32_t newChannels )
 
 void failsafeSetTriggered( void )
 {
+	/* called from main_task() */
+	printf("\r\nfailsafe triggered");
 	failsafe.triggered = true;
 }
 

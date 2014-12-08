@@ -81,9 +81,42 @@ static void initIMUTimer( uint32_t updatePeriod )
 	initIMUTime( micros() - updatePeriod );
 }
 
+static void updateReceiver( void )
+{
+	uint32_t newChannels;
+
+	IRQ_DISABLE_SAVE();
+	newChannels = latestChannelsReceived;
+	latestChannelsReceived = 0;
+	IRQ_ENABLE_RESTORE();
+
+    updateFailsafeWithNewChannels( newChannels );
+
+    setLEDMode(RX_LED, led_state_toggle);
+
+	processReceiverSignals();
+}
+
+volatile U32 OSIdleCtr;
+
 static void main_task( void *pv )
 {
 	UNUSED(pv);
+
+	/*
+		suspend all other tasks except idle task
+		then sit idle for 250ms.
+		then take not of OSIdleCtr. Multiply by 4.
+		This is the max number that the idle task can reach
+		in 1 second, so we can determine % load from this.
+		% load = ((maxIdleCtr - thisIdleCtr)*100)/maxIdleCtr;
+	*/
+
+	OSIdleCtr = 0;
+	// TODO: Determine no load OSIdleCtr value
+
+	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+	failsafeTriggerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 
 #if defined(STM32F30X)
 	i2c_port = i2cInit( I2C_PORT_1 );
@@ -120,9 +153,6 @@ static void main_task( void *pv )
 		initGyroHeadingVector();
 	}
 
-	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-	failsafeTriggerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-
 	initBoardAlignment(
 		board_configuration[0].boardOrientation[0],
 		board_configuration[0].boardOrientation[1],
@@ -147,7 +177,6 @@ static void main_task( void *pv )
 		{
 			if ( (ReadyFlags & (1<<failsafeTriggerFlag)) != 0 )
 			{
-				printf("\r\nfailsafe triggered");
 				failsafeSetTriggered();
 			}
 			if ( (ReadyFlags & (1<<IMUTimerFlag)) != 0 )
@@ -158,19 +187,7 @@ static void main_task( void *pv )
 			}
 			if ( (ReadyFlags & (1<<receiverFlag)) != 0 )
 			{
-				uint32_t newChannels;
-
-				IRQ_DISABLE_SAVE();
-				newChannels = latestChannelsReceived;
-				latestChannelsReceived = 0;
-				IRQ_ENABLE_RESTORE();
-
-			    updateFailsafeWithNewChannels( newChannels );
-
-			    setLEDMode(RX_LED, led_state_toggle);
-
-				processReceiverSignals();
-
+				updateReceiver();
 			}
 		}
 	}

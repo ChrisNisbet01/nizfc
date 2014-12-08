@@ -601,7 +601,7 @@ signed int vprintf(const char *pFormat, va_list ap)
 }
 
 /**
- * @brief  Outputs a formatted string on the DBGU stream, using a variable number of
+ * @brief  Outputs a formatted string to the debug port using a variable number of
  *         arguments.
  *
  * @param  pFormat  Format string.
@@ -628,7 +628,7 @@ signed int printf(const char *pFormat, ...)
 /**
  * @brief  Writes a formatted string inside another string.
  *
- * @param pStr     torage string.
+ * @param pStr     storage string.
  * @param pFormat  Format string.
  */
 signed int sprintf(char *pStr, const char *pFormat, ...)
