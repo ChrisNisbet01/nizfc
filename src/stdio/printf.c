@@ -563,8 +563,7 @@ signed int fputc(signed int c, FILE *pStream)
  * @param pStr     String to write.
  * @param pStream  Output stream.
  *
- * @return  Number of characters written if successful, or -1 if the output
- *          stream is not stdout or stderr.
+ * @return  Number of characters written, or -1 on error
  */
 signed int fputs(const char *pStr, FILE *pStream)
 {
@@ -572,7 +571,7 @@ signed int fputs(const char *pStr, FILE *pStream)
 
 	if (debug_port != NULL && debug_port->methods->writeBulkBlockingWithTimeout != NULL)
 	{
-		debug_port->methods->writeBulkBlockingWithTimeout( debug_port->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 50 );
+		num = debug_port->methods->writeBulkBlockingWithTimeout( debug_port->serialCtx, (uint8_t const *)pStr, strlen( pStr ), 50 );
 	}
 	else
 	{
@@ -580,7 +579,7 @@ signed int fputs(const char *pStr, FILE *pStream)
 	    {
 	        if (fputc(*pStr, pStream) == -1)
 	        {
-	            return -1;
+	            break;
 	        }
 	        num++;
 	        pStr++;
