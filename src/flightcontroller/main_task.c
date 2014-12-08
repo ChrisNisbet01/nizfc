@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <coocox.h>
 #include <utils.h>
+#include <polling.h>
 #include <hirestimer.h>
 #include <imu.h>
 #include <i2c.h>
@@ -98,6 +99,39 @@ static void updateReceiver( void )
 }
 
 volatile U32 OSIdleCtr;
+static U32 OSMaxIdleCtr;
+
+static void suspendTasks( void )
+{
+	pollCodeGroups( poll_id_suspend_task, NULL, true );
+}
+
+static void resumeTasks( void )
+{
+	pollCodeGroups( poll_id_resume_task, NULL, true );
+}
+
+uint_fast32_t getCPULoad( void )
+{
+	uint_fast32_t cpuLoad;
+
+	/*
+		It is assumed that this function will be called at 1 second intervals
+	*/
+	printf("\r\nmax %d idle %d", OSMaxIdleCtr, OSIdleCtr );
+	if ( OSIdleCtr > OSMaxIdleCtr )
+		OSMaxIdleCtr = OSIdleCtr;
+	if ( OSMaxIdleCtr > 0 )
+	{
+		cpuLoad = ((OSMaxIdleCtr - OSIdleCtr) * 100)/OSMaxIdleCtr;
+	}
+	else
+		cpuLoad = 0;
+
+	OSIdleCtr = 0;
+
+	return cpuLoad;
+}
 
 static void main_task( void *pv )
 {
@@ -106,14 +140,17 @@ static void main_task( void *pv )
 	/*
 		suspend all other tasks except idle task
 		then sit idle for 250ms.
-		then take not of OSIdleCtr. Multiply by 4.
+		then take note of OSIdleCtr. Multiply by 4 to get one seconds worth.
 		This is the max number that the idle task can reach
 		in 1 second, so we can determine % load from this.
 		% load = ((maxIdleCtr - thisIdleCtr)*100)/maxIdleCtr;
 	*/
-
+	suspendTasks();
 	OSIdleCtr = 0;
-	// TODO: Determine no load OSIdleCtr value
+	CoTickDelay( MSTOTICKS(250) );
+	MEMORY_BARRIER();
+	OSMaxIdleCtr = OSIdleCtr * 4;
+	resumeTasks();
 
 	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 	failsafeTriggerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );

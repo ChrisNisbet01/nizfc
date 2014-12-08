@@ -243,7 +243,7 @@ static int debugCommand( non_config_run_command_data_st *pcommand )
 
 	if ( show_usage == true )
 	{
-		cliPrintf( pcommand->cliCtx, "Format: %s off|0|1", pcommand->command->name );
+		cliPrintf( pcommand->cliCtx, "Format: %s off|<port>", pcommand->command->name );
 	}
 
 	return poll_result_ok;

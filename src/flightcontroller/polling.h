@@ -10,7 +10,9 @@ typedef enum poll_id_t
 	poll_id_run_command,			/* a CLI command to be processed */
 	poll_id_run_non_config_command,	/* a CLI command to be processed */
 	poll_id_save_configuration,		/* called from 'save' command. saving configuration */
-	poll_id_show_configuration		/* called from 'show' command. show configuration (all, non-default) */
+	poll_id_show_configuration,		/* called from 'show' command. show configuration (all, non-default) */
+	poll_id_suspend_task,
+	poll_id_resume_task
 } poll_id_t;
 
 typedef struct code_group_mappings_st

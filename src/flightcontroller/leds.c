@@ -10,6 +10,7 @@
 #include <stm32f10x_gpio.h>
 #endif
 #include <coos.h>
+#include <polling.h>
 #include <leds.h>
 #include <utils.h>
 
@@ -30,6 +31,7 @@
 #define LED_TOGGLE( port, pin ) TOGGLE_PIN( port, pin )
 
 static OS_STK ledsTaskStack[LEDS_TASK_STACK_SIZE];
+static OS_TID ledsTaskID;
 
 typedef struct led_configuration_st
 {
@@ -317,6 +319,37 @@ void setLEDMode( led_t led, led_mode_t state )
 	}
 }
 
+static void suspendLEDSTask( void )
+{
+	CoSuspendTask( ledsTaskID );
+}
+
+static void resumeLEDSTask( void )
+{
+	CoAwakeTask( ledsTaskID );
+}
+
+int ledsTaskPollHandler( poll_id_t poll_id, void *pv )
+{
+	int result = poll_result_error;
+
+	UNUSED(pv);
+
+	switch( poll_id )
+	{
+		case poll_id_suspend_task:
+			suspendLEDSTask();
+			break;
+		case poll_id_resume_task:
+			resumeLEDSTask();
+			break;
+		default:
+			break;
+	}
+
+	return result;
+}
+
 void initLEDs( void )
 {
 	unsigned int index;
@@ -335,7 +368,7 @@ void initLEDs( void )
 	for ( index = 0; index < NB_FLASH_CONFIGS; index++ )
 		ledFlashContexts[index].flash_state = led_state_off;
 
-	CoCreateTask(ledsTask, Co_NULL, 2, &ledsTaskStack[LEDS_TASK_STACK_SIZE-1], LEDS_TASK_STACK_SIZE);
+	ledsTaskID = CoCreateTask(ledsTask, Co_NULL, 2, &ledsTaskStack[LEDS_TASK_STACK_SIZE-1], LEDS_TASK_STACK_SIZE);
 
 }
 

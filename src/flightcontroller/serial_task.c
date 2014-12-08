@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <coocox.h>
+#include <polling.h>
 #include <serial.h>
 #include <cli.h>
 #include <pid_control.h>
@@ -13,6 +14,7 @@
 #include <motor_control.h>
 #include <attitude_estimation.h>
 #include <imu.h>
+#include <main_task.h>
 
 #define CLI_TASK_STACK_SIZE 0x200
 
@@ -23,6 +25,7 @@ typedef struct serialCli_st
 } serialCli_st;
 
 static OS_STK cli_task_stack[CLI_TASK_STACK_SIZE];
+static OS_TID serialTaskID;
 
 static const serial_port_t serial_ports[] =
 {
@@ -37,9 +40,9 @@ static const serial_port_t serial_ports[] =
 static serialCli_st serialCli[ARRAY_SIZE(serial_ports)];
 
 serial_port_st *debug_port;
-
 static OS_FlagID cliUartFlag;
-static OS_FlagID debugTimerFlag;
+static OS_FlagID periodicTasksTimerFlag;
+static uint32_t cpuLoad;
 
 int uartPutChar( void * port, int ch )
 {
@@ -51,7 +54,7 @@ int uartPutChar( void * port, int ch )
 
 static void debugTimer( void )
 {
-	isr_SetFlag( debugTimerFlag );
+	isr_SetFlag( periodicTasksTimerFlag );
 }
 
 static void newUartData( void *pv )
@@ -106,7 +109,7 @@ static void doDebugOutput( void )
 	if (board_configuration[0].debug & 4 )
 	{
 		float exeTime = getIMUExeTime();
-		printf("\r\nIMU exe time %g", &exeTime );
+		printf("\r\nIMU exe time %g cpu %d", &exeTime, cpuLoad );
 	}
 	if (board_configuration[0].debug & 8 )
 	{
@@ -134,6 +137,12 @@ static void doDebugOutput( void )
 	}
 }
 
+static void doPeriodicTasks( void )
+{
+	cpuLoad = getCPULoad();
+	doDebugOutput();
+}
+
 static void cli_task( void *pv )
 {
 	OS_TCID debugTimerID;
@@ -148,12 +157,12 @@ static void cli_task( void *pv )
 		StatusType err;
 		U32 readyFlags;
 
-		readyFlags = CoWaitForMultipleFlags( (1 << debugTimerFlag) | (1 << cliUartFlag), OPT_WAIT_ANY, 0, &err );
+		readyFlags = CoWaitForMultipleFlags( (1 << periodicTasksTimerFlag) | (1 << cliUartFlag), OPT_WAIT_ANY, 0, &err );
 	 	if ( (readyFlags & (1 << cliUartFlag)) )
 	 		handleNewSerialData();
 
-	 	if ( (readyFlags & (1 << debugTimerFlag)) )
-	 		doDebugOutput();
+	 	if ( (readyFlags & (1 << periodicTasksTimerFlag)) )
+	 		doPeriodicTasks();
 	}
 }
 
@@ -171,12 +180,43 @@ bool setDebugPort( int port )
 	return debugPortAssigned;
 }
 
+static void suspendSerialTask( void )
+{
+	CoSuspendTask( serialTaskID );
+}
+
+static void resumeSerialTask( void )
+{
+	CoAwakeTask( serialTaskID );
+}
+
+int serialTaskPollHandler( poll_id_t poll_id, void *pv )
+{
+	int result = poll_result_error;
+
+	UNUSED(pv);
+
+	switch( poll_id )
+	{
+		case poll_id_suspend_task:
+			suspendSerialTask();
+			break;
+		case poll_id_resume_task:
+			resumeSerialTask();
+			break;
+		default:
+			break;
+	}
+
+	return result;
+}
+
 void initSerialTask( void )
 {
 	unsigned int cli_index;
 
 	cliUartFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-	debugTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
+	periodicTasksTimerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
 
 	for ( cli_index = 0 ; cli_index < ARRAY_SIZE(serial_ports); cli_index++ )
 	{
