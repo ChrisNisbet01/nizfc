@@ -11,6 +11,7 @@
 #include <aux_configuration.h>
 #include <pid_control.h>
 #include <leds.h>
+#include <main_task.h>
 
 #define NB_AUX_CONFIGURATIONS	32u
 
@@ -140,7 +141,8 @@ flight_mode_t getCurrentFlightMode( void )
 	flight_mode_t flight_mode;
 
 	/* If not in rate mode, default to angle mode. Angle mode overrides rate mode */
-	if (isFunctionEnabled(aux_function_angle_mode) == true || isFunctionEnabled(aux_function_rate_mode) == false)
+	if (accelerometerSensorFound() &&
+			(isFunctionEnabled(aux_function_angle_mode) == true || isFunctionEnabled(aux_function_rate_mode) == false))
 		flight_mode = angle_flight_mode;
 	else
 		flight_mode = rate_flight_mode;

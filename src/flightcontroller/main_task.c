@@ -176,6 +176,10 @@ static void main_task( void *pv )
 	}
 }
 
+bool accelerometerSensorFound( void )
+{
+	return (sensorCallbacks.readAccelerometer != NULL) ? true : false;
+}
 
 void initMainTask( void )
 {
