@@ -7,7 +7,7 @@
 
 #define RAD_TO_DEG	(180.0f/M_PI)
 
-void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroXrate, float gyroYrate, float accX, float accY, float accZ )
+void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroRollRate, float gyroPitchRate, float accX, float accY, float accZ )
 {
 	float roll  = -atan2f(accY, accZ) * RAD_TO_DEG;
 	float pitch = -atan2f(-accX, sqrtf(accY * accY + accZ * accZ)) * RAD_TO_DEG;
@@ -21,11 +21,11 @@ void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroXrate, floa
 	}
 
 	if (fabsf(pdata->compRollAngle) > 90.0f)
-		gyroYrate = -gyroYrate; // Invert rate, so it fits the restricted accelerometer reading
+		gyroPitchRate = -gyroPitchRate; // Invert rate, so it fits the restricted accelerometer reading
 
 	/* determine rotation for this period */
-	rotationX = gyroXrate * dt;
-	rotationY = gyroYrate * dt;
+	rotationX = gyroRollRate * dt;
+	rotationY = gyroPitchRate * dt;
 
 	/* integrate it */
 	pdata->gyroRollAngle += rotationX;

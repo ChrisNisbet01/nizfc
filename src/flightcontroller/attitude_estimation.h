@@ -16,6 +16,6 @@ typedef struct IMU_DATA_ST
 } IMU_DATA_ST;
 
 
-void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroXrate, float gyroYrate, float accX, float accY, float accZ );
+void do_attitude_estimation( IMU_DATA_ST *pdata, float dt, float gyroRollRate, float gyroPitchRate, float accX, float accY, float accZ );
 
 #endif /*  __ATTITUDE_ESTIMATION_H__ */
