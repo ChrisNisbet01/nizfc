@@ -41,6 +41,7 @@ OPTIMISE_FLAGS = -O3
 
 INCLUDE_DIRS = 	$(SRC_DIR)/drivers \
 				$(SRC_DIR)/flightcontroller \
+				$(SRC_DIR)/stdio \
 				$(COOS_DIR) \
 				$(COOS_DIR)/portable \
 				$(COOS_DIR)/kernel \

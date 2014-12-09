@@ -6,13 +6,11 @@
 #include <math.h>
 #include <receiver.h>
 #include <uart.h>
-#include "serial_msp.h"
+#include <serial_msp.h>
 #include <motor_control.h>
 #include <board_configuration.h>
 #include <failsafe_configuration.h>
 #include <imu.h>
-
-#define serialPort_t	serial_port_st
 
 static const char MSPHeader[3] = {'$', 'M', '<'};
 
@@ -180,177 +178,117 @@ typedef struct box_e {
     const uint8_t permanentId;      //
 } box_t;
 
+#define mspSerialPort ctx->serialPort
 
-typedef enum {
-    IDLE,
-    HEADER_START,
-    HEADER_M,
-    HEADER_ARROW,
-    HEADER_SIZE,
-    HEADER_CMD,
-} mspState_e;
-
-typedef enum {
-    UNUSED_PORT = 0,
-    FOR_GENERAL_MSP,
-    FOR_TELEMETRY
-} mspPortUsage_e;
-
-typedef struct mspPort_s {
-    serial_port_st * serialPort;
-    uint8_t offset;
-    uint8_t dataSize;
-    uint8_t checksum;
-    uint8_t indRX;
-    uint8_t inBuf[INBUF_SIZE];
-
-    uint8_t outBuf[INBUF_SIZE];
-    uint_fast8_t outIdx;
-
-    mspState_e c_state;
-    uint8_t cmdMSP;
-    mspPortUsage_e mspPortUsage;
-} mspPort_t;
-
-static mspPort_t mspPorts[MAX_MSP_PORT_COUNT];
-
-static mspPort_t *currentPort;
-#define mspSerialPort currentPort->serialPort
-
-void serialWrite( serial_port_st *port, uint8_t ch )
+static void serialFlush( mspContext_st * ctx )
 {
-	if ( port->methods->writeBulkBlockingWithTimeout == NULL )
+	if ( mspSerialPort->methods->writeBulkBlockingWithTimeout != NULL && ctx->outIdx > 0 )
+	{
+		mspSerialPort->methods->writeBulkBlockingWithTimeout( mspSerialPort->serialCtx, ctx->outBuf, ctx->outIdx, 50 );
+		ctx->outIdx = 0;
+	}
+}
+
+static void serialWrite( mspContext_st * ctx, uint8_t ch )
+{
+	if ( mspSerialPort->methods->writeBulkBlockingWithTimeout == NULL )
 	{
 		/* write out each char */
-		port->methods->writeCharBlockingWithTimeout( port->serialCtx, ch, 50 );
+		mspSerialPort->methods->writeCharBlockingWithTimeout( mspSerialPort->serialCtx, ch, 50 );
 	}
 	else
 	{
-		if ( currentPort->outIdx < INBUF_SIZE )
+		if ( ctx->outIdx < ctx->outBufSize )
 		{
-			currentPort->outBuf[currentPort->outIdx++] = ch;
+			ctx->outBuf[ctx->outIdx++] = ch;
 		}
-		if ( currentPort->outIdx == INBUF_SIZE )
+		if ( ctx->outIdx == ctx->outBufSize )
 		{
-			port->methods->writeBulkBlockingWithTimeout( port->serialCtx, currentPort->outBuf, currentPort->outIdx, 50 );
-			currentPort->outIdx = 0;
+			serialFlush( ctx );
 		}
 	}
 }
 
-void serialFlush( serial_port_st *port )
-{
-	if ( port->methods->writeBulkBlockingWithTimeout != NULL && currentPort->outIdx > 0 )
-	{
-		port->methods->writeBulkBlockingWithTimeout( port->serialCtx, currentPort->outBuf, currentPort->outIdx, 50 );
-		currentPort->outIdx = 0;
-	}
-}
-
-void serialize32(uint32_t a)
+void serialize32(mspContext_st * ctx, uint32_t a)
 {
     static uint8_t t;
     t = a;
-    serialWrite(mspSerialPort, t);
-    currentPort->checksum ^= t;
+    serialWrite(ctx, t);
+    ctx->checksum ^= t;
     t = a >> 8;
-    serialWrite(mspSerialPort, t);
-    currentPort->checksum ^= t;
+    serialWrite(ctx, t);
+    ctx->checksum ^= t;
     t = a >> 16;
-    serialWrite(mspSerialPort, t);
-    currentPort->checksum ^= t;
+    serialWrite(ctx, t);
+    ctx->checksum ^= t;
     t = a >> 24;
-    serialWrite(mspSerialPort, t);
-    currentPort->checksum ^= t;
+    serialWrite(ctx, t);
+    ctx->checksum ^= t;
 }
 
-void serialize16(int16_t a)
+void serialize16(mspContext_st * ctx, int16_t a)
 {
     static uint8_t t;
     t = a;
-    serialWrite(mspSerialPort, t);
-    currentPort->checksum ^= t;
+    serialWrite(ctx, t);
+    ctx->checksum ^= t;
     t = a >> 8 & 0xff;
-    serialWrite(mspSerialPort, t);
-    currentPort->checksum ^= t;
+    serialWrite(ctx, t);
+    ctx->checksum ^= t;
 }
 
-void serialize8(uint8_t a)
+void serialize8(mspContext_st * ctx, uint8_t a)
 {
-    serialWrite(mspSerialPort, a);
-    currentPort->checksum ^= a;
+    serialWrite(ctx, a);
+    ctx->checksum ^= a;
 }
 
-uint8_t read8(void)
+uint8_t read8(mspContext_st * ctx)
 {
-    return currentPort->inBuf[currentPort->indRX++] & 0xff;
+    return ctx->inBuf[ctx->indRX++];
 }
 
-uint16_t read16(void)
+uint16_t read16(mspContext_st * ctx)
 {
-    uint16_t t = read8();
-    t += (uint16_t)read8() << 8;
+    uint16_t t = read8(ctx);
+    t += (uint16_t)read8(ctx) << 8;
+
     return t;
 }
 
-uint32_t read32(void)
+uint32_t read32(mspContext_st * ctx)
 {
-    uint32_t t = read16();
-    t += (uint32_t)read16() << 16;
+    uint32_t t = read16(ctx);
+    t += (uint32_t)read16(ctx) << 16;
+
     return t;
 }
 
-void headSerialResponse(uint8_t err, uint8_t s)
+void headSerialResponse(mspContext_st * ctx, uint8_t err, uint8_t s)
 {
-    serialize8('$');
-    serialize8('M');
-    serialize8(err ? '!' : '>');
-    currentPort->checksum = 0;               // start calculating a new checksum
-    serialize8(s);
-    serialize8(currentPort->cmdMSP);
+    serialize8(ctx, '$');
+    serialize8(ctx, 'M');
+    serialize8(ctx, err ? '!' : '>');
+    ctx->checksum = 0;               // start calculating a new checksum
+    serialize8(ctx, s);
+    serialize8(ctx, ctx->cmdMSP);
 }
 
-void headSerialReply(uint8_t s)
+void headSerialReply(mspContext_st * ctx, uint8_t s)
 {
-    headSerialResponse(0, s);
+    headSerialResponse(ctx, 0, s);
 }
 
-void headSerialError(uint8_t s)
+void headSerialError(mspContext_st * ctx, uint8_t s)
 {
-    headSerialResponse(1, s);
+    headSerialResponse(ctx, 1, s);
 }
 
-void tailSerialReply(void)
+void tailSerialReply(mspContext_st * ctx)
 {
-    serialize8(currentPort->checksum);
-    serialFlush(mspSerialPort);
+    serialize8(ctx, ctx->checksum);
+    serialFlush(ctx);
 }
-
-void s_struct(uint8_t *cb, uint8_t siz)
-{
-    headSerialReply(siz);
-    while (siz--)
-        serialize8(*cb++);
-}
-
-void serializeNames(const char *s)
-{
-    const char *c;
-    for (c = s; *c; c++)
-        serialize8(*c);
-}
-
-void mspInit(serialPort_t *serialPort)
-{
-
-    memset(mspPorts, 0, sizeof(mspPorts));
-
-	mspPorts[0].serialPort = serialPort;
-
-}
-
-#define IS_ENABLED(mask) (mask == 0 ? 0 : 1)
-
 
 #define BUILD_DATE_LENGTH 11
 char* buildDate = __DATE__;  // "MMM DD YYYY" MMM = Jan/Feb/...
@@ -359,7 +297,7 @@ char* buildDate = __DATE__;  // "MMM DD YYYY" MMM = Jan/Feb/...
 char* buildTime = __TIME__;  // "HH:MM:SS"
 
 #define GIT_SHORT_REVISION_LENGTH   7 // lower case hexadecimal digits.
-char* shortGitRevision = "1234567";
+static const char shortGitRevision[] = "1234567";
 
 #define API_VERSION_MAJOR                   1 // increment when major changes are made
 #define API_VERSION_MINOR                   0 // increment when any change is made, reset to zero when major changes are released after changing API_VERSION_MAJOR
@@ -369,6 +307,7 @@ char* shortGitRevision = "1234567";
 #define FC_VERSION_MINOR            0  // increment when a minor release is made (small new feature, change etc)
 #define FC_VERSION_PATCH_LEVEL      0  // increment when a bug is fixed
 #define MW_VERSION              	230
+
 #if defined(STM32F30X)
 #define U_ID_0 (*(uint32_t*)0x1FFFF7AC)
 #define U_ID_1 (*(uint32_t*)0x1FFFF7B0)
@@ -379,15 +318,15 @@ char* shortGitRevision = "1234567";
 #define U_ID_2 (*(uint32_t*)0x1FFFF7F0)
 #endif
 
-static bool processOutCommand(uint8_t cmdMSP)
+static bool processOutCommand(mspContext_st * ctx)
 {
     uint32_t i, tmp, junk;
 
-    switch (cmdMSP) {
+    switch (ctx->cmdMSP) {
     case MSP_API_VERSION:
         // the components of this command are in an order such that future changes could be made to it without breaking clients.
         // i.e. most important first.
-        headSerialReply(
+        headSerialReply( ctx,
             1 + // protocol version length
             API_VERSION_LENGTH +
             FLIGHT_CONTROLLER_IDENTIFIER_LENGTH +
@@ -401,146 +340,147 @@ static bool processOutCommand(uint8_t cmdMSP)
             1 // additional FC specific length
             // no addition FC specific data yet.
         );
-        serialize8(MSP_PROTOCOL_VERSION);
+        serialize8(ctx, MSP_PROTOCOL_VERSION);
 
-        serialize8(API_VERSION_MAJOR);
-        serialize8(API_VERSION_MINOR);
+        serialize8(ctx, API_VERSION_MAJOR);
+        serialize8(ctx, API_VERSION_MINOR);
 
-        for (i = 0; i < FLIGHT_CONTROLLER_IDENTIFIER_LENGTH; i++) {
-            serialize8(flightControllerIdentifier[i]);
+        for (i = 0; i < FLIGHT_CONTROLLER_IDENTIFIER_LENGTH; i++)
+        {
+            serialize8(ctx, flightControllerIdentifier[i]);
         }
 
-        serialize8(FC_VERSION_MAJOR);
-        serialize8(FC_VERSION_MINOR);
-        serialize8(FC_VERSION_PATCH_LEVEL);
+        serialize8(ctx, FC_VERSION_MAJOR);
+        serialize8(ctx, FC_VERSION_MINOR);
+        serialize8(ctx, FC_VERSION_PATCH_LEVEL);
 
-        for (i = 0; i < BOARD_IDENTIFIER_LENGTH; i++) {
-            serialize8(boardIdentifier[i]);
+        for (i = 0; i < BOARD_IDENTIFIER_LENGTH; i++)
+        {
+            serialize8(ctx, boardIdentifier[i]);
         }
-        serialize16(0); // No other build targets currently have hardware revision detection.
+        serialize16(ctx, 0); // No other build targets currently have hardware revision detection.
 
         for (i = 0; i < BUILD_DATE_LENGTH; i++) {
-            serialize8(buildDate[i]);
+            serialize8(ctx, buildDate[i]);
         }
         for (i = 0; i < BUILD_TIME_LENGTH; i++) {
-            serialize8(buildTime[i]);
+            serialize8(ctx, buildTime[i]);
         }
 
-        serialize8(GIT_SHORT_REVISION_LENGTH);
+        serialize8(ctx, GIT_SHORT_REVISION_LENGTH);
         for (i = 0; i < GIT_SHORT_REVISION_LENGTH; i++) {
-            serialize8(shortGitRevision[i]);
+            serialize8(ctx, shortGitRevision[i]);
         }
-        serialize8(0); // No flight controller specific information to follow.
+        serialize8(ctx, 0); // No flight controller specific information to follow.
         break;
     case MSP_IDENT:
-        headSerialReply(7);
-        serialize8(MW_VERSION);
-        serialize8(3); // type of multicopter
-        serialize8(MSP_PROTOCOL_VERSION);
-        serialize32(CAP_DYNBALANCE); // "capability"
+        headSerialReply(ctx, 7);
+        serialize8(ctx, MW_VERSION);
+        serialize8(ctx, 3); // type of multicopter	XXX based upon configuration
+        serialize8(ctx, MSP_PROTOCOL_VERSION);
+        serialize32(ctx, CAP_DYNBALANCE); // "capability"
         break;
 
     case MSP_STATUS:
-        headSerialReply(11);
-        serialize16(IMUDelta);
-        serialize16(0);	/* I2C error count */
+        headSerialReply(ctx, 11);
+        serialize16(ctx, IMUDelta);
+        serialize16(ctx, 0);	/* I2C error count */
 #if defined(STM32F30X)
-        serialize16(5);	/* bit 0 == gyro + accel, bit 1 = baro, bit 2 == magnetometer, bit 3 = GPS, bit 4 = sonar */
+        serialize16(ctx, 5);	/* bit 0 == gyro + accel, bit 1 = baro, bit 2 == magnetometer, bit 3 = GPS, bit 4 = sonar */
 #elif defined(STM32F10X)
-        serialize16(1);	/* bit 0 == gyro + accel, bit 1 = baro, bit 2 == magnetometer, bit 3 = GPS, bit 4 = sonar */
+        serialize16(ctx, 1);	/* bit 0 == gyro + accel, bit 1 = baro, bit 2 == magnetometer, bit 3 = GPS, bit 4 = sonar */
 #endif
-        serialize32(0);
-        serialize8(0);	/* current config profile */
+        serialize32(ctx, 0);
+        serialize8(ctx, 0);	/* current config profile */
         break;
     case MSP_RAW_IMU:
-        headSerialReply(18);
-        // Retarded hack until multiwiidorks start using real units for sensor data
+        headSerialReply(ctx, 18);
         for (i = 0; i < 3; i++)
-	        serialize16(lrintf(filteredAccelerometerValues[i]*512.0f));
+	        serialize16(ctx, lrintf(filteredAccelerometerValues[i]*512.0f));
         for (i = 0; i < 3; i++)
-            serialize16(lrintf(gyroValues[i]*16.4f/4.0f));
+            serialize16(ctx, lrintf(gyroValues[i]*16.4f/4.0f));
         for (i = 0; i < 3; i++)
-            serialize16(lrintf(filteredMagnetometerValues[i]*1090.0f));
+            serialize16(ctx, lrintf(filteredMagnetometerValues[i]*1090.0f));
         break;
     case MSP_MOTOR:
-        headSerialReply(16);
+        headSerialReply(ctx, 16);
         for (i = 0; i < 8; i++)
-	        serialize16(getMotorOutput(i));
+	        serialize16(ctx, getMotorOutput(i));
         break;
     case MSP_RC:
-        headSerialReply(2 * 8);
+        headSerialReply(ctx, 2 * 8);
         for (i = 0; i < 8; i++)
-            serialize16(readReceiverChannel(i));
+            serialize16(ctx, readReceiverChannel(i));
         break;
     case MSP_RC_TUNING:
-        headSerialReply(7);
-        serialize8(0);
-        serialize8(0);
-        serialize8(0);
-        serialize8(0);
-        serialize8(0);
-        serialize8(0);
-        serialize8(0);
+        headSerialReply(ctx, 7);
+        serialize8(ctx, 0);
+        serialize8(ctx, 0);
+        serialize8(ctx, 0);
+        serialize8(ctx, 0);
+        serialize8(ctx, 0);
+        serialize8(ctx, 0);
+        serialize8(ctx, 0);
         break;
     case MSP_SERVO:
-        headSerialReply(16);
+        headSerialReply(ctx, 16);
         for (i = 0; i < 8; i++)
-	        serialize16(0);
+	        serialize16(ctx, 0);
         break;
     case MSP_ATTITUDE:
-        headSerialReply(6);
-        serialize16(lrintf(RollAngle*10.0f));
-        serialize16(lrintf(PitchAngle*10.0f));
-        serialize16(lrintf(Heading));
+        headSerialReply(ctx, 6);
+        serialize16(ctx, lrintf(RollAngle*10.0f));
+        serialize16(ctx, lrintf(PitchAngle*10.0f));
+        serialize16(ctx, lrintf(Heading));
         break;
     case MSP_ANALOG:
-        headSerialReply(7);
-        serialize8(100);
-        serialize16(0); // milliamphours drawn from battery
-        serialize16(700);
-        serialize16(0); // send amperage in 0.01 A steps
+        headSerialReply(ctx, 7);
+        serialize8(ctx, 100);
+        serialize16(ctx, 0); // milliamphours drawn from battery
+        serialize16(ctx, 700);
+        serialize16(ctx, 0); // send amperage in 0.01 A steps
         break;
     case MSP_BOXNAMES:
-        headSerialReply(0);
+        headSerialReply(ctx, 0);
         break;
     case MSP_BOXIDS:
-        headSerialReply(0);
+        headSerialReply(ctx, 0);
         break;
     case MSP_MOTOR_PINS:
-        headSerialReply(8);
+        headSerialReply(ctx, 8);
         for (i = 0; i < 8; i++)
-            serialize8(i + 1);
+            serialize8(ctx, i + 1);
         break;
     case MSP_DEBUG:
-        headSerialReply(8);
+        headSerialReply(ctx, 8);
         for (i = 0; i < 4; i++)
-            serialize16(0);      // 4 variables are here for general monitoring purpose
+            serialize16(ctx, 0);      // 4 variables are here for general monitoring purpose
         break;
     case MSP_ACC_TRIM:
-        headSerialReply(4);
-        serialize16(0);
-        serialize16(0);
+        headSerialReply(ctx, 4);
+        serialize16(ctx, 0);
+        serialize16(ctx, 0);
         break;
     case MSP_UID:
-        headSerialReply(12);
-        serialize32(U_ID_0);
-        serialize32(U_ID_1);
-        serialize32(U_ID_2);
+        headSerialReply(ctx, 12);
+        serialize32(ctx, U_ID_0);
+        serialize32(ctx, U_ID_1);
+        serialize32(ctx, U_ID_2);
         break;
     case MSP_MISC:
-        headSerialReply(2 * 6 + 4 + 2 + 4);
-        serialize16(0); // intPowerTrigger1 (aka useless trash)
-        serialize16(board_configuration[0].minMotorOutput);	/* min throttle */
-        serialize16(board_configuration[0].maxMotorOutput);	/* max throttle */
-        serialize16(board_configuration[0].minMotorOutput);	/* min command */
-        serialize16(failsafe_configuration[0].motorOutput);	/* failsafe throttle */
-        serialize16(0); // ???
-        serialize32(0); // ???
-        serialize16(0); // magnetic declination
-        serialize8(10);
-        serialize8(35);
-        serialize8(42);
-        serialize8(0);
+        headSerialReply(ctx, 2 * 6 + 4 + 2 + 4);
+        serialize16(ctx, 0); // intPowerTrigger1 (aka useless trash)
+        serialize16(ctx, board_configuration[0].minMotorOutput);	/* min throttle */
+        serialize16(ctx, board_configuration[0].maxMotorOutput);	/* max throttle */
+        serialize16(ctx, board_configuration[0].minMotorOutput);	/* min command */
+        serialize16(ctx, failsafe_configuration[0].motorOutput);	/* failsafe throttle */
+        serialize16(ctx, 0); // ???
+        serialize32(ctx, 0); // ???
+        serialize16(ctx, 0); // magnetic declination
+        serialize8(ctx, 10);
+        serialize8(ctx, 35);
+        serialize8(ctx, 42);
+        serialize8(ctx, 0);
         break;
     default:
         return false;
@@ -548,88 +488,98 @@ static bool processOutCommand(uint8_t cmdMSP)
     return true;
 }
 
-static bool processInCommand(void)
+static bool processInCommand(mspContext_st * ctx)
 {
     uint32_t i;
 
-    switch (currentPort->cmdMSP) {
-    case MSP_SET_MOTOR:
-        for (i = 0; i < 8; i++)
-            setMotorDisarmedValue( i, read16() );
-        break;
-    default:
-        // we do not know how to handle the (valid) message, indicate error MSP $M!
-        return false;
+    switch (ctx->cmdMSP)
+    {
+	    case MSP_SET_MOTOR:
+	        for (i = 0; i < 8; i++)
+	            setMotorDisarmedValue( i, read16(ctx) );
+	        break;
+	    default:
+	        // we do not know how to handle the (valid) message, indicate error MSP $M!
+	        return false;
     }
-    headSerialReply(0);
+
+    headSerialReply(ctx, 0);
+
     return true;
 }
 
-static bool mspProcessPort(uint8_t c)
+static bool mspProcessPort(mspContext_st * ctx, uint8_t c)
 {
 	bool receivingMSP = true;
 
 	/* if the state is idle at the end of the function, receivingMSP will be set to false */
     {
-        if (currentPort->c_state == IDLE) {
-            currentPort->c_state = (c == MSPHeader[0]) ? HEADER_START : IDLE;
-        } else if (currentPort->c_state == HEADER_START) {
-            currentPort->c_state = (c == MSPHeader[1]) ? HEADER_M : IDLE;
-        } else if (currentPort->c_state == HEADER_M) {
-            currentPort->c_state = (c == MSPHeader[2]) ? HEADER_ARROW : IDLE;
-        } else if (currentPort->c_state == HEADER_ARROW) {
-            if (c > INBUF_SIZE)
+        if (ctx->state == IDLE) {
+            ctx->state = (c == MSPHeader[0]) ? HEADER_START : IDLE;
+        } else if (ctx->state == HEADER_START) {
+            ctx->state = (c == MSPHeader[1]) ? HEADER_M : IDLE;
+        } else if (ctx->state == HEADER_M) {
+            ctx->state = (c == MSPHeader[2]) ? HEADER_ARROW : IDLE;
+        } else if (ctx->state == HEADER_ARROW) {
+            if (c > ctx->inBufSize)
             {       // now we are expecting the payload size
-                currentPort->c_state = IDLE;
+                ctx->state = IDLE;
             }
             else
             {
-	            currentPort->dataSize = c;
-	            currentPort->offset = 0;
-	            currentPort->checksum = 0;
-	            currentPort->indRX = 0;
-	            currentPort->checksum ^= c;
-	            currentPort->c_state = HEADER_SIZE;      // the command is to follow
+	            ctx->dataSize = c;
+	            ctx->offset = 0;
+	            ctx->checksum = 0;
+	            ctx->indRX = 0;
+	            ctx->checksum ^= c;
+	            ctx->state = HEADER_SIZE;      // the command is to follow
             }
-        } else if (currentPort->c_state == HEADER_SIZE) {
-            currentPort->cmdMSP = c;
-            currentPort->checksum ^= c;
-            currentPort->c_state = HEADER_CMD;
-        } else if (currentPort->c_state == HEADER_CMD && currentPort->offset < currentPort->dataSize) {
-            currentPort->checksum ^= c;
-            currentPort->inBuf[currentPort->offset++] = c;
-        } else if (currentPort->c_state == HEADER_CMD && currentPort->offset >= currentPort->dataSize) {
-            if (currentPort->checksum == c) {        // compare calculated and transferred checksum
+        }
+        else if (ctx->state == HEADER_SIZE)
+        {
+            ctx->cmdMSP = c;
+            ctx->checksum ^= c;
+            ctx->state = HEADER_CMD;
+        }
+        else if (ctx->state == HEADER_CMD && ctx->offset < ctx->dataSize)
+        {
+            ctx->checksum ^= c;
+            ctx->inBuf[ctx->offset++] = c;
+        }
+        else if (ctx->state == HEADER_CMD && ctx->offset >= ctx->dataSize)
+        {
+            if (ctx->checksum == c) {        // compare calculated and transferred checksum
                 // we got a valid packet, evaluate it
-		        if (!(processOutCommand(currentPort->cmdMSP) || processInCommand()))
+		        if (!(processOutCommand(ctx) || processInCommand(ctx)))
 		        {
-    				printf("\r\nunsupported code: %d", currentPort->cmdMSP );
-                    headSerialError(0);
+    				printf("\r\nunsupported code: %d", ctx->cmdMSP );
+                    headSerialError(ctx, 0);
                 }
-                tailSerialReply();
+                tailSerialReply(ctx);
             }
 
-            currentPort->c_state = IDLE;
+            ctx->state = IDLE;
         }
     }
 
-    if (currentPort->c_state == IDLE )
+    if (ctx->state == IDLE )
     	receivingMSP = false;
 
     return receivingMSP;
 }
 
-void setCurrentPort(mspPort_t *port)
+bool mspProcess(mspContext_st * ctx, uint8_t c)
 {
-    currentPort = port;
-    mspSerialPort = currentPort->serialPort;
+    return mspProcessPort(ctx, c);
 }
 
-bool mspProcess(serial_port_st *port, uint8_t c)
+void initMSPContext( mspContext_st * ctx, serial_port_st * port, uint8_t * inBuf, unsigned int inBufSize, uint8_t * outBuf, unsigned int outBufSize )
 {
-	mspPorts[0].serialPort = port;
-    setCurrentPort(&mspPorts[0]);
-
-    return mspProcessPort(c);
+	memset( ctx, 0, sizeof( *ctx ) );
+	ctx->serialPort = port;
+	ctx->inBuf = inBuf;
+	ctx->inBufSize = inBufSize;
+	ctx->outBuf = outBuf;
+	ctx->outBufSize = outBufSize;
+	ctx->state = IDLE;
 }
-

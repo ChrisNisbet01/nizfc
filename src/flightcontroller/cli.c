@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <printf.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <utils.h>
@@ -35,6 +36,7 @@ typedef struct cliCtx_st
 	char			*commandArgs[MAX_COMMAND_LINE_ARGS];	/* will point into lineBuffer */
 
 	char			outputBuffer[CLI_OUTPUT_BUFFER_SIZE];
+	mspContext_st	mspContext;
 	bool 			receivingMSP;
 } cliCtx_st;
 
@@ -179,10 +181,10 @@ void cliHandleNewChar( void *pv, char const ch )
 
 	if ( pctx->receivingMSP == true )
 	{
-		if ( mspProcess( pctx->serialPort, ch ) == false )
+		if ( mspProcess( &pctx->mspContext, ch ) == false )
 			pctx->receivingMSP = false;
 	}
-	else if ( pctx->linebuffer_cursor_position == 0 && mspProcess( pctx->serialPort, ch ) == true )
+	else if ( pctx->linebuffer_cursor_position == 0 && mspProcess( &pctx->mspContext, ch ) == true )
 	{
 		pctx->receivingMSP = true;
 	}
@@ -230,6 +232,7 @@ void *initCli( serial_port_st * serialPort )
 			pctx->linebuffer_cursor_position = 0;
 			pctx->serialPort = serialPort;
 			pctx->receivingMSP = false;
+			initMSPContext( &pctx->mspContext, pctx->serialPort, (uint8_t *)pctx->lineBuffer, sizeof(pctx->lineBuffer), (uint8_t *)pctx->outputBuffer, sizeof(pctx->outputBuffer) );
 
 			return pctx;
 		}
