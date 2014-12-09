@@ -183,7 +183,7 @@ bool i2cWrite(void *pv, uint8_t addr_, uint8_t reg, uint8_t data)
 
     /* Test on BUSY Flag */
     i2cTimeout = I2C_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(I2Cx, I2C_ISR_BUSY) != RESET) {
+    while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_BUSY) != RESET) {
         if ((i2cTimeout--) == 0) {
             return i2cTimeoutUserCallback(I2Cx);
         }
@@ -194,7 +194,7 @@ bool i2cWrite(void *pv, uint8_t addr_, uint8_t reg, uint8_t data)
 
     /* Wait until TXIS flag is set */
     i2cTimeout = I2C_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(I2Cx, I2C_ISR_TXIS) == RESET) {
+    while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_TXIS) == RESET) {
         if ((i2cTimeout--) == 0) {
             return i2cTimeoutUserCallback(I2Cx);
         }
@@ -205,7 +205,7 @@ bool i2cWrite(void *pv, uint8_t addr_, uint8_t reg, uint8_t data)
 
     /* Wait until TCR flag is set */
     i2cTimeout = I2C_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(I2Cx, I2C_ISR_TCR) == RESET)
+    while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_TCR) == RESET)
     {
         if ((i2cTimeout--) == 0) {
             return i2cTimeoutUserCallback(I2Cx);
@@ -217,7 +217,7 @@ bool i2cWrite(void *pv, uint8_t addr_, uint8_t reg, uint8_t data)
 
     /* Wait until TXIS flag is set */
     i2cTimeout = I2C_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(I2Cx, I2C_ISR_TXIS) == RESET) {
+    while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_TXIS) == RESET) {
         if ((i2cTimeout--) == 0) {
             return i2cTimeoutUserCallback(I2Cx);
         }
@@ -228,7 +228,7 @@ bool i2cWrite(void *pv, uint8_t addr_, uint8_t reg, uint8_t data)
 
     /* Wait until STOPF flag is set */
     i2cTimeout = I2C_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(I2Cx, I2C_ISR_STOPF) == RESET) {
+    while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_STOPF) == RESET) {
         if ((i2cTimeout--) == 0) {
             return i2cTimeoutUserCallback(I2Cx);
         }
@@ -247,7 +247,7 @@ bool i2cRead(void *pv, uint8_t addr_, uint8_t reg, uint8_t* buf, uint_fast16_t l
 
     /* Test on BUSY Flag */
     i2cTimeout = I2C_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(I2Cx, I2C_ISR_BUSY) != RESET) {
+    while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_BUSY) != RESET) {
         if ((i2cTimeout--) == 0) {
             return i2cTimeoutUserCallback(I2Cx);
         }
@@ -258,7 +258,7 @@ bool i2cRead(void *pv, uint8_t addr_, uint8_t reg, uint8_t* buf, uint_fast16_t l
 
     /* Wait until TXIS flag is set */
     i2cTimeout = I2C_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(I2Cx, I2C_ISR_TXIS) == RESET) {
+    while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_TXIS) == RESET) {
         if ((i2cTimeout--) == 0) {
             return i2cTimeoutUserCallback(I2Cx);
         }
@@ -273,7 +273,7 @@ bool i2cRead(void *pv, uint8_t addr_, uint8_t reg, uint8_t* buf, uint_fast16_t l
 
     /* Wait until TC flag is set */
     i2cTimeout = I2C_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(I2Cx, I2C_ISR_TC) == RESET) {
+    while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_TC) == RESET) {
         if ((i2cTimeout--) == 0) {
             return i2cTimeoutUserCallback(I2Cx);
         }
@@ -286,7 +286,7 @@ bool i2cRead(void *pv, uint8_t addr_, uint8_t reg, uint8_t* buf, uint_fast16_t l
     while (len) {
         /* Wait until RXNE flag is set */
         i2cTimeout = I2C_LONG_TIMEOUT;
-        while (I2C_GetFlagStatus(I2Cx, I2C_ISR_RXNE) == RESET) {
+        while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_RXNE) == RESET) {
             if ((i2cTimeout--) == 0) {
                 return i2cTimeoutUserCallback(I2Cx);
             }
@@ -303,7 +303,7 @@ bool i2cRead(void *pv, uint8_t addr_, uint8_t reg, uint8_t* buf, uint_fast16_t l
 
     /* Wait until STOPF flag is set */
     i2cTimeout = I2C_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(I2Cx, I2C_ISR_STOPF) == RESET) {
+    while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_STOPF) == RESET) {
         if ((i2cTimeout--) == 0) {
             return i2cTimeoutUserCallback(I2Cx);
         }
