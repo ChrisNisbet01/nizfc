@@ -5,7 +5,6 @@
 #include <math.h>
 #include <sensors.h>
 #include <sensor_filters.h>
-#include <attitude_estimation.h>
 #include <attitude_configuration.h>
 #include <vector_rotation.h>
 #include <hirestimer.h>
@@ -19,10 +18,10 @@ float RollAngle, PitchAngle, Heading;
 */
 
 static float	gyroHeadingVector[3];
+static float	estimatedAttitudeVector[3];
 
 uint32_t IMUDelta;
 float    fIMUDelta;
-IMU_DATA_ST imu_data;
 float accelerometerValues[3];
 float gyroValues[3];
 float magnetometerValues[3];
@@ -33,7 +32,7 @@ float filteredMagnetometerValues[3];
 static uint32_t lastIMUTime;
 static uint32_t IMUExeTime;
 
-static float calculateHeading(float *headingVector, float roll, float pitch)
+static float calculateHeading(float * headingVector, float roll, float pitch)
 {
     float headX;
     float headY;
@@ -61,35 +60,39 @@ static float calculateHeading(float *headingVector, float roll, float pitch)
 	return heading;
 }
 
-float getIMUExeTime( void )
+static float estimateHeading(float const * const deltaGyroAngle, float roll, float pitch)
 {
-	return IMUExeTime;
+	float heading;
+	vectorRotation_st matrix;
+
+	/* use gyro to determine heading */
+	initVectorRotationDegrees( &matrix, deltaGyroAngle[0], deltaGyroAngle[1], deltaGyroAngle[2] );
+	applyVectorRotation( &matrix, gyroHeadingVector );
+	normaliseVector( gyroHeadingVector, gyroHeadingVector );
+
+	heading = calculateHeading( gyroHeadingVector, roll, pitch );
+
+	return heading;
 }
 
-void initGyroHeadingVector( void )
+static void estimateAttitude( float const * const deltaGyroAngle, float const * const accelerometerValues, float * roll, float * pitch)
 {
-	/* current attitude is used as the starting point for gyro based heading */
-	gyroHeadingVector[0] = 1.0f;
-	gyroHeadingVector[1] = 0.0f;
-	gyroHeadingVector[2] = 0.0f;
+    unsigned int axis;
+	vectorRotation_st matrix;
+    float ComplementaryFilterDivisor = (attitude_configuration[0].complementaryFilterFactor + 1.0f);
+
+	initVectorRotationDegrees( &matrix, deltaGyroAngle[0], deltaGyroAngle[1], deltaGyroAngle[2] );
+	applyVectorRotation( &matrix, estimatedAttitudeVector );
+
+    for (axis = 0; axis < 3; axis++)
+        estimatedAttitudeVector[axis] = (estimatedAttitudeVector[axis] * attitude_configuration[0].complementaryFilterFactor + accelerometerValues[axis]) / ComplementaryFilterDivisor;
+
+    *roll = (atan2f(estimatedAttitudeVector[1], estimatedAttitudeVector[2]) * 180.0f)/M_PI;
+    *pitch = (atan2f(-estimatedAttitudeVector[0], sqrtf(estimatedAttitudeVector[1] * estimatedAttitudeVector[1] + estimatedAttitudeVector[2] * estimatedAttitudeVector[2]))*180.0f)/M_PI;
+
 }
 
-static void estimateAttitude( float dT )
-{
-
-    do_attitude_estimation( &imu_data,
-    				dT,
-    				filteredGyroValues[0],
-    				filteredGyroValues[1],
-    				filteredAccelerometerValues[0],
-    				filteredAccelerometerValues[1],
-    				filteredAccelerometerValues[2] );
-
-    RollAngle = imu_data.compRollAngle;
-    PitchAngle = imu_data.compPitchAngle;
-}
-
-bool readGyro( sensorCallback_st * sensorCallbacks )
+static bool readGyro( sensorCallback_st * sensorCallbacks )
 {
 	bool gotGyroValues;
 
@@ -98,8 +101,8 @@ bool readGyro( sensorCallback_st * sensorCallbacks )
 		gotGyroValues = true;
 
 		// TODO matrix multiplication to avoid doing two transformations?
-		alignVectorsToFlightController( gyroValues, noRotation );			// TODO: configurable/per hardware, not cpu
-		alignVectorsToCraft( gyroValues );
+		alignVectorToFlightController( gyroValues, noRotation );			// TODO: configurable/per hardware, not cpu
+		alignVectorToCraft( gyroValues );
 
 		filterGyroValues( gyroValues, filteredGyroValues );
 
@@ -110,7 +113,7 @@ bool readGyro( sensorCallback_st * sensorCallbacks )
 	return gotGyroValues;
 }
 
-bool readAccelerometer( sensorCallback_st * sensorCallbacks )
+static bool readAccelerometer( sensorCallback_st * sensorCallbacks )
 {
 	bool gotAccValues;
 
@@ -119,8 +122,8 @@ bool readAccelerometer( sensorCallback_st * sensorCallbacks )
 		gotAccValues = true;
 
 		// TODO matrix multiplication to avoid doing two transformations?
-		alignVectorsToFlightController( accelerometerValues, noRotation );	// TODO: configurable/per hardware, not cpu
-		alignVectorsToCraft( accelerometerValues );
+		alignVectorToFlightController( accelerometerValues, noRotation );	// TODO: configurable/per hardware, not cpu
+		alignVectorToCraft( accelerometerValues );
 
 		filterAccValues( accelerometerValues, filteredAccelerometerValues );
 	}
@@ -130,7 +133,7 @@ bool readAccelerometer( sensorCallback_st * sensorCallbacks )
 	return gotAccValues;
 }
 
-bool readMagnetometer( sensorCallback_st * sensorCallbacks )
+static bool readMagnetometer( sensorCallback_st * sensorCallbacks )
 {
 	bool gotMagnetometerValues;
 
@@ -139,8 +142,8 @@ bool readMagnetometer( sensorCallback_st * sensorCallbacks )
 	{
 		gotMagnetometerValues = true;
 		// TODO matrix multiplication to avoid doing two transformations?
-		alignVectorsToFlightController( magnetometerValues, noRotation );	// TODO: configurable
-		alignVectorsToCraft( magnetometerValues );
+		alignVectorToFlightController( magnetometerValues, noRotation );	// TODO: configurable
+		alignVectorToCraft( magnetometerValues );
 
 		filterMagValues( magnetometerValues, filteredMagnetometerValues );
 	}
@@ -155,6 +158,8 @@ void updateIMU( sensorCallback_st * sensorCallbacks )
 	bool gotGyroValues;
 	bool gotAccValues;
 	bool gotMagnetometerValues;
+	float deltaGyroAngle[3];
+
 	uint32_t now = micros();
 	IMUDelta = now - lastIMUTime;
 	lastIMUTime = now;
@@ -166,42 +171,47 @@ void updateIMU( sensorCallback_st * sensorCallbacks )
 	gotAccValues = readAccelerometer( sensorCallbacks );
 	gotMagnetometerValues = readMagnetometer( sensorCallbacks );
 
-	/* only estimate attitude (used in Angle mode) if gyro and accelerometer both found */
-	if ( gotGyroValues == true && gotAccValues == true )
+	if ( gotGyroValues == true )
 	{
-		estimateAttitude( fIMUDelta );
+		//estimateAttitude( fIMUDelta );
+		deltaGyroAngle[0] = filteredGyroValues[0] * fIMUDelta;
+		deltaGyroAngle[1] = filteredGyroValues[1] * fIMUDelta;
+		deltaGyroAngle[2] = filteredGyroValues[2] * fIMUDelta;
+
+		/* only estimate attitude (used in Angle mode) if gyro and accelerometer both found */
+		if ( gotAccValues == true )
+			estimateAttitude( deltaGyroAngle, filteredAccelerometerValues, &RollAngle, &PitchAngle );
+
+		if ( gotMagnetometerValues == false )
+		{
+			Heading = estimateHeading( deltaGyroAngle, RollAngle, PitchAngle );
+		}
 	}
 
-	/* determine heading */
+	/* determine heading from magnetometer */
 	if ( gotMagnetometerValues == true )
 	{
 		Heading = calculateHeading( filteredMagnetometerValues, -RollAngle, -PitchAngle );
 
 		// TODO: apply declination (and renormalise afterwards)
-
-	}
-	else if ( gotGyroValues == true )
-	{
-		float deltaGyroAngle[3];
-		vectorRotation_st matrix;
-
-		deltaGyroAngle[0] = gyroValues[0] * fIMUDelta;
-		deltaGyroAngle[1] = gyroValues[1] * fIMUDelta;
-		deltaGyroAngle[2] = gyroValues[2] * fIMUDelta;
-
-		/* use gyro to determine heading */
-		initVectorRotationDegrees( &matrix, deltaGyroAngle[0], deltaGyroAngle[1], deltaGyroAngle[2] );
-		applyVectorRotation( &matrix, gyroHeadingVector );
-		normaliseVector( gyroHeadingVector, gyroHeadingVector );
-#if defined(STM32F30X)	// XXX why different?
-		Heading = calculateHeading( gyroHeadingVector, -RollAngle, -PitchAngle );
-#elif defined(STM32F10X)
-		Heading = calculateHeading( gyroHeadingVector, RollAngle, PitchAngle );
-#endif
+		// TODO: complementary filter with gyro?
 	}
 
 	IMUExeTime = micros() - lastIMUTime;
 
+}
+
+float getIMUExeTime( void )
+{
+	return IMUExeTime;
+}
+
+void initGyroHeadingVector( void )
+{
+	/* current attitude is used as the starting point for gyro based heading */
+	gyroHeadingVector[0] = 1.0f;
+	gyroHeadingVector[1] = 0.0f;
+	gyroHeadingVector[2] = 0.0f;
 }
 
 void initIMUTime( uint32_t time )

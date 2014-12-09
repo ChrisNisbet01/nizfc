@@ -12,7 +12,6 @@
 #include <receiver.h>
 #include <receiver_handler.h>
 #include <motor_control.h>
-#include <attitude_estimation.h>
 #include <imu.h>
 #include <main_task.h>
 
@@ -114,12 +113,6 @@ static void doDebugOutput( void )
 	if (board_configuration[0].debug & 8 )
 	{
 		printf( "\r\n\ndT: %fg", fIMUDelta );
-		printf( "\r\naccel" );
-		printf( "\r\n        roll %f", imu_data.roll );
-		printf( "\r\n        pit  %f", imu_data.pitch );
-		printf( "\r\ngyro" );
-		printf( "\r\n        roll %f", imu_data.gyroRollAngle );
-		printf( "\r\n        pit  %f", imu_data.gyroPitchAngle );
 		printf( "\r\nfiltered" );
 		printf( "\r\n        roll %f", RollAngle );
 		printf( "\r\n        pit  %f", PitchAngle );

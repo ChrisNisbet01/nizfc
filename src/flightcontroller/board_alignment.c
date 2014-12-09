@@ -18,15 +18,15 @@ void initBoardAlignment(float rollDegrees, float pitchDegrees, float yawDegrees)
 	initVectorRotationDegrees( &boardRotationMatrix, rollDegrees, pitchDegrees, yawDegrees );
 }
 
-void alignVectorsToCraft(float *vectors)
+void alignVectorToCraft(float *vector)
 {
 	if ( boardAlignmentRequired == true )
 	{
-		applyVectorRotation( &boardRotationMatrix, vectors );
+		applyVectorRotation( &boardRotationMatrix, vector );
 	}
 }
 
-void alignVectorsToFlightController(float *vectors, orientation_t sensorOrientation)
+void alignVectorToFlightController(float *vector, orientation_t sensorOrientation)
 {
 	/*
 		These vectors will always be at 90 degree intervals, so we can avoid doing lengthy vector
@@ -34,42 +34,42 @@ void alignVectorsToFlightController(float *vectors, orientation_t sensorOrientat
 	*/
 	float temp[3];
 
-	temp[0] = vectors[0];
-	temp[1] = vectors[1];
-	temp[2] = vectors[2];
+	temp[0] = vector[0];
+	temp[1] = vector[1];
+	temp[2] = vector[2];
 
     switch (sensorOrientation) {
         case clockwise90Degrees:
-            vectors[0] = temp[1];
-            vectors[1] = -temp[0];
+            vector[0] = temp[1];
+            vector[1] = -temp[0];
             break;
         case clockwise180Degrees:
-            vectors[0] = -temp[0];
-            vectors[1] = -temp[1];
+            vector[0] = -temp[0];
+            vector[1] = -temp[1];
             break;
         case clockwise270Degrees:
-            vectors[0] = -temp[1];
-            vectors[1] = temp[0];
+            vector[0] = -temp[1];
+            vector[1] = temp[0];
             break;
         case clockwise0DegreesFlipped:
-            vectors[0] = -temp[0];
-            vectors[1] = temp[1];
-            vectors[2] = -temp[2];
+            vector[0] = -temp[0];
+            vector[1] = temp[1];
+            vector[2] = -temp[2];
             break;
         case clockwise90DegreesFlipped:
-            vectors[0] = temp[1];
-            vectors[1] = temp[0];
-            vectors[2] = -temp[2];
+            vector[0] = temp[1];
+            vector[1] = temp[0];
+            vector[2] = -temp[2];
             break;
         case clockwise180DegreesFlipped:
-            vectors[0] = temp[0];
-            vectors[1] = -temp[1];
-            vectors[2] = -temp[2];
+            vector[0] = temp[0];
+            vector[1] = -temp[1];
+            vector[2] = -temp[2];
             break;
         case clockwise270DegreesFlipped:
-            vectors[0] = -temp[1];
-            vectors[1] = -temp[0];
-            vectors[2] = -temp[2];
+            vector[0] = -temp[1];
+            vector[1] = -temp[0];
+            vector[2] = -temp[2];
             break;
         default:
         	/* nothing to do */

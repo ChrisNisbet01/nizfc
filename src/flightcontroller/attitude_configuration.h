@@ -5,8 +5,7 @@
 
 typedef struct attitude_configuration_st
 {
-	uint16_t roll_lpf;
-	uint16_t pitch_lpf;
+	uint16_t complementaryFilterFactor;
 } attitude_configuration_st;
 
 

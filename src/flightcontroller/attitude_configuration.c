@@ -20,33 +20,25 @@ attitude_configuration_st attitude_configuration[NB_ATTITUDE_CONFIGURATIONS];
 // TODO: decent defaults
 static const attitude_configuration_st default_attitude_configuration =
 {
-	.roll_lpf = 200,
-	.pitch_lpf = 200,
+	.complementaryFilterFactor = 200
 };
 
 typedef enum attitude_parameter_id_t
 {
-	parameter_id_roll_lpf = 0,
-	parameter_id_pitch_lpf = 1,
+	parameter_id_complementary_filter_factor = 0
 } attitude_parameter_id_t;
 
 static char const * const parameter_name_mappings[] =
 {
-	[parameter_id_roll_lpf] = "rlpf",
-	[parameter_id_pitch_lpf] = "plpf",
+	[parameter_id_complementary_filter_factor] = "cffactor"
 };
 
 static const parameterConfig_st attitude_config_parameterConfigs[] =
 {
 	{
-	.parameter_id = parameter_id_roll_lpf,
+	.parameter_id = parameter_id_complementary_filter_factor,
 	.data_type = config_data_type_uint16,
-	.offsetToData = offsetof(attitude_configuration_st, roll_lpf),
-	},
-	{
-	.parameter_id = parameter_id_pitch_lpf,
-	.data_type = config_data_type_uint16,
-	.offsetToData = offsetof(attitude_configuration_st, pitch_lpf),
+	.offsetToData = offsetof(attitude_configuration_st, complementaryFilterFactor)
 	}
 };
 

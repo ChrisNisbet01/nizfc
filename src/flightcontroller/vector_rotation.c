@@ -53,20 +53,20 @@ void initVectorRotationDegrees( vectorRotation_st * matrix, float rollDegrees, f
 	initVectorRotationRadians( matrix, roll, pitch, yaw );
 }
 
-void applyVectorRotation( vectorRotation_st * matrix, float *vectors )
+void applyVectorRotation( vectorRotation_st * matrix, float *vector )
 {
 	/*
 		check out
 		http://www.gamedev.net/page/resources/_/technical/math-and-physics/3d-matrix-math-demystified-r695
 		to see how to do the vector rotation.
 	*/
-    float x = vectors[0];
-    float y = vectors[1];
-    float z = vectors[2];
+    float x = vector[0];
+    float y = vector[1];
+    float z = vector[2];
 
-    vectors[0] = matrix->rotationMatrix[0][0] * x + matrix->rotationMatrix[1][0] * y + matrix->rotationMatrix[2][0] * z;
-    vectors[1] = matrix->rotationMatrix[0][1] * x + matrix->rotationMatrix[1][1] * y + matrix->rotationMatrix[2][1] * z;
-    vectors[2] = matrix->rotationMatrix[0][2] * x + matrix->rotationMatrix[1][2] * y + matrix->rotationMatrix[2][2] * z;
+    vector[0] = matrix->rotationMatrix[0][0] * x + matrix->rotationMatrix[1][0] * y + matrix->rotationMatrix[2][0] * z;
+    vector[1] = matrix->rotationMatrix[0][1] * x + matrix->rotationMatrix[1][1] * y + matrix->rotationMatrix[2][1] * z;
+    vector[2] = matrix->rotationMatrix[0][2] * x + matrix->rotationMatrix[1][2] * y + matrix->rotationMatrix[2][2] * z;
 }
 
 void multiplyVectorMatrix( vectorRotation_st * MatrixA, vectorRotation_st * MatrixB, vectorRotation_st * NewMatrix )
