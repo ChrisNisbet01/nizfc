@@ -20,7 +20,7 @@ attitude_configuration_st attitude_configuration[NB_ATTITUDE_CONFIGURATIONS];
 // TODO: decent defaults
 static const attitude_configuration_st default_attitude_configuration =
 {
-	.complementaryFilterFactor = 200
+	.complementaryFilterFactor = 300
 };
 
 typedef enum attitude_parameter_id_t
