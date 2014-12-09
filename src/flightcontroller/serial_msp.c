@@ -129,8 +129,8 @@ const char boardIdentifier[] = "SDF3";
 #define MSP_ALTITUDE             109    //out message         altitude, variometer
 #define MSP_ANALOG               110    //out message         vbat, powermetersum, rssi if available on RX
 #define MSP_RC_TUNING            111    //out message         rc rate, rc expo, rollpitch rate, yaw rate, dyn throttle PID
-#define MSP_PID                  112    //out message         P I D coeff (9 are used currently)
-#define MSP_BOX                  113    //out message         BOX setup (number is dependant of your setup)
+#define MSP_PID                  112    //out message         PID coeff (9 are used currently)
+#define MSP_BOX                  113    //out message         BOX setup (number is dependent upon your setup)
 #define MSP_MISC                 114    //out message         powermeter trig
 #define MSP_MOTOR_PINS           115    //out message         which pins are in use for motors & servos, for GUI
 #define MSP_BOXNAMES             116    //out message         the aux switch names
@@ -143,8 +143,8 @@ const char boardIdentifier[] = "SDF3";
 
 #define MSP_SET_RAW_RC           200    //in message          8 rc chan
 #define MSP_SET_RAW_GPS          201    //in message          fix, numsat, lat, lon, alt, speed
-#define MSP_SET_PID              202    //in message          P I D coeff (9 are used currently)
-#define MSP_SET_BOX              203    //in message          BOX setup (number is dependant of your setup)
+#define MSP_SET_PID              202    //in message          PID coeff (9 are used currently)
+#define MSP_SET_BOX              203    //in message          BOX setup (number is dependent upon your setup)
 #define MSP_SET_RC_TUNING        204    //in message          rc rate, rc expo, rollpitch rate, yaw rate, dyn throttle PID
 #define MSP_ACC_CALIBRATION      205    //in message          no param
 #define MSP_MAG_CALIBRATION      206    //in message          no param
@@ -169,14 +169,6 @@ const char boardIdentifier[] = "SDF3";
 #define MSP_ACC_TRIM             240    //out message         get acc angle trim values
 #define MSP_SET_ACC_TRIM         239    //in message          set acc angle trim values
 #define MSP_GPSSVINFO            164    //out message         get Signal Strength (only U-Blox)
-
-#define INBUF_SIZE 64
-
-typedef struct box_e {
-    const uint8_t boxId;         // see boxId_e
-    const char *boxName;            // GUI-readable box name
-    const uint8_t permanentId;      //
-} box_t;
 
 #define mspSerialPort ctx->serialPort
 
@@ -320,9 +312,10 @@ static const char shortGitRevision[] = "1234567";
 
 static bool processOutCommand(mspContext_st * ctx)
 {
-    uint32_t i, tmp, junk;
+    uint32_t i;
 
-    switch (ctx->cmdMSP) {
+    switch (ctx->cmdMSP)
+    {
     case MSP_API_VERSION:
         // the components of this command are in an order such that future changes could be made to it without breaking clients.
         // i.e. most important first.
@@ -360,15 +353,18 @@ static bool processOutCommand(mspContext_st * ctx)
         }
         serialize16(ctx, 0); // No other build targets currently have hardware revision detection.
 
-        for (i = 0; i < BUILD_DATE_LENGTH; i++) {
+        for (i = 0; i < BUILD_DATE_LENGTH; i++)
+        {
             serialize8(ctx, buildDate[i]);
         }
-        for (i = 0; i < BUILD_TIME_LENGTH; i++) {
+        for (i = 0; i < BUILD_TIME_LENGTH; i++)
+        {
             serialize8(ctx, buildTime[i]);
         }
 
         serialize8(ctx, GIT_SHORT_REVISION_LENGTH);
-        for (i = 0; i < GIT_SHORT_REVISION_LENGTH; i++) {
+        for (i = 0; i < GIT_SHORT_REVISION_LENGTH; i++)
+        {
             serialize8(ctx, shortGitRevision[i]);
         }
         serialize8(ctx, 0); // No flight controller specific information to follow.
@@ -398,7 +394,7 @@ static bool processOutCommand(mspContext_st * ctx)
         for (i = 0; i < 3; i++)
 	        serialize16(ctx, lrintf(filteredAccelerometerValues[i]*512.0f));
         for (i = 0; i < 3; i++)
-            serialize16(ctx, lrintf(gyroValues[i]*16.4f/4.0f));
+            serialize16(ctx, lrintf(filteredGyroValues[i]*16.4f/4.0f));
         for (i = 0; i < 3; i++)
             serialize16(ctx, lrintf(filteredMagnetometerValues[i]*1090.0f));
         break;
@@ -508,21 +504,26 @@ static bool processInCommand(mspContext_st * ctx)
     return true;
 }
 
-static bool mspProcessPort(mspContext_st * ctx, uint8_t c)
+bool mspProcess(mspContext_st * ctx, uint8_t c)
 {
 	bool receivingMSP = true;
 
 	/* if the state is idle at the end of the function, receivingMSP will be set to false */
-    {
-        if (ctx->state == IDLE) {
+	switch ( ctx->state )
+	{
+        case IDLE:
             ctx->state = (c == MSPHeader[0]) ? HEADER_START : IDLE;
-        } else if (ctx->state == HEADER_START) {
+            break;
+        case HEADER_START:
             ctx->state = (c == MSPHeader[1]) ? HEADER_M : IDLE;
-        } else if (ctx->state == HEADER_M) {
+            break;
+        case HEADER_M:
             ctx->state = (c == MSPHeader[2]) ? HEADER_ARROW : IDLE;
-        } else if (ctx->state == HEADER_ARROW) {
+            break;
+        case HEADER_ARROW:
+        	// expecting the payload size
             if (c > ctx->inBufSize)
-            {       // now we are expecting the payload size
+            {
                 ctx->state = IDLE;
             }
             else
@@ -534,43 +535,40 @@ static bool mspProcessPort(mspContext_st * ctx, uint8_t c)
 	            ctx->checksum ^= c;
 	            ctx->state = HEADER_SIZE;      // the command is to follow
             }
-        }
-        else if (ctx->state == HEADER_SIZE)
-        {
+            break;
+        case HEADER_SIZE:
             ctx->cmdMSP = c;
             ctx->checksum ^= c;
             ctx->state = HEADER_CMD;
-        }
-        else if (ctx->state == HEADER_CMD && ctx->offset < ctx->dataSize)
-        {
-            ctx->checksum ^= c;
-            ctx->inBuf[ctx->offset++] = c;
-        }
-        else if (ctx->state == HEADER_CMD && ctx->offset >= ctx->dataSize)
-        {
-            if (ctx->checksum == c) {        // compare calculated and transferred checksum
-                // we got a valid packet, evaluate it
-		        if (!(processOutCommand(ctx) || processInCommand(ctx)))
-		        {
-    				printf("\r\nunsupported code: %d", ctx->cmdMSP );
-                    headSerialError(ctx, 0);
-                }
-                tailSerialReply(ctx);
-            }
+            break;
+        case HEADER_CMD:
+	        if (ctx->offset < ctx->dataSize)
+	        {
+	            ctx->checksum ^= c;
+	            ctx->inBuf[ctx->offset++] = c;
+	        }
+        	else
+        	{
+	            if (ctx->checksum == c)
+	            {        // compare calculated and transferred checksum
+	                // valid packet, evaluate it
+			        if (!(processOutCommand(ctx) || processInCommand(ctx)))
+			        {
+	    				printf("\r\nunsupported code: %d", ctx->cmdMSP );
+	                    headSerialError(ctx, 0);
+	                }
+	                tailSerialReply(ctx);
+	            }
 
-            ctx->state = IDLE;
-        }
-    }
+	            ctx->state = IDLE;
+        	}
+        	break;
+	}
 
     if (ctx->state == IDLE )
     	receivingMSP = false;
 
     return receivingMSP;
-}
-
-bool mspProcess(mspContext_st * ctx, uint8_t c)
-{
-    return mspProcessPort(ctx, c);
 }
 
 void initMSPContext( mspContext_st * ctx, serial_port_st * port, uint8_t * inBuf, unsigned int inBufSize, uint8_t * outBuf, unsigned int outBufSize )
