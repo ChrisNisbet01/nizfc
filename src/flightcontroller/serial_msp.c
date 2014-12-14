@@ -170,35 +170,9 @@ const char boardIdentifier[] = "SDF3";
 #define MSP_SET_ACC_TRIM         239    //in message          set acc angle trim values
 #define MSP_GPSSVINFO            164    //out message         get Signal Strength (only U-Blox)
 
-#define mspSerialPort ctx->serialPort
-
-static void serialFlush( mspContext_st * ctx )
+static inline void serialWrite( mspContext_st * ctx, uint8_t ch )
 {
-	if ( mspSerialPort->methods->writeBulkBlockingWithTimeout != NULL && ctx->outIdx > 0 )
-	{
-		mspSerialPort->methods->writeBulkBlockingWithTimeout( mspSerialPort->serialCtx, ctx->outBuf, ctx->outIdx, 50 );
-		ctx->outIdx = 0;
-	}
-}
-
-static void serialWrite( mspContext_st * ctx, uint8_t ch )
-{
-	if ( mspSerialPort->methods->writeBulkBlockingWithTimeout == NULL )
-	{
-		/* write out each char */
-		mspSerialPort->methods->writeCharBlockingWithTimeout( mspSerialPort->serialCtx, ch, 50 );
-	}
-	else
-	{
-		if ( ctx->outIdx < ctx->outBufSize )
-		{
-			ctx->outBuf[ctx->outIdx++] = ch;
-		}
-		if ( ctx->outIdx == ctx->outBufSize )
-		{
-			serialFlush( ctx );
-		}
-	}
+	ctx->putChar( ctx->ownerContext, ch );
 }
 
 void serialize32(mspContext_st * ctx, uint32_t a)
@@ -279,7 +253,6 @@ void headSerialError(mspContext_st * ctx, uint8_t s)
 void tailSerialReply(mspContext_st * ctx)
 {
     serialize8(ctx, ctx->checksum);
-    serialFlush(ctx);
 }
 
 #define BUILD_DATE_LENGTH 11
@@ -504,80 +477,95 @@ static bool processInCommand(mspContext_st * ctx)
     return true;
 }
 
-bool mspProcess(mspContext_st * ctx, uint8_t c)
+typedef void (*mspHandlerfn)(mspContext_st * ctx, uint8_t c);
+
+void mspIdleStateHandler(mspContext_st * ctx, uint8_t c)
 {
-	bool receivingMSP = true;
-
-	/* if the state is idle at the end of the function, receivingMSP will be set to false */
-	switch ( ctx->state )
-	{
-        case IDLE:
-            ctx->state = (c == MSPHeader[0]) ? HEADER_START : IDLE;
-            break;
-        case HEADER_START:
-            ctx->state = (c == MSPHeader[1]) ? HEADER_M : IDLE;
-            break;
-        case HEADER_M:
-            ctx->state = (c == MSPHeader[2]) ? HEADER_ARROW : IDLE;
-            break;
-        case HEADER_ARROW:
-        	// expecting the payload size
-            if (c > ctx->inBufSize)
-            {
-                ctx->state = IDLE;
-            }
-            else
-            {
-	            ctx->dataSize = c;
-	            ctx->offset = 0;
-	            ctx->checksum = 0;
-	            ctx->indRX = 0;
-	            ctx->checksum ^= c;
-	            ctx->state = HEADER_SIZE;      // the command is to follow
-            }
-            break;
-        case HEADER_SIZE:
-            ctx->cmdMSP = c;
-            ctx->checksum ^= c;
-            ctx->state = HEADER_CMD;
-            break;
-        case HEADER_CMD:
-	        if (ctx->offset < ctx->dataSize)
-	        {
-	            ctx->checksum ^= c;
-	            ctx->inBuf[ctx->offset++] = c;
-	        }
-        	else
-        	{
-	            if (ctx->checksum == c)
-	            {        // compare calculated and transferred checksum
-	                // valid packet, evaluate it
-			        if (!(processOutCommand(ctx) || processInCommand(ctx)))
-			        {
-	    				printf("\r\nunsupported code: %d", ctx->cmdMSP );
-	                    headSerialError(ctx, 0);
-	                }
-	                tailSerialReply(ctx);
-	            }
-
-	            ctx->state = IDLE;
-        	}
-        	break;
-	}
-
-    if (ctx->state == IDLE )
-    	receivingMSP = false;
-
-    return receivingMSP;
+    ctx->state = (c == MSPHeader[0]) ? HEADER_START : IDLE;
 }
 
-void initMSPContext( mspContext_st * ctx, serial_port_st * port, uint8_t * inBuf, unsigned int inBufSize, uint8_t * outBuf, unsigned int outBufSize )
+void mspStartStateHandler(mspContext_st * ctx, uint8_t c)
+{
+    ctx->state = (c == MSPHeader[1]) ? HEADER_M : IDLE;
+}
+
+void mspMStateHandler(mspContext_st * ctx, uint8_t c)
+{
+    ctx->state = (c == MSPHeader[2]) ? HEADER_ARROW : IDLE;
+}
+
+void mspArrowStateHandler(mspContext_st * ctx, uint8_t c)
+{
+	// expecting the payload size
+    if (c > ctx->inBufSize)
+    {
+        ctx->state = IDLE;
+    }
+    else
+    {
+        ctx->dataSize = c;
+        ctx->offset = 0;
+        ctx->checksum = 0;
+        ctx->indRX = 0;
+        ctx->checksum ^= c;
+        ctx->state = HEADER_SIZE;      // the command is to follow
+    }
+}
+
+void mspSizeStateHandler(mspContext_st * ctx, uint8_t c)
+{
+    ctx->cmdMSP = c;
+    ctx->checksum ^= c;
+    ctx->state = HEADER_CMD;
+}
+
+void mspCmdStateHandler(mspContext_st * ctx, uint8_t c)
+{
+    if (ctx->offset < ctx->dataSize)
+    {
+        ctx->checksum ^= c;
+        ctx->inBuf[ctx->offset++] = c;
+    }
+	else
+	{
+        if (ctx->checksum == c)
+        {        // compare calculated and transferred checksum
+            // valid packet, evaluate it
+	        if (!(processOutCommand(ctx) || processInCommand(ctx)))
+	        {
+				printf("\r\nunsupported code: %d", ctx->cmdMSP );
+                headSerialError(ctx, 0);
+            }
+            tailSerialReply(ctx);
+        }
+
+        ctx->state = IDLE;
+	}
+}
+
+static mspHandlerfn mspStateHandlers[] =
+{
+	[IDLE] = mspIdleStateHandler,
+    [HEADER_START] = mspStartStateHandler,
+    [HEADER_M] = mspMStateHandler,
+    [HEADER_ARROW] = mspArrowStateHandler,
+    [HEADER_SIZE] = mspSizeStateHandler,
+    [HEADER_CMD] = mspCmdStateHandler
+};
+
+bool mspProcess(mspContext_st * ctx, uint8_t c)
+{
+	mspStateHandlers[ctx->state](ctx, c );
+
+    return ctx->state != IDLE ? true : false;
+}
+
+void initMSPContext( mspContext_st * ctx, void * ownerContext, uint8_t * inBuf, unsigned int inBufSize, void (*putChar)( void *pv, uint8_t ch ) )
 {
 	memset( ctx, 0, sizeof( *ctx ) );
-	ctx->serialPort = port;
+	ctx->ownerContext = ownerContext;
 	ctx->inBuf = inBuf;
 	ctx->inBufSize = inBufSize;
-	ctx->outBuf = outBuf;
-	ctx->outBufSize = outBufSize;
+	ctx->putChar = putChar;
 	ctx->state = IDLE;
 }

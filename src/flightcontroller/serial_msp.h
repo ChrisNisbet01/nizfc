@@ -12,7 +12,7 @@ typedef enum {
 
 typedef struct mspContext_st
 {
-    serial_port_st * serialPort;
+    void * ownerContext;
     uint8_t offset;
     uint8_t dataSize;
     uint8_t checksum;
@@ -20,15 +20,13 @@ typedef struct mspContext_st
     uint8_t * inBuf;
 	unsigned int inBufSize;
 
-    uint8_t * outBuf;
-    unsigned int outBufSize;
-    uint_fast8_t outIdx;
+	void (*putChar)( void *pv, uint8_t ch );
 
     mspState_e state;
     uint8_t cmdMSP;
 } mspContext_st;
 
 bool mspProcess(mspContext_st * ctx, uint8_t c);
-void initMSPContext( mspContext_st * ctx, serial_port_st * port, uint8_t * inBuf, unsigned int inBufSize, uint8_t * outBuf, unsigned int outBufSize );
+void initMSPContext( mspContext_st * ctx, void * ownerContext, uint8_t * inBuf, unsigned int inBufSize, void (*putChar)( void *pv, uint8_t ch ) );
 
 #endif /*  __SERIAL_MSP__ */

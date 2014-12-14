@@ -30,12 +30,13 @@ typedef enum special_char_t
 
 typedef struct cliCtx_st
 {
-	serial_port_st  * serialPort;										/* used to indicate the port to write to */
+	serial_port_st  * serialPort;							/* used to indicate the port to write to */
 	char 			lineBuffer[CLI_LINEBUFFER_SIZE+1];
 	uint8_t 		linebuffer_cursor_position;
 	char			*commandArgs[MAX_COMMAND_LINE_ARGS];	/* will point into lineBuffer */
 
 	char			outputBuffer[CLI_OUTPUT_BUFFER_SIZE];
+	uint16_t		outputBufferLen;
 	mspContext_st	mspContext;
 	bool 			receivingMSP;
 } cliCtx_st;
@@ -70,6 +71,37 @@ static int clifputs(void *pv, const char *pStr)
 	}
 
     return num;
+}
+
+static void cliFlushBufferedOutput( cliCtx_st *pctx )
+{
+	if ( pctx->serialPort->methods->writeBulkBlockingWithTimeout != NULL && pctx->outputBufferLen > 0 )
+	{
+		pctx->serialPort->methods->writeBulkBlockingWithTimeout( pctx->serialPort->serialCtx, (uint8_t const *)pctx->outputBuffer, pctx->outputBufferLen, 50 );
+		pctx->outputBufferLen = 0;
+	}
+}
+
+static void cliPutBufferedChar( void *pv, uint8_t ch )
+{
+	cliCtx_st *pctx	= pv;
+
+	if ( pctx->serialPort->methods->writeBulkBlockingWithTimeout == NULL )
+	{
+		/* write out each char */
+		pctx->serialPort->methods->writeCharBlockingWithTimeout( pctx->serialPort->serialCtx, ch, 50 );
+	}
+	else
+	{
+		if ( pctx->outputBufferLen < sizeof(pctx->outputBuffer) )
+		{
+			pctx->outputBuffer[pctx->outputBufferLen++] = ch;
+		}
+		if ( pctx->outputBufferLen == sizeof(pctx->outputBuffer) )
+		{
+			cliFlushBufferedOutput( pctx );
+		}
+	}
 }
 
 static int clivfprintf(void *pv, const char *pFormat, va_list ap)
@@ -183,10 +215,12 @@ void cliHandleNewChar( void *pv, char const ch )
 	{
 		if ( mspProcess( &pctx->mspContext, ch ) == false )
 			pctx->receivingMSP = false;
+		cliFlushBufferedOutput( pctx );
 	}
 	else if ( pctx->linebuffer_cursor_position == 0 && mspProcess( &pctx->mspContext, ch ) == true )
 	{
 		pctx->receivingMSP = true;
+		cliFlushBufferedOutput( pctx );
 	}
 	else if ( cliGetCommand( pctx, ch ) == true )
 	{
@@ -232,7 +266,7 @@ void *initCli( serial_port_st * serialPort )
 			pctx->linebuffer_cursor_position = 0;
 			pctx->serialPort = serialPort;
 			pctx->receivingMSP = false;
-			initMSPContext( &pctx->mspContext, pctx->serialPort, (uint8_t *)pctx->lineBuffer, sizeof(pctx->lineBuffer), (uint8_t *)pctx->outputBuffer, sizeof(pctx->outputBuffer) );
+			initMSPContext( &pctx->mspContext, pctx, (uint8_t *)pctx->lineBuffer, sizeof(pctx->lineBuffer),	cliPutBufferedChar);
 
 			return pctx;
 		}
