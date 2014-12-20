@@ -6,6 +6,7 @@
 #include <hirestimer.h>
 #include <leds.h>
 #include <serial_task.h>
+#include <receiver_task.h>
 #include <main_task.h>
 
 void _Default_Handler( void )
@@ -44,6 +45,8 @@ int main(void)
 
 	/* open the serial ports early so debug info can be sent to them */
 	initSerialTask();
+
+	initReceiverTask();
 
 	initMainTask();
 

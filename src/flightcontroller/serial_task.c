@@ -9,6 +9,7 @@
 #include <cli.h>
 #include <pid_control.h>
 #include <utils.h>
+#include <config.h>
 #include <receiver.h>
 #include <receiver_handler.h>
 #include <motor_control.h>
@@ -218,6 +219,6 @@ void initSerialTask( void )
 			serialCli[cli_index].pcli = initCli( serialCli[cli_index].cli_uart );
 	}
 
-	CoCreateTask(cli_task, Co_NULL, 1, &cli_task_stack[CLI_TASK_STACK_SIZE-1], CLI_TASK_STACK_SIZE);
+	CoCreateTask(cli_task, Co_NULL, SERIAL_TASK_PRIORITY, &cli_task_stack[CLI_TASK_STACK_SIZE-1], CLI_TASK_STACK_SIZE);
 
 }

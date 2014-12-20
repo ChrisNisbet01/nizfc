@@ -18,7 +18,7 @@
 #include <stm32f10x_rcc.h>
 #include <mpu6050.h>
 #endif
-#include <receiver_handler.h>
+#include <config.h>
 #include <pid_control.h>
 #include <motor_control.h>
 #include <failsafe.h>
@@ -31,30 +31,14 @@
 #define MAIN_TASK_STACK_SIZE 0x200
 static OS_STK main_task_stack[MAIN_TASK_STACK_SIZE];
 
-static OS_FlagID receiverFlag;
-static OS_FlagID failsafeTriggerFlag;
 static OS_FlagID IMUTimerFlag;
 
-static volatile uint32_t latestChannelsReceived;
 static void *i2c_port;
 #if defined(STM32F30X)
 static void *spi_port;
 #endif
 
 static sensorCallback_st sensorCallbacks;
-
-
-static void failsafeTriggerCallback( void )
-{
-	/* called from within the context of a COOS timer handler, so within an ISR */
-	isr_SetFlag( failsafeTriggerFlag );
-}
-
-static void newReceiverDataCallback( uint32_t newChannelsReceived )
-{
-	latestChannelsReceived |= newChannelsReceived;
-	isr_SetFlag( receiverFlag );
-}
 
 static void IMUCallback( void )
 {
@@ -80,22 +64,6 @@ static void initIMUTimer( uint32_t updatePeriod )
 		Pretend we've processed the loop one cycle ago.
 	*/
 	initIMUTime( micros() - updatePeriod );
-}
-
-static void updateReceiver( void )
-{
-	uint32_t newChannels;
-
-	IRQ_DISABLE_SAVE();
-	newChannels = latestChannelsReceived;
-	latestChannelsReceived = 0;
-	IRQ_ENABLE_RESTORE();
-
-    updateFailsafeWithNewChannels( newChannels );
-
-    setLEDMode(RX_LED, led_state_toggle);
-
-	processReceiverSignals();
 }
 
 volatile U32 OSIdleCtr;
@@ -151,9 +119,6 @@ static void main_task( void *pv )
 	OSMaxIdleCtr = OSIdleCtr * 4;
 	resumeTasks();
 
-	receiverFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-	failsafeTriggerFlag = CoCreateFlag( Co_TRUE, Co_FALSE );
-
 #if defined(STM32F30X)
 	i2c_port = i2cInit( I2C_PORT_1 );
 #elif defined(STM32F10X)
@@ -194,12 +159,8 @@ static void main_task( void *pv )
 		board_configuration[0].boardOrientation[1],
 		board_configuration[0].boardOrientation[2] );
 
-	initFailsafe( failsafeTriggerCallback );
-
 	initPIDControl();
 	initMotorControl(board_configuration[0].craftType);
-
-	openReceiver( newReceiverDataCallback );
 
 	initIMUTimer(board_configuration[0].updateTime);
 
@@ -208,22 +169,14 @@ static void main_task( void *pv )
 		StatusType err;
 		U32 ReadyFlags;
 
-		ReadyFlags = CoWaitForMultipleFlags( (1<<IMUTimerFlag) | (1<<receiverFlag) | (1<<failsafeTriggerFlag), OPT_WAIT_ANY, 0, &err );
+		ReadyFlags = CoWaitForMultipleFlags( (1<<IMUTimerFlag), OPT_WAIT_ANY, 0, &err );
 		if (err == E_OK)
 		{
-			if ( (ReadyFlags & (1<<failsafeTriggerFlag)) != 0 )
-			{
-				failsafeSetTriggered();
-			}
 			if ( (ReadyFlags & (1<<IMUTimerFlag)) != 0 )
 			{
 				updateIMU(&sensorCallbacks);
 				updatePIDControlLoops();
 				updateMotorOutputs();
-			}
-			if ( (ReadyFlags & (1<<receiverFlag)) != 0 )
-			{
-				updateReceiver();
 			}
 		}
 	}
@@ -236,6 +189,6 @@ bool accelerometerSensorFound( void )
 
 void initMainTask( void )
 {
-	CoCreateTask(main_task, Co_NULL, 0, &main_task_stack[MAIN_TASK_STACK_SIZE-1], MAIN_TASK_STACK_SIZE);
+	CoCreateTask(main_task, Co_NULL, MAIN_TASK_PRIORITY, &main_task_stack[MAIN_TASK_STACK_SIZE-1], MAIN_TASK_STACK_SIZE);
 }
 

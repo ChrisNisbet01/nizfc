@@ -10,6 +10,7 @@
 #include <stm32f10x_gpio.h>
 #endif
 #include <coos.h>
+#include <config.h>
 #include <polling.h>
 #include <leds.h>
 #include <utils.h>
@@ -368,7 +369,7 @@ void initLEDs( void )
 	for ( index = 0; index < NB_FLASH_CONFIGS; index++ )
 		ledFlashContexts[index].flash_state = led_state_off;
 
-	ledsTaskID = CoCreateTask(ledsTask, Co_NULL, 2, &ledsTaskStack[LEDS_TASK_STACK_SIZE-1], LEDS_TASK_STACK_SIZE);
+	ledsTaskID = CoCreateTask(ledsTask, Co_NULL, LEDS_TASK_PRIORITY, &ledsTaskStack[LEDS_TASK_STACK_SIZE-1], LEDS_TASK_STACK_SIZE);
 
 }
 
