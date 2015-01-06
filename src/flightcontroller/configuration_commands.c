@@ -204,7 +204,10 @@ static int rebootCommand( non_config_run_command_data_st *pcommand )
 {
 	UNUSED(pcommand);
 
-	systemReset();
+	if ( strcmp( pcommand->argv[0], "R" ) == 0 )
+		systemResetToBootloader();
+	else
+		systemReset();
 
 	return poll_result_ok;
 }

@@ -457,6 +457,8 @@ static bool processOutCommand(mspContext_st * ctx)
     return true;
 }
 
+static bool isRebootScheduled = false;
+
 static bool processInCommand(mspContext_st * ctx)
 {
     uint32_t i;
@@ -467,6 +469,8 @@ static bool processInCommand(mspContext_st * ctx)
 	        for (i = 0; i < 8; i++)
 	            setMotorDisarmedValue( i, read16(ctx) );
 	        break;
+	    case MSP_REBOOT:
+	        isRebootScheduled = true;
 	    default:
 	        // we do not know how to handle the (valid) message, indicate error MSP $M!
 	        return false;
@@ -537,6 +541,12 @@ void mspCmdStateHandler(mspContext_st * ctx, uint8_t c)
                 headSerialError(ctx, 0);
             }
             tailSerialReply(ctx);
+
+	        if (isRebootScheduled)
+	        {
+	        	CoTimeDelay( 0, 0, 0, 100 );
+	            systemReset();
+	        }
         }
 
         ctx->state = IDLE;
