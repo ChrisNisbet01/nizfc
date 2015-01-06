@@ -857,6 +857,15 @@ OS_TID CreateTask(FUNCPtr task,void *argv,U32 parameter,OS_STK *stk)
 #endif
     prio = parameter&0xff;
 
+	/* EABI dictates that stack must be aligned on an 8 byte boundary */
+	if ((int)stk & 0x00000004)
+	{
+		stk--;
+#if CFG_STK_CHECKOUT_EN >0
+		sktSz -= sizeof(OS_STK);
+#endif
+	}
+
 #if CFG_PAR_CHECKOUT_EN >0              /* Check validity of parameter        */
     if(task == Co_NULL)
     {
