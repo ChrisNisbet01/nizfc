@@ -20,12 +20,12 @@ yaw_configuration_st yaw_configuration[NB_YAW_CONFIGURATIONS];
 // TODO: decent defaults
 static const yaw_configuration_st default_yaw_configuration =
 {
-	.kP = 0.0f,
-	.kI = 0.0f,
+	.kP = 2.0f,
+	.kI = 0.5f,
 	.kD = 0.0f,
-	.integralLimit = 0.0f,
+	.integralLimit = 100.0f,
 	.dLimit = 0.0f,
-	.pidRange = 0.0f,
+	.pidRange = 250.0f,
 	.maxRate = 100.0f
 };
 

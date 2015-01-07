@@ -73,7 +73,7 @@ void updatePID( pid_st *pid, float pv, float setpoint, float dt )
 	else
 		dTerm = 0.0f;
 
-	pid->outputValue = pTerm + iTerm + dTerm;
+	pid->outputValue = pTerm + iTerm - dTerm;
 	if ( *pid->maximumRange != 0.0f )
 		pid->outputValue = limitFloat( pid->outputValue, -(*pid->maximumRange), *pid->maximumRange );
 }

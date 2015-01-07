@@ -20,20 +20,20 @@ angle_mode_configuration_st angle_mode_configuration[NB_ANGLE_MODE_CONFIGURATION
 // TODO: decent defaults
 static const angle_mode_configuration_st default_angle_mode_configuration =
 {
-	.roll_kP = 4.0f,
-	.roll_kI = 0.0f,
-	.roll_kD = 0.0f,
+	.roll_kP = 2.5f,
+	.roll_kI = 0.5f,
+	.roll_kD = 0.9f,
 	.roll_integralLimit = 100.0f,
-	.roll_dLimit = 0.0f,
-	.roll_pidRange = 500.0f,
-	.roll_maxAngle = 50.0f,
-	.pitch_kP = 4.0f,
-	.pitch_kI = 0.0f,
-	.pitch_kD = 0.0f,
+	.roll_dLimit = 200.0f,
+	.roll_pidRange = 200.0f,
+	.roll_maxAngle = 30.0f,
+	.pitch_kP = 2.5f,
+	.pitch_kI = 0.5f,
+	.pitch_kD = 0.9f,
 	.pitch_integralLimit = 100.0f,
-	.pitch_dLimit = 0.0f,
-	.pitch_pidRange = 500.0f,
-	.pitch_maxAngle = 50.0f
+	.pitch_dLimit = 200.0f,
+	.pitch_pidRange = 200.0f,
+	.pitch_maxAngle = 30.0f
 };
 
 typedef enum angle_mode_parameter_id_t
