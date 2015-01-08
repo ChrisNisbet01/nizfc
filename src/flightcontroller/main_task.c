@@ -112,6 +112,8 @@ static void main_task( void *pv )
 		in 1 second, so we can determine % load from this.
 		% load = ((maxIdleCtr - thisIdleCtr)*100)/maxIdleCtr;
 	*/
+	// TODO: get this working properly with any number of tasks.
+	// Probably best to suspend all tasks except for idle task and let it increment OSMaxIdleCtr
 	suspendTasks();
 	OSIdleCtr = 0;
 	CoTickDelay( MSTOTICKS(250) );
